@@ -1659,27 +1659,40 @@ class EditorFrame(ttk.Frame):
     def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
-        self.main_app = main_app  # Ссылка на главный класс для управления меню
-        self.editing_copy = None # Здесь будет храниться временная копия материала
+        self.main_app = main_app
+        self.editing_copy = None
         self._setup_widgets()
+        # Изначально кнопки выключены
+        self._update_button_states(False)
 
     def _setup_widgets(self):
         # --- Верхняя панель управления ---
         top_frame = ttk.Frame(self)
         top_frame.pack(fill="x", padx=10, pady=10)
-        ttk.Label(top_frame, text="Выберите материал для редактирования:").pack(side="left")
+
+        ttk.Label(top_frame, text="Выберите материал:").pack(side="left")
         self.mat_combo = ttk.Combobox(top_frame, state="readonly", width=40)
         self.mat_combo.pack(side="left", padx=5)
         self.mat_combo.bind("<<ComboboxSelected>>", self.load_material)
 
         new_button = ttk.Button(top_frame, text="Создать новый", command=self.create_new_material)
-        new_button.pack(side="left", padx=10)
+        new_button.pack(side="left", padx=(10, 5))
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Новые кнопки ---
+        self.save_button = ttk.Button(top_frame, text="Сохранить", command=self.save_material)
+        self.save_button.pack(side="left", padx=5)
+
+        self.save_as_button = ttk.Button(top_frame, text="Сохранить как...", command=self.save_material_as)
+        self.save_as_button.pack(side="left", padx=5)
+
+        self.revert_button = ttk.Button(top_frame, text="Отменить изменения", command=self.revert_changes)
+        self.revert_button.pack(side="left", padx=5)
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
         # --- Notebook для вкладок редактора ---
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(expand=True, fill="both", padx=10, pady=(0, 10))
 
-        # Создаем вкладки
         self.general_tab = GeneralDataTab(self.notebook, self.app_data)
         self.phys_tab = PropertyEditorTab(self.notebook, "physical_properties", PHYSICAL_PROPERTIES_MAP)
         self.mech_tab = MechanicalPropertiesTab(self.notebook)
@@ -1690,44 +1703,110 @@ class EditorFrame(ttk.Frame):
         self.notebook.add(self.mech_tab, text="Механические свойства", state="disabled")
         self.notebook.add(self.chem_tab, text="Химический состав", state="disabled")
 
+    # --- НОВЫЙ МЕТОД: Управление состоянием кнопок ---
+    def _update_button_states(self, active=False):
+        state = "normal" if active else "disabled"
+        self.save_button.config(state=state)
+        self.save_as_button.config(state=state)
+        self.revert_button.config(state=state)
+
     def update_view(self):
         mat_names = [m.get_display_name() for m in self.app_data.materials]
         self.mat_combo.config(values=mat_names)
 
-        # Если текущий редактируемый материал все еще в списке, оставляем его
         if self.editing_copy and self.editing_copy.get_display_name() in mat_names:
             self.mat_combo.set(self.editing_copy.get_display_name())
         else:
-            # Сбрасываем все, если материала нет или он был удален
             self.editing_copy = None
             self.app_data.current_material = None
             self.mat_combo.set("")
             self._set_tabs_state("disabled")
-            self.main_app.update_menu_state(False)
+            self._update_button_states(False)  # Выключаем кнопки
 
     def load_material(self, event=None):
         selected_name = self.mat_combo.get()
         material = next((m for m in self.app_data.materials if m.get_display_name() == selected_name), None)
         if material:
             self.app_data.current_material = material
-            # Создаем ГЛУБОКУЮ КОПИЮ для безопасного редактирования
             self.editing_copy = copy.deepcopy(material)
             self._populate_all_tabs()
             self._set_tabs_state("normal")
-            self.main_app.update_menu_state(True)
+            self._update_button_states(True)  # Включаем кнопки
 
     def create_new_material(self):
-        # Создаем новый объект материала и сразу помещаем его в копию для редактирования
         self.editing_copy = Material()
-        # Оригинала нет, поэтому current_material = None
         self.app_data.current_material = None
-        self.mat_combo.set(self.editing_copy.filename) # Показываем "Новый материал.json"
+        self.mat_combo.set(self.editing_copy.filename)
         self._populate_all_tabs()
         self._set_tabs_state("normal")
-        self.main_app.update_menu_state(True)
+        self._update_button_states(True)  # Включаем кнопки
+
+    # --- ПЕРЕМЕЩЕННЫЕ И АДАПТИРОВАННЫЕ МЕТОДЫ ---
+    def save_material(self):
+        if not self.editing_copy: return
+        self.collect_data()
+        material_to_save = self.editing_copy
+
+        original_material = self.app_data.current_material
+        if original_material:
+            changes = find_changes(original_material.data, material_to_save.data)
+            log_changes(material_to_save.get_display_name(), changes)
+
+        if not material_to_save.filepath:
+            self.save_material_as()
+        else:
+            try:
+                material_to_save.save()
+                messagebox.showinfo("Успех", f"Материал '{material_to_save.get_display_name()}' сохранен.")
+                # Вызываем перезагрузку данных через главный класс
+                self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
+            except Exception as e:
+                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+
+    def save_material_as(self):
+        if not self.editing_copy: return
+        self.collect_data()
+        material_to_save = self.editing_copy
+
+        original_material = self.app_data.current_material
+        if original_material:
+            changes = find_changes(original_material.data, material_to_save.data)
+            log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})",
+                        changes)
+        else:
+            empty_material_data = Material.get_empty_structure()
+            changes = find_changes(empty_material_data, material_to_save.data)
+            log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
+
+        initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
+        new_filepath = filedialog.asksaveasfilename(
+            initialdir=self.app_data.work_dir, initialfile=initial_name, title="Сохранить материал как...",
+            defaultextension=".json", filetypes=[("JSON files", "*.json")])
+
+        if new_filepath:
+            try:
+                # Обновляем рабочую директорию в app_data через main_app
+                self.main_app.app_data.work_dir = os.path.dirname(new_filepath)
+                material_to_save.save(filepath=new_filepath)
+                messagebox.showinfo("Успех", f"Материал сохранен как '{os.path.basename(new_filepath)}'.")
+                # Вызываем перезагрузку данных через главный класс
+                self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
+            except Exception as e:
+                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+
+    def revert_changes(self):
+        if not self.editing_copy: return
+
+        if not self.app_data.current_material:
+            # Если это новый материал (оригинала нет), то просто сбрасываем редактор
+            if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите сбросить создание нового материала?"):
+                self.create_new_material()
+            return
+
+        if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите отменить все несохраненные изменения?"):
+            self.load_material()
 
     def _populate_all_tabs(self):
-        """Заполняет все вкладки данными из ВРЕМЕННОЙ КОПИИ."""
         if not self.editing_copy: return
         self.general_tab.populate_form(self.editing_copy)
         self.phys_tab.populate_form(self.editing_copy)
@@ -1735,7 +1814,6 @@ class EditorFrame(ttk.Frame):
         self.chem_tab.populate_form(self.editing_copy)
 
     def collect_data(self):
-        """Собирает данные из всех вкладок во ВРЕМЕННУЮ КОПИЮ."""
         if not self.editing_copy: return
         self.general_tab.collect_data(self.editing_copy)
         self.phys_tab.collect_data(self.editing_copy)
@@ -2892,16 +2970,41 @@ class MainApplication(tk.Tk):
         self.app_data = AppData()
         self.title("Material_Lib")
         self.geometry("1200x800")
+
+        # Этот код для горячих клавиш можно оставить или убрать, если он не работает
+        self.bind_class("Entry", "<KeyPress>", self._handle_russian_hotkeys)
+        self.bind_class("Text", "<KeyPress>", self._handle_russian_hotkeys)
+        self.bind_class("ttk::Combobox", "<KeyPress>", self._handle_russian_hotkeys)
+
         self.create_menu()
         self.create_widgets()
 
-        # --- ИЗМЕНЕНИЕ 2 (Оставлено): Автоматическая загрузка директории по умолчанию ---
         try:
             default_dir = os.path.join(get_app_directory(), "БД Материалов")
             if os.path.isdir(default_dir):
                 self.open_directory(directory=default_dir, show_success_message=False)
         except Exception as e:
             print(f"Ошибка при автоматической загрузке директории по умолчанию: {e}")
+
+    def _handle_russian_hotkeys(self, event):
+        is_ctrl_pressed = (event.state & 4) != 0
+        if is_ctrl_pressed:
+            key = event.keysym.lower()
+            if key == 'с':
+                event.widget.event_generate("<<Copy>>")
+                return "break"
+            elif key == 'м':
+                event.widget.event_generate("<<Paste>>")
+                return "break"
+            elif key == 'ч':
+                event.widget.event_generate("<<Cut>>")
+                return "break"
+            elif key == 'ф':
+                if isinstance(event.widget, tk.Text):
+                    event.widget.tag_add("sel", "1.0", "end")
+                elif isinstance(event.widget, tk.Entry):
+                    event.widget.selection_range(0, 'end')
+                return "break"
 
     def create_menu(self):
         """Создает главное меню приложения."""
@@ -2911,9 +3014,12 @@ class MainApplication(tk.Tk):
         file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.menu_bar.add_cascade(label="Файл", menu=file_menu)
         file_menu.add_command(label="Открыть директорию...", command=self.open_directory)
-        file_menu.add_command(label="Сохранить", command=self.save_material, state="disabled")
-        file_menu.add_command(label="Сохранить как...", command=self.save_material_as, state="disabled")
-        file_menu.add_command(label="Отменить изменения", command=self.revert_changes, state="disabled")
+
+        # --- ИЗМЕНЕНИЕ: Пункты меню удалены ---
+        # file_menu.add_command(label="Сохранить", ...)
+        # file_menu.add_command(label="Сохранить как...", ...)
+        # file_menu.add_command(label="Отменить изменения", ...)
+
         file_menu.add_separator()
         file_menu.add_command(label="Выход", command=self.quit)
         self.file_menu = file_menu
@@ -2923,15 +3029,6 @@ class MainApplication(tk.Tk):
         help_menu.add_command(label="Инструкция", command=self.show_instructions)
         help_menu.add_command(label="О приложении", command=self.show_about_info)
         help_menu.add_command(label="Список изменений", command=self.show_change)
-
-    def revert_changes(self):
-        """Отменяет изменения, восстанавливая исходное состояние материала."""
-        if not self.editor_frame.editing_copy or not self.app_data.current_material:
-            self.editor_frame.create_new_material()
-            return
-
-        if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите отменить все несохраненные изменения?"):
-            self.editor_frame.load_material()
 
     def create_widgets(self):
         """Создает основные виджеты окна."""
@@ -2946,7 +3043,6 @@ class MainApplication(tk.Tk):
         self.main_notebook.add(self.editor_frame, text="Добавление / Редактирование материала")
         self.main_notebook.add(self.sources_frame, text="Работа с источниками")
 
-    # --- ИЗМЕНЕНИЕ 3 (Оставлено): Логика открытия директории ---
     def open_directory(self, directory=None, show_success_message=True):
         if not directory:
             filepath = filedialog.askopenfilename(
@@ -2967,57 +3063,6 @@ class MainApplication(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Не удалось загрузить данные: {e}")
 
-    def save_material(self):
-        if not self.editor_frame.editing_copy: return
-        self.editor_frame.collect_data()
-        material_to_save = self.editor_frame.editing_copy
-
-        original_material = self.app_data.current_material
-        if original_material:
-            changes = find_changes(original_material.data, material_to_save.data)
-            log_changes(material_to_save.get_display_name(), changes)
-
-        if not material_to_save.filepath:
-            self.save_material_as()
-        else:
-            try:
-                material_to_save.save()
-                messagebox.showinfo("Успех", f"Материал '{material_to_save.get_display_name()}' сохранен.")
-                self.app_data.load_materials_from_dir(self.app_data.work_dir)
-                self.on_data_load()
-            except Exception as e:
-                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
-
-    def save_material_as(self):
-        if not self.editor_frame.editing_copy: return
-        self.editor_frame.collect_data()
-        material_to_save = self.editor_frame.editing_copy
-
-        original_material = self.app_data.current_material
-        if original_material:
-            changes = find_changes(original_material.data, material_to_save.data)
-            log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})",
-                        changes)
-        else:
-            empty_material_data = Material.get_empty_structure()
-            changes = find_changes(empty_material_data, material_to_save.data)
-            log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
-
-        initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
-        new_filepath = filedialog.asksaveasfilename(
-            initialdir=self.app_data.work_dir, initialfile=initial_name, title="Сохранить материал как...",
-            defaultextension=".json", filetypes=[("JSON files", "*.json")])
-
-        if new_filepath:
-            try:
-                self.app_data.work_dir = os.path.dirname(new_filepath)
-                material_to_save.save(filepath=new_filepath)
-                messagebox.showinfo("Успех", f"Материал сохранен как '{os.path.basename(new_filepath)}'.")
-                self.app_data.load_materials_from_dir(self.app_data.work_dir)
-                self.on_data_load()
-            except Exception as e:
-                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
-
     def on_data_load(self):
         """Вызывается после загрузки/перезагрузки данных из директории."""
         self.editor_frame.editing_copy = None
@@ -3025,22 +3070,18 @@ class MainApplication(tk.Tk):
         self.viewer_frame.update_view()
         self.editor_frame.update_view()
         self.sources_frame.update_view()
-        self.update_menu_state(False)
 
-    def update_menu_state(self, active=False):
-        state = "normal" if active else "disabled"
-        self.file_menu.entryconfig("Сохранить", state=state)
-        self.file_menu.entryconfig("Сохранить как...", state=state)
-        self.file_menu.entryconfig("Отменить изменения", state=state)
+        # Метод update_menu_state больше не нужен для управления кнопками сохранения,
+        # так как EditorFrame делает это сам.
+
+    # --- МЕТОДЫ УДАЛЕНЫ: save_material, save_material_as, revert_changes, update_menu_state ---
 
     def show_about_info(self):
-        """Отображает окно 'О приложении'."""
         title = "О приложении"
         message = read_text_from_file("app_list.txt")
         messagebox.showinfo(title, message, parent=self)
 
     def show_instructions(self):
-        """Отображает окно с инструкцией по использованию."""
         instr_window = tk.Toplevel(self)
         instr_window.title("Инструкция по использованию")
         instr_window.geometry("750x600")
@@ -3060,7 +3101,6 @@ class MainApplication(tk.Tk):
         ok_button.pack(pady=(0, 10))
 
     def show_change(self):
-        """Отображает окно со списком изменений."""
         instr_window = tk.Toplevel(self)
         instr_window.title("Список изменений")
         instr_window.geometry("750x600")
