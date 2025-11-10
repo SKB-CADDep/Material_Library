@@ -10,7 +10,7 @@ from matplotlib.patches import Ellipse
 import copy
 import sys
 
-# --- Константа для конвертации единиц измерения ---
+# --- Константа для конвертации единиц измерения (двунаправленная) ---
 
 # 1 МПа = 10.19716 кгс/см²
 # 1 кгс/см² = 0.0980665 МПа
@@ -18,16 +18,20 @@ import sys
 UNIT_CONVERSION_GROUPS = {
     # Группа для единиц давления/напряжения
     "pressure": {
-        "base_unit": "МПа",
         "units": ["МПа", "кгс/см²"],
+        # Матрица коэффициентов: factors[ИЗ_ЕДИНИЦЫ][В_ЕДИНИЦУ]
         "factors": {
-            # Коэффициенты для пересчета ИЗ базовой единицы (МПа) В целевую
-            "МПа": 1.0,
-            "кгс/см²": 10.19716,
+            "МПа": {
+                "МПа": 1.0,
+                "кгс/см²": 10.19716
+            },
+            "кгс/см²": {
+                "кгс/см²": 1.0,
+                "МПа": 0.0980665
+            }
         }
     }
-    # В будущем сюда можно добавить другие группы, например:
-    # "length": { "base_unit": "м", "units": ["м", "мм"], "factors": { "м": 1.0, "мм": 1000.0 } }
+    # В будущем сюда можно добавить другие группы
 }
 
 # --- Константы с описанием свойств ---
@@ -671,9 +675,8 @@ class SingleCalculationTab(ttk.Frame):
         self.app_data = app_data
         self.result_widgets = {}
         self.material_map = {}
-        # --- НОВЫЕ АТРИБУТЫ ---
-        self.unit_combos = {}  # Словарь для хранения выпадающих списков с ед. изм.
-        self.base_values = {}  # Словарь для хранения рассчитанных базовых значений
+        self.unit_combos = {}
+        self.base_values = {}  # В этом словаре значения ВСЕГДА хранятся в базовой единице из JSON
         self._setup_widgets()
 
     def _setup_widgets(self):
@@ -724,7 +727,6 @@ class SingleCalculationTab(ttk.Frame):
             label_text = f"{prop_info['name']} ({prop_info['symbol']}), {prop_info['unit']}"
             ttk.Label(scrollable_frame, text=label_text).grid(row=row_counter, column=0, sticky="w", pady=3, padx=5)
 
-            # --- ИЗМЕНЕНИЕ: Добавляем Frame для значения и выпадающего списка ---
             value_frame = ttk.Frame(scrollable_frame)
             value_frame.grid(row=row_counter, column=1, sticky="w", pady=3, padx=5)
 
@@ -734,45 +736,48 @@ class SingleCalculationTab(ttk.Frame):
             result_entry.pack(side="left")
             self.result_widgets[prop_key] = result_entry
 
-            # --- Создаем выпадающий список для единиц измерения ---
             unit_combo = ttk.Combobox(value_frame, width=8, state="disabled")
             unit_combo.pack(side="left", padx=(5, 0))
             self.unit_combos[prop_key] = unit_combo
 
-            # Проверяем, можно ли конвертировать эту единицу
             base_unit = prop_info.get("unit")
             for group in UNIT_CONVERSION_GROUPS.values():
-                if base_unit == group["base_unit"]:
+                # Проверяем, есть ли наша базовая единица в списке юнитов группы
+                if base_unit in group["units"]:
                     unit_combo.config(values=group["units"], state="readonly")
                     unit_combo.set(base_unit)
-                    # Привязываем событие, передавая ключ свойства через lambda
                     unit_combo.bind("<<ComboboxSelected>>", lambda e, k=prop_key: self._on_unit_change(k))
-                    break  # Нашли группу, выходим из цикла
+                    break
             row_counter += 1
 
     def _on_unit_change(self, prop_key):
-        """Вызывается при смене единицы измерения в выпадающем списке."""
         base_value = self.base_values.get(prop_key)
         if base_value is not None:
             self._display_value(prop_key, base_value)
 
+    # --- ИЗМЕНЕННЫЙ МЕТОД ---
     def _display_value(self, prop_key, base_value):
-        """Отображает значение, конвертируя его в выбранную единицу измерения."""
+        """Отображает значение, конвертируя его из базовой единицы в выбранную."""
         widget = self.result_widgets[prop_key]
         unit_combo = self.unit_combos[prop_key]
 
         display_value = base_value
 
-        # Если значение числовое, пытаемся его конвертировать
         if isinstance(base_value, (int, float)):
             target_unit = unit_combo.get()
-            base_unit = ALL_PROPERTIES_MAP[prop_key].get("unit")
+            # Базовая единица, в которой значение хранится в JSON и в self.base_values
+            source_unit = ALL_PROPERTIES_MAP[prop_key].get("unit")
 
             for group in UNIT_CONVERSION_GROUPS.values():
-                if base_unit == group["base_unit"]:
-                    factor = group["factors"].get(target_unit, 1.0)
-                    converted_value = base_value * factor
-                    display_value = f"{converted_value:.2f}"
+                if source_unit in group["units"]:
+                    # Ищем коэффициент в матрице: [из source_unit][в target_unit]
+                    try:
+                        factor = group["factors"][source_unit][target_unit]
+                        converted_value = base_value * factor
+                        display_value = f"{converted_value:.2f}"
+                    except KeyError:
+                        # Если вдруг нет нужного коэффициента, оставляем как есть
+                        display_value = f"{base_value:.2f}"
                     break
 
         widget.config(state="normal")
@@ -780,8 +785,9 @@ class SingleCalculationTab(ttk.Frame):
         widget.insert(0, str(display_value))
         widget.config(state="readonly")
 
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
     def _on_calculate(self):
-        """Вычисляет базовые значения и затем отображает их."""
         selected_display_name = self.material_combo.get()
         if not selected_display_name:
             messagebox.showwarning("Внимание", "Выберите материал для расчета.")
@@ -796,24 +802,20 @@ class SingleCalculationTab(ttk.Frame):
         material_obj, category_data = self.material_map.get(selected_display_name, (None, None))
         if not material_obj: return
 
-        self.base_values.clear()  # Очищаем старые базовые значения
+        self.base_values.clear()
 
         for prop_key in ALL_PROPERTIES_MAP.keys():
-            # Вычисляем значение в базовой единице
             base_value = self.get_property_at_temp(material_obj, category_data, prop_key, temp)
 
-            # Конвертируем в число, если возможно
             try:
                 numeric_value = float(base_value)
                 self.base_values[prop_key] = numeric_value
             except (ValueError, TypeError):
-                self.base_values[prop_key] = base_value  # Сохраняем как есть (например, "-")
+                self.base_values[prop_key] = base_value
 
-            # Отображаем значение с учетом выбранной единицы измерения
             self._display_value(prop_key, self.base_values[prop_key])
 
     def _on_reset(self):
-        """Сбрасывает все поля, включая базовые значения и единицы измерения."""
         self.base_values.clear()
         for prop_key, widget in self.result_widgets.items():
             widget.config(state="normal")
@@ -821,13 +823,11 @@ class SingleCalculationTab(ttk.Frame):
             widget.insert(0, "-")
             widget.config(state="readonly")
 
-            # Сбрасываем выпадающий список
             unit_combo = self.unit_combos[prop_key]
             if unit_combo['state'] != 'disabled':
                 base_unit = ALL_PROPERTIES_MAP[prop_key].get("unit")
                 unit_combo.set(base_unit)
 
-    # Остальные методы (update_comboboxes, _filter_materials, get_property_at_temp) остаются без изменений
     def update_comboboxes(self):
         areas = ["Все"] + self.app_data.application_areas
         self.area_combo.config(values=areas)
