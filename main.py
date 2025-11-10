@@ -641,28 +641,26 @@ class CustomToolbar(NavigationToolbar2Tk):
 
 
 class PropertyComparisonTab(ttk.Frame):
-    """Вкладка 'Сравнение материалов (свойства)' с аннотациями и доп. сеткой."""
+    """Вкладка 'Сравнение материалов (свойства)' с новым интерфейсом выбора."""
 
     def __init__(self, parent, app_data):
         super().__init__(parent)
         self.app_data = app_data
-        # Словарь для связи отображаемого имени с объектом материала и категорией
         self.listbox_item_map = {}
         self._setup_widgets()
 
     def _setup_widgets(self):
-        # ... (Код этой части в основном без изменений) ...
         main_frame = ttk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        controls_frame = ttk.Frame(main_frame, width=250)
+        controls_frame = ttk.Frame(main_frame, width=300)
         controls_frame.pack(side="left", fill="y", padx=(0, 10))
         controls_frame.pack_propagate(False)
 
         ttk.Label(controls_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
         self.area_combo = ttk.Combobox(controls_frame, state="readonly")
         self.area_combo.pack(fill="x", pady=(0, 10))
-        self.area_combo.bind("<<ComboboxSelected>>", self._filter_materials)
+        self.area_combo.bind("<<ComboboxSelected>>", self._update_search_pool)
 
         ttk.Label(controls_frame, text="Свойство для сравнения:").pack(fill="x", pady=(0, 2))
         prop_names = [f"{info['name']} ({info.get('symbol', '')})" for info in ALL_PROPERTIES_MAP.values()]
@@ -671,95 +669,120 @@ class PropertyComparisonTab(ttk.Frame):
         self.prop_combo.pack(fill="x", pady=(0, 10))
         if prop_names:
             self.prop_combo.current(0)
+        self.prop_combo.bind("<<ComboboxSelected>>", lambda e: self._plot_graph())
 
-        ### ДОБАВЛЕНО: Привязываем событие выбора свойства к функции фильтрации ###
-        # Теперь при смене свойства список материалов будет автоматически обновляться.
-        self.prop_combo.bind("<<ComboboxSelected>>", self._filter_materials)
+        ttk.Label(controls_frame, text="Поиск материала:").pack(fill="x", pady=(5, 2))
+        self.search_entry = ttk.Entry(controls_frame)
+        self.search_entry.pack(fill="x", pady=(0, 5))
+        self.search_entry.bind("<KeyRelease>", self._filter_search_results)
 
-        ttk.Label(controls_frame, text="Выберите материалы:").pack(fill="x", pady=(0, 2))
+        search_list_frame = ttk.LabelFrame(controls_frame, text="Результаты поиска")
+        search_list_frame.pack(fill="both", expand=True, pady=(0, 10))
 
-        list_frame = ttk.Frame(controls_frame)
-        list_frame.pack(fill="both", expand=True, pady=(0, 10))
-        self.mat_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE, exportselection=False)
-        list_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.mat_listbox.yview)
-        self.mat_listbox.config(yscrollcommand=list_scrollbar.set)
-        list_scrollbar.pack(side="right", fill="y")
-        self.mat_listbox.pack(side="left", fill="both", expand=True)
+        self.search_listbox = tk.Listbox(search_list_frame, exportselection=False)
+        search_scrollbar = ttk.Scrollbar(search_list_frame, orient="vertical", command=self.search_listbox.yview)
+        self.search_listbox.config(yscrollcommand=search_scrollbar.set)
+        search_scrollbar.pack(side="right", fill="y")
+        self.search_listbox.pack(side="left", fill="both", expand=True)
+        self.search_listbox.bind("<Double-1>", self._add_material_to_selection)
+
+        selected_list_frame = ttk.LabelFrame(controls_frame, text="Выбранные материалы")
+        selected_list_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        self.selected_listbox = tk.Listbox(selected_list_frame, exportselection=False)
+        selected_scrollbar = ttk.Scrollbar(selected_list_frame, orient="vertical", command=self.selected_listbox.yview)
+        self.selected_listbox.config(yscrollcommand=selected_scrollbar.set)
+        selected_scrollbar.pack(side="right", fill="y")
+        self.selected_listbox.pack(side="left", fill="both", expand=True)
+        self.selected_listbox.bind("<Double-1>", self._remove_material_from_selection)
 
         plot_button = ttk.Button(controls_frame, text="Построить график", command=self._plot_graph)
-        plot_button.pack(fill="x")
+        plot_button.pack(fill="x", pady=(0, 5))
+
+        reset_button = ttk.Button(controls_frame, text="Сбросить", command=self._reset_selection)
+        reset_button.pack(fill="x")
 
         self.plot_frame = ttk.Frame(main_frame)
         self.plot_frame.pack(side="right", fill="both", expand=True)
-
         fig = Figure(figsize=(8, 6), dpi=100)
         self.ax = fig.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
-
         toolbar = CustomToolbar(self.canvas, self.plot_frame, plot_callback=self._plot_graph)
         toolbar.update()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-
     def update_lists(self):
+        """Вызывается при загрузке данных. Обновляет фильтры и пулы данных."""
         areas = ["Все"] + self.app_data.application_areas
         self.area_combo.config(values=areas)
         self.area_combo.set("Все")
-        self._filter_materials()
+        self._update_search_pool()
 
-    def _filter_materials(self, event=None):
-        """
-        ### ИЗМЕНЕНО: Добавлена фильтрация по наличию выбранного свойства. ###
-        """
-        self.mat_listbox.delete(0, tk.END)
+    def _update_search_pool(self, event=None):
+        """Обновляет `listbox_item_map`, который является источником для поиска."""
         self.listbox_item_map.clear()
-
-        # Получаем текущие значения фильтров
         selected_area = self.area_combo.get()
-        prop_idx = self.prop_combo.current()
-
-        # Если свойство не выбрано, ничего не показываем
-        if prop_idx == -1:
-            return
-        selected_prop_key = self.prop_keys[prop_idx]
 
         for mat in self.app_data.materials:
-            # 1. Фильтр по области применения (остается без изменений)
-            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
+            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}, ).get("application_area",
+                                                                                                  []):
                 continue
 
-            material_data = mat.data
-            material_name = material_data.get("metadata", {}).get("name_material_standard", "Неизвестный материал")
+            display_name = mat.get_display_name()
+            # Добавляем сам материал (для физ. свойств)
+            self.listbox_item_map[display_name] = (mat.data, None)
 
-            # 2. Фильтр по свойству для базового материала (физические свойства)
-            # Проверяем, есть ли выбранное свойство в разделе "physical_properties"
-            if selected_prop_key in material_data.get("physical_properties", {}):
-                display_name_base = material_name
-                self.mat_listbox.insert(tk.END, display_name_base)
-                self.listbox_item_map[display_name_base] = (material_data, None)
+            # Добавляем категории прочности
+            for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
+                cat_name = cat.get('value_strength_category', '')
+                display_name_with_cat = f"{display_name} {cat_name}".strip()
+                self.listbox_item_map[display_name_with_cat] = (mat.data, cat.copy())
 
-            # 3. Фильтр по свойству для категорий прочности (механические свойства)
-            strength_categories = material_data.get("mechanical_properties", {}).get("strength_category", [])
-            if strength_categories:
-                for cat in strength_categories:
-                    # Проверяем, есть ли выбранное свойство непосредственно в словаре категории
-                    if selected_prop_key in cat:
-                        category_name = cat.get('value_strength_category', '')
-                        display_name_with_cat = f"{material_name} {category_name}".strip()
-                        self.mat_listbox.insert(tk.END, display_name_with_cat)
+        self._filter_search_results()
 
-                        # Вместо сохранения ссылки на 'cat', сохраняем его копию.
-                        # Это гарантирует, что данные для графика будут независимы.
-                        self.listbox_item_map[display_name_with_cat] = (material_data, cat.copy())
+    def _filter_search_results(self, event=None):
+        """Фильтрует список `search_listbox` на основе текста в `search_entry`."""
+        search_term = self.search_entry.get().lower()
+        self.search_listbox.delete(0, tk.END)
+
+        sorted_keys = sorted(self.listbox_item_map.keys())
+
+        for name in sorted_keys:
+            if search_term in name.lower():
+                self.search_listbox.insert(tk.END, name)
+
+    def _add_material_to_selection(self, event):
+        """Добавляет материал из списка поиска в список выбранных."""
+        selected_indices = self.search_listbox.curselection()
+        if not selected_indices: return
+
+        name_to_add = self.search_listbox.get(selected_indices[0])
+        current_selected = self.selected_listbox.get(0, tk.END)
+
+        if name_to_add not in current_selected:
+            self.selected_listbox.insert(tk.END, name_to_add)
+
+    def _remove_material_from_selection(self, event):
+        """Удаляет материал из списка выбранных."""
+        selected_indices = self.selected_listbox.curselection()
+        if not selected_indices: return
+
+        self.selected_listbox.delete(selected_indices[0])
+
+    def _reset_selection(self):
+        """Сбрасывает список выбранных материалов и график."""
+        self.selected_listbox.delete(0, tk.END)
+        self.search_entry.delete(0, tk.END)
+        self._filter_search_results()
+        self._plot_graph()
 
     def _add_minor_gridlines(self):
-
+        # Эта функция остается без изменений
         x_ticks = self.ax.get_xticks()
         if len(x_ticks) > 1:
             for i in range(len(x_ticks) - 1):
                 mid_point = (x_ticks[i] + x_ticks[i + 1]) / 2
                 self.ax.axvline(x=mid_point, color='grey', linestyle='--', linewidth=0.5, alpha=0.7)
-
         y_ticks = self.ax.get_yticks()
         if len(y_ticks) > 1:
             for i in range(len(y_ticks) - 1):
@@ -767,12 +790,7 @@ class PropertyComparisonTab(ttk.Frame):
                 self.ax.axhline(y=mid_point, color='grey', linestyle='--', linewidth=0.5, alpha=0.7)
 
     def _plot_graph(self):
-        # ... (Код этой функции остается без изменений, он будет работать корректно) ...
-        selected_indices = self.mat_listbox.curselection()
-        if not selected_indices:
-            messagebox.showwarning("Внимание", "Выберите хотя бы один материал.")
-            return
-
+        """Строит график на основе списка `selected_listbox`."""
         prop_idx = self.prop_combo.current()
         if prop_idx == -1:
             messagebox.showwarning("Внимание", "Выберите свойство для отображения.")
@@ -780,48 +798,56 @@ class PropertyComparisonTab(ttk.Frame):
 
         prop_key = self.prop_keys[prop_idx]
         prop_info = ALL_PROPERTIES_MAP.get(prop_key)
-        if not prop_info:
-            messagebox.showerror("Ошибка", f"Информация о свойстве '{prop_key}' не найдена.")
-            return
+        if not prop_info: return
 
         self.ax.clear()
 
-        selected_display_names = [self.mat_listbox.get(i) for i in selected_indices]
+        selected_names = self.selected_listbox.get(0, tk.END)
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
+                  '#17becf']
 
-        for display_name in selected_display_names:
-            material_data, category_data = self.listbox_item_map.get(display_name)
-            if not material_data:
-                continue
+        for i, display_name in enumerate(selected_names):
+            color = colors[i % len(colors)]
+            material_data, category_data = self.listbox_item_map.get(display_name, (None, None))
+
+            if not material_data: continue
 
             prop_data = None
-            if category_data and prop_key in category_data:
-                prop_data = category_data[prop_key]
-            elif not category_data and prop_key in material_data.get("physical_properties", {}):
-                prop_data = material_data["physical_properties"][prop_key]
 
-            if prop_data and "temperature_value_pairs" in prop_data:
+            # --- НАЧАЛО ИСПРАВЛЕННОЙ ЛОГИКИ ---
+            is_mechanical = prop_key in MECHANICAL_PROPERTIES_MAP
+
+            if is_mechanical:
+                # Если свойство механическое, ищем его ТОЛЬКО в категории
+                if category_data and prop_key in category_data:
+                    prop_data = category_data[prop_key]
+            else:
+                # Если свойство физическое, ищем его в ОБЩИХ данных материала
+                if prop_key in material_data.get("physical_properties", {}):
+                    prop_data = material_data["physical_properties"][prop_key]
+            # --- КОНЕЦ ИСПРАВЛЕННОЙ ЛОГИКИ ---
+
+            if prop_data and "temperature_value_pairs" in prop_data and prop_data["temperature_value_pairs"]:
                 pairs = sorted(prop_data["temperature_value_pairs"], key=lambda p: p[0])
-                if pairs:
-                    temps = [p[0] for p in pairs]
-                    values = [p[1] for p in pairs]
-                    self.ax.plot(temps, values, marker='o', linestyle='-', label=display_name)
-                    for t, v in zip(temps, values):
-                        text_label = f"{v:.0f}" if v == int(v) else f"{v:.1f}"
-                        self.ax.annotate(text_label,
-                                         xy=(t, v),
-                                         xytext=(5, 5),
-                                         textcoords='offset points',
-                                         fontsize=8,
-                                         color='dimgray')
+                temps = [p[0] for p in pairs]
+                values = [p[1] for p in pairs]
+                self.ax.plot(temps, values, marker='o', linestyle='-', label=display_name, color=color)
+                for t, v in zip(temps, values):
+                    text_label = f"{v:.0f}" if v == int(v) else f"{v:.1f}"
+                    self.ax.annotate(text_label, xy=(t, v), xytext=(5, 5), textcoords='offset points', fontsize=8,
+                                     color='dimgray')
+            else:
+                self.ax.plot([], [], marker='o', linestyle='-', label=f"{display_name} (нет данных)", color=color)
 
         self.ax.set_xlabel("Температура [°С]")
         self.ax.set_ylabel(f"{prop_info['name']} [{prop_info['unit']}]")
         self.ax.set_title(f"Зависимость свойства '{prop_info['name']}' от температуры")
-        if self.ax.has_data():
+
+        if selected_names:
             self.ax.legend()
+
         self.ax.grid(True)
         self._add_minor_gridlines()
-
         self.canvas.draw()
 
 
