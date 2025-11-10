@@ -34,7 +34,7 @@ UNIT_CONVERSION_GROUPS = {
 
 PHYSICAL_PROPERTIES_MAP = {
     "modulus_elasticity": {"name": "Модуль упругости", "symbol": "E", "unit": "МПа"},
-    "coefficient_linear_expansion": {"name": "Коэффициент линейного расширения", "symbol": "α", "unit": "1/°С"},
+    "coefficient_linear_expansion": {"name": "Коэффициент линейного расширения (·10¯⁶)", "symbol": "α", "unit": "1/°С"},
     "coefficient_thermal_conductivity": {"name": "Коэффициент теплопроводности", "symbol": "λ", "unit": "Вт/(м·°С)"},
     "density": {"name": "Плотность", "symbol": "ρ", "unit": "кг/м³"},
     "specific_heat": {"name": "Удельная теплоемкость", "symbol": "С", "unit": "Дж/(кг‧°С)"},
@@ -54,11 +54,11 @@ MECHANICAL_PROPERTIES_MAP = {
                                                    "unit": "МПа"},
     "сreep_strain_rate_1_100_thousands_hours": {"name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                                                 "symbol": "σ_1_100", "unit": "МПа"},
-    "decrement_oscillations_at_800": {"name": "Декремент колебаний при 800 кгс/см²", "symbol": "δψ_800", "unit": "МПа"},
-    "decrement_oscillations_at_1200": {"name": "Декремент колебаний при 1200 кгс/см²", "symbol": "δψ_1200",
-                                       "unit": "МПа"},
-    "decrement_oscillations_at_1600": {"name": "Декремент колебаний при 1600 кгс/см²", "symbol": "δψ_1600",
-                                       "unit": "МПа"},
+    "decrement_oscillations_at_800": {"name": "Декремент колебаний при 800 (·10¯⁴)", "symbol": "δψ_800", "unit": "кгс/см²"},
+    "decrement_oscillations_at_1200": {"name": "Декремент колебаний при 1200 (·10¯⁴)", "symbol": "δψ_1200",
+                                       "unit": "кгс/см²"},
+    "decrement_oscillations_at_1600": {"name": "Декремент колебаний при 1600 (·10¯⁴)", "symbol": "δψ_1600",
+                                       "unit": "кгс/см²"},
     "fatigue_limit_for_smooth_specimen": {"name": "Предел выносливости (гладкий образец, N=10e7)",
                                           "symbol": "σ_-1_smooth", "unit": "МПа"},
     "fatigue_limit_for_notched_specimen": {"name": "Предел выносливости (образец с надрезом, N=10e7)",
@@ -1913,7 +1913,7 @@ class PropertyEditorTab(ttk.Frame):
         scrollbar.pack(side="right", fill="y")
 
         for prop_key, prop_info in self.prop_map.items():
-            frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']})", padding=10)
+            frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']} [{prop_info['unit']}])", padding=10)
             frame.pack(fill="x", expand=True, padx=10, pady=5)
             frame.bind("<MouseWheel>", on_scroll)
 
@@ -2126,7 +2126,7 @@ class MechanicalPropertiesTab(ttk.Frame):
 
         # --- Создание виджетов для каждого механического свойства ---
         for prop_key, prop_info in MECHANICAL_PROPERTIES_MAP.items():
-            frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']})", padding=10)
+            frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']} [{prop_info['unit']}])", padding=10)
             frame.pack(fill="x", expand=True, padx=10, pady=5)
             frame.bind("<MouseWheel>", on_scroll)
 
