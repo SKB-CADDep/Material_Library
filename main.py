@@ -2367,6 +2367,14 @@ class MainApplication(tk.Tk):
         self.create_menu()
         self.create_widgets()
 
+        # --- ИЗМЕНЕНИЕ 2 (Оставлено): Автоматическая загрузка директории по умолчанию ---
+        try:
+            default_dir = os.path.join(get_app_directory(), "БД Материалов")
+            if os.path.isdir(default_dir):
+                self.open_directory(directory=default_dir, show_success_message=False)
+        except Exception as e:
+            print(f"Ошибка при автоматической загрузке директории по умолчанию: {e}")
+
     def create_menu(self):
         """Создает главное меню приложения."""
         self.menu_bar = tk.Menu(self)
@@ -2377,7 +2385,6 @@ class MainApplication(tk.Tk):
         file_menu.add_command(label="Открыть директорию...", command=self.open_directory)
         file_menu.add_command(label="Сохранить", command=self.save_material, state="disabled")
         file_menu.add_command(label="Сохранить как...", command=self.save_material_as, state="disabled")
-        # Новая команда
         file_menu.add_command(label="Отменить изменения", command=self.revert_changes, state="disabled")
         file_menu.add_separator()
         file_menu.add_command(label="Выход", command=self.quit)
@@ -2392,12 +2399,10 @@ class MainApplication(tk.Tk):
     def revert_changes(self):
         """Отменяет изменения, восстанавливая исходное состояние материала."""
         if not self.editor_frame.editing_copy or not self.app_data.current_material:
-            # Если это новый материал (оригинала нет), то просто сбрасываем редактор
             self.editor_frame.create_new_material()
             return
 
         if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите отменить все несохраненные изменения?"):
-            # Просто перезагружаем данные из оригинального объекта в редактор
             self.editor_frame.load_material()
 
     def create_widgets(self):
@@ -2407,22 +2412,27 @@ class MainApplication(tk.Tk):
 
         self.viewer_frame = ViewerFrame(self.main_notebook, self.app_data)
         self.editor_frame = EditorFrame(self.main_notebook, self.app_data, self)
-        # --- НОВАЯ СТРОКА ---
         self.sources_frame = SourcesManagerTab(self.main_notebook, self.app_data, self)
 
         self.main_notebook.add(self.viewer_frame, text="Подбор материала")
         self.main_notebook.add(self.editor_frame, text="Добавление / Редактирование материала")
-        # --- НОВАЯ СТРОКА ---
         self.main_notebook.add(self.sources_frame, text="Работа с источниками")
 
-    def open_directory(self, directory=None, show_success_message=True):  # Добавляем флаг
+    # --- ИЗМЕНЕНИЕ 3 (Оставлено): Логика открытия директории ---
+    def open_directory(self, directory=None, show_success_message=True):
         if not directory:
-            directory = filedialog.askdirectory(title="Выберите рабочую директорию")
+            filepath = filedialog.askopenfilename(
+                title="Выберите любой .json файл в рабочей директории",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            )
+            if filepath:
+                directory = os.path.dirname(filepath)
+            else:
+                return
 
         if directory:
             try:
                 self.app_data.load_materials_from_dir(directory)
-                # Показываем сообщение только если флаг show_success_message=True
                 if show_success_message:
                     messagebox.showinfo("Успех", f"Загружено {len(self.app_data.materials)} материалов.")
                 self.on_data_load()
@@ -2434,14 +2444,10 @@ class MainApplication(tk.Tk):
         self.editor_frame.collect_data()
         material_to_save = self.editor_frame.editing_copy
 
-        # --- ЛОГИРОВАНИЕ: НАЧАЛО ---
-        # current_material - это оригинал (или None для нового файла)
         original_material = self.app_data.current_material
         if original_material:
-            # Сравниваем старые данные с новыми
             changes = find_changes(original_material.data, material_to_save.data)
             log_changes(material_to_save.get_display_name(), changes)
-        # --- ЛОГИРОВАНИЕ: КОНЕЦ ---
 
         if not material_to_save.filepath:
             self.save_material_as()
@@ -2461,18 +2467,12 @@ class MainApplication(tk.Tk):
 
         original_material = self.app_data.current_material
         if original_material:
-            # Для "Сохранить как..." тоже логируем изменения относительно оригинала
             changes = find_changes(original_material.data, material_to_save.data)
             log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})",
                         changes)
         else:
-            # Получаем пустую структуру, чтобы сравнить с ней то, что ввел пользователь
             empty_material_data = Material.get_empty_structure()
-
-            # Находим все, что было добавлено в пустой шаблон
             changes = find_changes(empty_material_data, material_to_save.data)
-
-            # Добавляем заголовок, чтобы было понятно, что это создание
             log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
 
         initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
@@ -2492,29 +2492,23 @@ class MainApplication(tk.Tk):
 
     def on_data_load(self):
         """Вызывается после загрузки/перезагрузки данных из директории."""
-        # Сбрасываем состояние редактора перед обновлением
         self.editor_frame.editing_copy = None
         self.app_data.current_material = None
-
         self.viewer_frame.update_view()
         self.editor_frame.update_view()
         self.sources_frame.update_view()
-
-        # Меню деактивируется автоматически через update_view
+        self.update_menu_state(False)
 
     def update_menu_state(self, active=False):
         state = "normal" if active else "disabled"
         self.file_menu.entryconfig("Сохранить", state=state)
         self.file_menu.entryconfig("Сохранить как...", state=state)
-        self.file_menu.entryconfig("Отменить изменения", state=state)  # Управляем состоянием новой команды
+        self.file_menu.entryconfig("Отменить изменения", state=state)
 
     def show_about_info(self):
         """Отображает окно 'О приложении'."""
         title = "О приложении"
-        # --- ИЗМЕНЕНИЕ ---
-        # Текст теперь читается из файла
         message = read_text_from_file("app_list.txt")
-        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
         messagebox.showinfo(title, message, parent=self)
 
     def show_instructions(self):
@@ -2523,12 +2517,7 @@ class MainApplication(tk.Tk):
         instr_window.title("Инструкция по использованию")
         instr_window.geometry("750x600")
         instr_window.minsize(500, 400)
-
-        # --- ИЗМЕНЕНИЕ ---
-        # Текст теперь читается из файла
         instruction_text = read_text_from_file("instruction_list.txt")
-        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
         text_frame = ttk.Frame(instr_window, padding=10)
         text_frame.pack(fill="both", expand=True)
         text_widget = tk.Text(text_frame, wrap=tk.WORD, state="disabled", font=("Arial", 10), padx=5, pady=5)
@@ -2548,12 +2537,7 @@ class MainApplication(tk.Tk):
         instr_window.title("Список изменений")
         instr_window.geometry("750x600")
         instr_window.minsize(500, 400)
-
-        # --- ИЗМЕНЕНИЕ ---
-        # Текст теперь читается из файла
         instruction_text = read_text_from_file("change_list.txt")
-        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
         text_frame = ttk.Frame(instr_window, padding=10)
         text_frame.pack(fill="both", expand=True)
         text_widget = tk.Text(text_frame, wrap=tk.WORD, state="disabled", font=("Arial", 10), padx=5, pady=5)
