@@ -1161,7 +1161,7 @@ class ChemComparisonTab(ttk.Frame):
 
 
 class AshbyDiagramTab(ttk.Frame):
-    """Вкладка для построения гибких диаграмм Эшби (свойство vs свойство)."""
+    """Вкладка для построения гибких диаграмм Эшби с новым интерфейсом выбора."""
 
     def __init__(self, parent, app_data):
         super().__init__(parent)
@@ -1179,18 +1179,17 @@ class AshbyDiagramTab(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        """Создает виджеты управления и область для графика."""
         main_frame = ttk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        controls_frame = ttk.Frame(main_frame, width=250)
+        controls_frame = ttk.Frame(main_frame, width=300)
         controls_frame.pack(side="left", fill="y", padx=(0, 10))
         controls_frame.pack_propagate(False)
 
         ttk.Label(controls_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
         self.area_combo = ttk.Combobox(controls_frame, state="readonly")
         self.area_combo.pack(fill="x", pady=(0, 10))
-        self.area_combo.bind("<<ComboboxSelected>>", self._on_axis_change)  # Обновляем и оси при смене области
+        self.area_combo.bind("<<ComboboxSelected>>", self._update_search_pool)
 
         ttk.Label(controls_frame, text="Ось X:").pack(fill="x", pady=(5, 2))
         self.x_axis_combo = ttk.Combobox(controls_frame, state="readonly", values=self.ashby_prop_names)
@@ -1202,14 +1201,28 @@ class AshbyDiagramTab(ttk.Frame):
         self.y_axis_combo.pack(fill="x", pady=(0, 10))
         self.y_axis_combo.bind("<<ComboboxSelected>>", self._on_axis_change)
 
-        ttk.Label(controls_frame, text="Выберите материалы:").pack(fill="x", pady=(0, 2))
-        list_frame = ttk.Frame(controls_frame)
-        list_frame.pack(fill="both", expand=True, pady=(0, 10))
-        self.mat_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE, exportselection=False)
-        list_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.mat_listbox.yview)
-        self.mat_listbox.config(yscrollcommand=list_scrollbar.set)
-        list_scrollbar.pack(side="right", fill="y")
-        self.mat_listbox.pack(side="left", fill="both", expand=True)
+        ttk.Label(controls_frame, text="Поиск материала:").pack(fill="x", pady=(5, 2))
+        self.search_entry = ttk.Entry(controls_frame)
+        self.search_entry.pack(fill="x", pady=(0, 5))
+        self.search_entry.bind("<KeyRelease>", self._filter_search_results)
+
+        search_list_frame = ttk.LabelFrame(controls_frame, text="Результаты поиска")
+        search_list_frame.pack(fill="both", expand=True, pady=(0, 10))
+        self.search_listbox = tk.Listbox(search_list_frame, exportselection=False)
+        search_scrollbar = ttk.Scrollbar(search_list_frame, orient="vertical", command=self.search_listbox.yview)
+        self.search_listbox.config(yscrollcommand=search_scrollbar.set)
+        search_scrollbar.pack(side="right", fill="y")
+        self.search_listbox.pack(side="left", fill="both", expand=True)
+        self.search_listbox.bind("<Double-1>", self._add_material_to_selection)
+
+        selected_list_frame = ttk.LabelFrame(controls_frame, text="Выбранные материалы")
+        selected_list_frame.pack(fill="both", expand=True, pady=(0, 10))
+        self.selected_listbox = tk.Listbox(selected_list_frame, exportselection=False)
+        selected_scrollbar = ttk.Scrollbar(selected_list_frame, orient="vertical", command=self.selected_listbox.yview)
+        self.selected_listbox.config(yscrollcommand=selected_scrollbar.set)
+        selected_scrollbar.pack(side="right", fill="y")
+        self.selected_listbox.pack(side="left", fill="both", expand=True)
+        self.selected_listbox.bind("<Double-1>", self._remove_material_from_selection)
 
         plot_button = ttk.Button(controls_frame, text="Построить диаграмму", command=self._plot_diagram)
         plot_button.pack(fill="x", pady=(0, 5))
@@ -1226,189 +1239,163 @@ class AshbyDiagramTab(ttk.Frame):
         toolbar.update()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # --- ИЗМЕНЕНИЕ: Перемещаем первоначальный вызов сюда, в конец метода ---
-        # Задаем начальные значения после создания всех виджетов
-        if "Предел текучести (σ_0,2)" in self.ashby_prop_names:
-            self.x_axis_combo.set("Предел текучести (σ_0,2)")
-        if "Температура (T)" in self.ashby_prop_names:
-            self.y_axis_combo.set("Температура (T)")
-
-        # Первый вызов для инициализации списков
+        self.x_axis_combo.set("Предел текучести (σ_0,2)")
+        self.y_axis_combo.set("Температура (T)")
         self._on_axis_change()
-        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
     def update_lists(self):
         areas = ["Все"] + self.app_data.application_areas
         self.area_combo.config(values=areas)
         self.area_combo.set("Все")
-        # Вызываем _on_axis_change, так как он теперь главный метод обновления
-        self._on_axis_change()
+        self._update_search_pool()
 
-    def _get_property_data(self, material_data, category_data, prop_key):
-        if category_data and prop_key in category_data:
-            return category_data[prop_key]
-        if prop_key in material_data.get("physical_properties", {}):
-            return material_data["physical_properties"][prop_key]
-        return None
+    def _update_search_pool(self, event=None):
+        self.listbox_item_map.clear()
+        selected_area = self.area_combo.get()
+        for mat in self.app_data.materials:
+            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
+                continue
+            display_name = mat.get_display_name()
+            self.listbox_item_map[display_name] = (mat.data, None)
+            for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
+                cat_name = cat.get('value_strength_category', '')
+                display_name_with_cat = f"{display_name} {cat_name}".strip()
+                self.listbox_item_map[display_name_with_cat] = (mat.data, cat.copy())
+        self._filter_search_results()
+
+    def _filter_search_results(self, event=None):
+        search_term = self.search_entry.get().lower()
+        self.search_listbox.delete(0, tk.END)
+        for name in sorted(self.listbox_item_map.keys()):
+            if search_term in name.lower():
+                self.search_listbox.insert(tk.END, name)
+
+    def _add_material_to_selection(self, event):
+        selected_indices = self.search_listbox.curselection()
+        if not selected_indices: return
+        name_to_add = self.search_listbox.get(selected_indices[0])
+        if name_to_add not in self.selected_listbox.get(0, tk.END):
+            self.selected_listbox.insert(tk.END, name_to_add)
+
+    def _remove_material_from_selection(self, event):
+        selected_indices = self.selected_listbox.curselection()
+        if not selected_indices: return
+        self.selected_listbox.delete(selected_indices[0])
+
+    def _reset_selection(self):
+        self.selected_listbox.delete(0, tk.END)
+        self._plot_diagram()
 
     def _on_axis_change(self, event=None):
-        """Вызывается при изменении выбора в ЛЮБОМ из комбобоксов."""
         x_selection = self.x_axis_combo.get()
         y_selection = self.y_axis_combo.get()
-
         if x_selection:
             self.y_axis_combo['values'] = [name for name in self.ashby_prop_names if name != x_selection]
         if y_selection:
             self.x_axis_combo['values'] = [name for name in self.ashby_prop_names if name != y_selection]
-
         if x_selection: self.x_axis_combo.set(x_selection)
         if y_selection: self.y_axis_combo.set(y_selection)
-
-        self._filter_materials()
-
-    def _filter_materials(self):
-        """Фильтрует список материалов на основе выбранных осей и области применения."""
-        self.mat_listbox.delete(0, tk.END)
-        self.listbox_item_map.clear()
-
-        selected_area = self.area_combo.get()
-        x_selection_text = self.x_axis_combo.get()
-        y_selection_text = self.y_axis_combo.get()
-
-        if not x_selection_text or not y_selection_text:
-            return
-
-        x_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(x_selection_text)]
-        y_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(y_selection_text)]
-
-        required_keys = {key for key in (x_prop_key, y_prop_key) if key != 'temperature'}
-
-        for mat in self.app_data.materials:
-            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
-                continue
-
-            phys_props = mat.data.get("physical_properties", {})
-
-            def has_all_required_keys(source_dict):
-                return all(key in source_dict for key in required_keys)
-
-            if has_all_required_keys(phys_props):
-                display_name = mat.get_display_name()
-                if display_name not in self.listbox_item_map:
-                    self.mat_listbox.insert(tk.END, display_name)
-                    self.listbox_item_map[display_name] = (mat.data, None)
-
-            for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
-                combined_props = {**phys_props, **cat}
-                if has_all_required_keys(combined_props):
-                    display_name = mat.get_display_name()
-                    category_name = cat.get('value_strength_category', '')
-                    display_name_with_cat = f"{display_name} {category_name}".strip()
-                    if display_name_with_cat not in self.listbox_item_map:
-                        self.mat_listbox.insert(tk.END, display_name_with_cat)
-                        self.listbox_item_map[display_name_with_cat] = (mat.data, cat.copy())
+        self._plot_diagram()
 
     def _plot_diagram(self):
-        selected_indices = self.mat_listbox.curselection()
-        if not selected_indices:
-            messagebox.showwarning("Внимание", "Выберите хотя бы один материал.")
-            return
-
         x_selection_text = self.x_axis_combo.get()
         y_selection_text = self.y_axis_combo.get()
-
-        if not x_selection_text or not y_selection_text:
-            messagebox.showwarning("Внимание", "Выберите свойства для обеих осей.")
-            return
+        if not x_selection_text or not y_selection_text: return
 
         x_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(x_selection_text)]
         y_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(y_selection_text)]
-
-        if x_prop_key == y_prop_key:
-            messagebox.showwarning("Ошибка", "Свойства для осей X и Y не должны совпадать.")
-            return
-
         x_prop_info = self.ashby_properties_map[x_prop_key]
         y_prop_info = self.ashby_properties_map[y_prop_key]
 
         self.ax.clear()
-        colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'purple', 'brown']
-        selected_display_names = [self.mat_listbox.get(i) for i in selected_indices]
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
+                  '#17becf']
+        selected_display_names = self.selected_listbox.get(0, tk.END)
 
         for i, display_name in enumerate(selected_display_names):
-            material_data, category_data = self.listbox_item_map[display_name]
-
-            source_prop_key_for_x = x_prop_key if x_prop_key != 'temperature' else y_prop_key
-            source_prop_key_for_y = y_prop_key if y_prop_key != 'temperature' else x_prop_key
-
-            prop_data_x_source = self._get_property_data(material_data, category_data, source_prop_key_for_x)
-            prop_data_y_source = self._get_property_data(material_data, category_data, source_prop_key_for_y)
-
-            if not prop_data_x_source or "temperature_value_pairs" not in prop_data_x_source or not prop_data_x_source[
-                "temperature_value_pairs"] or \
-                    not prop_data_y_source or "temperature_value_pairs" not in prop_data_y_source or not \
-            prop_data_y_source["temperature_value_pairs"]:
-                continue
-
-            if x_prop_key == 'temperature':
-                x_values = [p[0] for p in prop_data_x_source["temperature_value_pairs"]]
-            else:
-                x_values = [p[1] for p in prop_data_x_source["temperature_value_pairs"]]
-
-            if y_prop_key == 'temperature':
-                y_values = [p[0] for p in prop_data_y_source["temperature_value_pairs"]]
-            else:
-                y_values = [p[1] for p in prop_data_y_source["temperature_value_pairs"]]
-
-            if not x_values or not y_values:
-                continue
-
-            min_x, max_x = min(x_values), max(x_values)
-            min_y, max_y = min(y_values), max(y_values)
-
-            width = max_x - min_x
-            height = max_y - min_y
-            center_x = min_x + width / 2
-            center_y = min_y + height / 2
-
             color = colors[i % len(colors)]
-            ellipse = Ellipse(xy=(center_x, center_y),
-                              width=width if width > 0 else 0.1,
-                              height=height if height > 0 else 0.1,
-                              angle=0, facecolor=color, alpha=0.4, label=display_name)
-            self.ax.add_patch(ellipse)
-            self.ax.text(center_x, center_y, display_name, ha='center', va='center', fontsize=8,
-                         bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.6))
+            material_data, category_data = self.listbox_item_map.get(display_name, (None, None))
+
+            if not material_data: continue
+
+            # --- НАЧАЛО ИСПРАВЛЕННОЙ ЛОГИКИ ---
+            def get_axis_values(axis_prop_key, material_data, category_data):
+                """Универсальная функция для получения значений для любой оси."""
+
+                # Определяем, какое свойство является источником температурных точек.
+                # Если на другой оси температура, то источником будет текущее свойство.
+                # Если на другой оси тоже свойство, то каждое свойство - источник само для себя.
+                other_axis_prop_key = x_prop_key if axis_prop_key == y_prop_key else y_prop_key
+                source_prop_key = axis_prop_key if axis_prop_key != 'temperature' else other_axis_prop_key
+
+                is_source_mechanical = source_prop_key in MECHANICAL_PROPERTIES_MAP
+
+                prop_data_source = None
+                if is_source_mechanical:
+                    # Ищем источник данных в категории
+                    if category_data and source_prop_key in category_data:
+                        prop_data_source = category_data[source_prop_key]
+                else:
+                    # Ищем источник данных в физ.свойствах
+                    if source_prop_key in material_data.get("physical_properties", {}):
+                        prop_data_source = material_data["physical_properties"][source_prop_key]
+
+                # Если источник данных для температур не найден, выходим
+                if not prop_data_source or "temperature_value_pairs" not in prop_data_source or not prop_data_source[
+                    "temperature_value_pairs"]:
+                    return None
+
+                # Теперь получаем значения для самой оси
+                if axis_prop_key == 'temperature':
+                    return [p[0] for p in prop_data_source["temperature_value_pairs"]]
+                else:
+                    is_axis_mechanical = axis_prop_key in MECHANICAL_PROPERTIES_MAP
+                    prop_data_axis = None
+                    if is_axis_mechanical:
+                        if category_data and axis_prop_key in category_data:
+                            prop_data_axis = category_data[axis_prop_key]
+                    else:
+                        if axis_prop_key in material_data.get("physical_properties", {}):
+                            prop_data_axis = material_data["physical_properties"][axis_prop_key]
+
+                    if prop_data_axis and "temperature_value_pairs" in prop_data_axis and prop_data_axis[
+                        "temperature_value_pairs"]:
+                        return [p[1] for p in prop_data_axis["temperature_value_pairs"]]
+
+                return None
+
+            x_values = get_axis_values(x_prop_key, material_data, category_data)
+            y_values = get_axis_values(y_prop_key, material_data, category_data)
+
+            if x_values and y_values:
+                # Данные есть, строим эллипс
+                min_x, max_x = min(x_values), max(x_values)
+                min_y, max_y = min(y_values), max(y_values)
+                width, height = max_x - min_x, max_y - min_y
+                center_x, center_y = min_x + width / 2, min_y + height / 2
+
+                ellipse = Ellipse(xy=(center_x, center_y),
+                                  width=width if width > 0 else 0.1,
+                                  height=height if height > 0 else 0.1,
+                                  angle=0, facecolor=color, alpha=0.4, label=display_name)
+                self.ax.add_patch(ellipse)
+                self.ax.text(center_x, center_y, display_name, ha='center', va='center', fontsize=8,
+                             bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.6))
+            else:
+                # Данных нет, добавляем "пустышку" в легенду
+                self.ax.plot([], [], marker='o', linestyle='-', label=f"{display_name} (нет данных)", color=color)
+            # --- КОНЕЦ ИСПРАВЛЕННОЙ ЛОГИКИ ---
 
         self.ax.set_xlabel(f"{x_prop_info['name']} [{x_prop_info['unit']}]")
         self.ax.set_ylabel(f"{y_prop_info['name']} [{y_prop_info['unit']}]")
         self.ax.set_title(f"Диаграмма Эшби: {y_prop_info['name']} vs. {x_prop_info['name']}")
 
+        if selected_display_names:
+            self.ax.legend(fontsize='small')
+
+        self.ax.grid(True, linestyle='--', alpha=0.7)
         if self.ax.patches:
             self.ax.autoscale_view()
-            self.ax.legend()
-
-        self.ax.grid(True, linestyle='--', alpha=0.7)
-        self.canvas.draw()
-
-    def _reset_selection(self):
-        """Сбрасывает выбор в списке и очищает график, сохраняя оси."""
-        self.mat_listbox.selection_clear(0, tk.END)
-        self.ax.clear()
-
-        x_selection_text = self.x_axis_combo.get()
-        y_selection_text = self.y_axis_combo.get()
-
-        if x_selection_text and y_selection_text:
-            x_prop_info = self.ashby_properties_map[self.ashby_prop_keys[self.ashby_prop_names.index(x_selection_text)]]
-            y_prop_info = self.ashby_properties_map[self.ashby_prop_keys[self.ashby_prop_names.index(y_selection_text)]]
-            self.ax.set_xlabel(f"{x_prop_info['name']} [{x_prop_info['unit']}]")
-            self.ax.set_ylabel(f"{y_prop_info['name']} [{y_prop_info['unit']}]")
-            self.ax.set_title(f"Диаграмма Эшби: {y_prop_info['name']} vs. {x_prop_info['name']}")
-        else:
-            self.ax.set_title("Диаграмма Эшби")
-
-        self.ax.grid(True, linestyle='--', alpha=0.7)
         self.canvas.draw()
 
 
