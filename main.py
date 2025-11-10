@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.patches import Ellipse
 import copy
 import sys
 
@@ -358,7 +359,7 @@ class AppData:
 # --- Классы для вкладки "Подбор материала" ---
 class ViewerFrame(ttk.Frame):
     """Контейнер для вкладки 'Подбор материала'."""
-    def __init__(self, parent, app_data): # Конструктор не принимает main_app
+    def __init__(self, parent, app_data):
         super().__init__(parent)
         self.app_data = app_data
 
@@ -366,20 +367,27 @@ class ViewerFrame(ttk.Frame):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(expand=True, fill="both")
 
-        # Простой вызов, без передачи header_image
+        # Создаем все вкладки
         self.temp_tab = TempSelectionTab(self.notebook, self.app_data)
         self.prop_tab = PropertyComparisonTab(self.notebook, self.app_data)
         self.chem_tab = ChemComparisonTab(self.notebook, self.app_data)
+        # --- НОВАЯ СТРОКА: Создаем экземпляр нашей новой вкладки ---
+        self.ashby_tab = AshbyDiagramTab(self.notebook, self.app_data)
 
+        # Добавляем вкладки в Notebook в нужном порядке
         self.notebook.add(self.temp_tab, text="Подбор по температуре")
         self.notebook.add(self.prop_tab, text="Сравнение материалов (свойства)")
         self.notebook.add(self.chem_tab, text="Сравнение материалов (хим. состав)")
+        # --- НОВАЯ СТРОКА: Добавляем новую вкладку в конец ---
+        self.notebook.add(self.ashby_tab, text="Диаграмма Эшби")
 
     def update_view(self):
         """Обновляет все дочерние вкладки."""
         self.temp_tab.update_comboboxes()
         self.prop_tab.update_lists()
         self.chem_tab.update_lists()
+        # --- НОВАЯ СТРОКА: Не забываем обновить и новую вкладку ---
+        self.ashby_tab.update_lists()
 
 
 class TempSelectionTab(ttk.Frame):
@@ -1124,6 +1132,258 @@ class ChemComparisonTab(ttk.Frame):
                 cell.bind("<MouseWheel>", self._on_mousewheel)
                 cell.bind("<Button-4>", self._on_mousewheel)
                 cell.bind("<Button-5>", self._on_mousewheel)
+
+
+class AshbyDiagramTab(ttk.Frame):
+    """Вкладка для построения гибких диаграмм Эшби (свойство vs свойство)."""
+
+    def __init__(self, parent, app_data):
+        super().__init__(parent)
+        self.app_data = app_data
+        self.listbox_item_map = {}
+
+        self.ashby_properties_map = {
+            "temperature": {"name": "Температура", "symbol": "T", "unit": "°С"},
+            **ALL_PROPERTIES_MAP
+        }
+        self.ashby_prop_keys = list(self.ashby_properties_map.keys())
+        self.ashby_prop_names = [f"{info['name']} ({info.get('symbol', '')})" for info in
+                                 self.ashby_properties_map.values()]
+
+        self._setup_widgets()
+
+    def _setup_widgets(self):
+        """Создает виджеты управления и область для графика."""
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        controls_frame = ttk.Frame(main_frame, width=250)
+        controls_frame.pack(side="left", fill="y", padx=(0, 10))
+        controls_frame.pack_propagate(False)
+
+        ttk.Label(controls_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
+        self.area_combo = ttk.Combobox(controls_frame, state="readonly")
+        self.area_combo.pack(fill="x", pady=(0, 10))
+        self.area_combo.bind("<<ComboboxSelected>>", self._on_axis_change)  # Обновляем и оси при смене области
+
+        ttk.Label(controls_frame, text="Ось X:").pack(fill="x", pady=(5, 2))
+        self.x_axis_combo = ttk.Combobox(controls_frame, state="readonly", values=self.ashby_prop_names)
+        self.x_axis_combo.pack(fill="x", pady=(0, 5))
+        self.x_axis_combo.bind("<<ComboboxSelected>>", self._on_axis_change)
+
+        ttk.Label(controls_frame, text="Ось Y:").pack(fill="x", pady=(5, 2))
+        self.y_axis_combo = ttk.Combobox(controls_frame, state="readonly", values=self.ashby_prop_names)
+        self.y_axis_combo.pack(fill="x", pady=(0, 10))
+        self.y_axis_combo.bind("<<ComboboxSelected>>", self._on_axis_change)
+
+        ttk.Label(controls_frame, text="Выберите материалы:").pack(fill="x", pady=(0, 2))
+        list_frame = ttk.Frame(controls_frame)
+        list_frame.pack(fill="both", expand=True, pady=(0, 10))
+        self.mat_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE, exportselection=False)
+        list_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.mat_listbox.yview)
+        self.mat_listbox.config(yscrollcommand=list_scrollbar.set)
+        list_scrollbar.pack(side="right", fill="y")
+        self.mat_listbox.pack(side="left", fill="both", expand=True)
+
+        plot_button = ttk.Button(controls_frame, text="Построить диаграмму", command=self._plot_diagram)
+        plot_button.pack(fill="x", pady=(0, 5))
+
+        reset_button = ttk.Button(controls_frame, text="Сбросить", command=self._reset_selection)
+        reset_button.pack(fill="x")
+
+        self.plot_frame = ttk.Frame(main_frame)
+        self.plot_frame.pack(side="right", fill="both", expand=True)
+        fig = Figure(figsize=(8, 6), dpi=100)
+        self.ax = fig.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
+        toolbar = NavigationToolbar2Tk(self.canvas, self.plot_frame)
+        toolbar.update()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # --- ИЗМЕНЕНИЕ: Перемещаем первоначальный вызов сюда, в конец метода ---
+        # Задаем начальные значения после создания всех виджетов
+        if "Предел текучести (σ_0,2)" in self.ashby_prop_names:
+            self.x_axis_combo.set("Предел текучести (σ_0,2)")
+        if "Температура (T)" in self.ashby_prop_names:
+            self.y_axis_combo.set("Температура (T)")
+
+        # Первый вызов для инициализации списков
+        self._on_axis_change()
+        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
+    def update_lists(self):
+        areas = ["Все"] + self.app_data.application_areas
+        self.area_combo.config(values=areas)
+        self.area_combo.set("Все")
+        # Вызываем _on_axis_change, так как он теперь главный метод обновления
+        self._on_axis_change()
+
+    def _get_property_data(self, material_data, category_data, prop_key):
+        if category_data and prop_key in category_data:
+            return category_data[prop_key]
+        if prop_key in material_data.get("physical_properties", {}):
+            return material_data["physical_properties"][prop_key]
+        return None
+
+    def _on_axis_change(self, event=None):
+        """Вызывается при изменении выбора в ЛЮБОМ из комбобоксов."""
+        x_selection = self.x_axis_combo.get()
+        y_selection = self.y_axis_combo.get()
+
+        if x_selection:
+            self.y_axis_combo['values'] = [name for name in self.ashby_prop_names if name != x_selection]
+        if y_selection:
+            self.x_axis_combo['values'] = [name for name in self.ashby_prop_names if name != y_selection]
+
+        if x_selection: self.x_axis_combo.set(x_selection)
+        if y_selection: self.y_axis_combo.set(y_selection)
+
+        self._filter_materials()
+
+    def _filter_materials(self):
+        """Фильтрует список материалов на основе выбранных осей и области применения."""
+        self.mat_listbox.delete(0, tk.END)
+        self.listbox_item_map.clear()
+
+        selected_area = self.area_combo.get()
+        x_selection_text = self.x_axis_combo.get()
+        y_selection_text = self.y_axis_combo.get()
+
+        if not x_selection_text or not y_selection_text:
+            return
+
+        x_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(x_selection_text)]
+        y_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(y_selection_text)]
+
+        required_keys = {key for key in (x_prop_key, y_prop_key) if key != 'temperature'}
+
+        for mat in self.app_data.materials:
+            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
+                continue
+
+            phys_props = mat.data.get("physical_properties", {})
+
+            def has_all_required_keys(source_dict):
+                return all(key in source_dict for key in required_keys)
+
+            if has_all_required_keys(phys_props):
+                display_name = mat.get_display_name()
+                if display_name not in self.listbox_item_map:
+                    self.mat_listbox.insert(tk.END, display_name)
+                    self.listbox_item_map[display_name] = (mat.data, None)
+
+            for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
+                combined_props = {**phys_props, **cat}
+                if has_all_required_keys(combined_props):
+                    display_name = mat.get_display_name()
+                    category_name = cat.get('value_strength_category', '')
+                    display_name_with_cat = f"{display_name} {category_name}".strip()
+                    if display_name_with_cat not in self.listbox_item_map:
+                        self.mat_listbox.insert(tk.END, display_name_with_cat)
+                        self.listbox_item_map[display_name_with_cat] = (mat.data, cat.copy())
+
+    def _plot_diagram(self):
+        selected_indices = self.mat_listbox.curselection()
+        if not selected_indices:
+            messagebox.showwarning("Внимание", "Выберите хотя бы один материал.")
+            return
+
+        x_selection_text = self.x_axis_combo.get()
+        y_selection_text = self.y_axis_combo.get()
+
+        if not x_selection_text or not y_selection_text:
+            messagebox.showwarning("Внимание", "Выберите свойства для обеих осей.")
+            return
+
+        x_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(x_selection_text)]
+        y_prop_key = self.ashby_prop_keys[self.ashby_prop_names.index(y_selection_text)]
+
+        if x_prop_key == y_prop_key:
+            messagebox.showwarning("Ошибка", "Свойства для осей X и Y не должны совпадать.")
+            return
+
+        x_prop_info = self.ashby_properties_map[x_prop_key]
+        y_prop_info = self.ashby_properties_map[y_prop_key]
+
+        self.ax.clear()
+        colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'orange', 'purple', 'brown']
+        selected_display_names = [self.mat_listbox.get(i) for i in selected_indices]
+
+        for i, display_name in enumerate(selected_display_names):
+            material_data, category_data = self.listbox_item_map[display_name]
+
+            source_prop_key_for_x = x_prop_key if x_prop_key != 'temperature' else y_prop_key
+            source_prop_key_for_y = y_prop_key if y_prop_key != 'temperature' else x_prop_key
+
+            prop_data_x_source = self._get_property_data(material_data, category_data, source_prop_key_for_x)
+            prop_data_y_source = self._get_property_data(material_data, category_data, source_prop_key_for_y)
+
+            if not prop_data_x_source or "temperature_value_pairs" not in prop_data_x_source or not prop_data_x_source[
+                "temperature_value_pairs"] or \
+                    not prop_data_y_source or "temperature_value_pairs" not in prop_data_y_source or not \
+            prop_data_y_source["temperature_value_pairs"]:
+                continue
+
+            if x_prop_key == 'temperature':
+                x_values = [p[0] for p in prop_data_x_source["temperature_value_pairs"]]
+            else:
+                x_values = [p[1] for p in prop_data_x_source["temperature_value_pairs"]]
+
+            if y_prop_key == 'temperature':
+                y_values = [p[0] for p in prop_data_y_source["temperature_value_pairs"]]
+            else:
+                y_values = [p[1] for p in prop_data_y_source["temperature_value_pairs"]]
+
+            if not x_values or not y_values:
+                continue
+
+            min_x, max_x = min(x_values), max(x_values)
+            min_y, max_y = min(y_values), max(y_values)
+
+            width = max_x - min_x
+            height = max_y - min_y
+            center_x = min_x + width / 2
+            center_y = min_y + height / 2
+
+            color = colors[i % len(colors)]
+            ellipse = Ellipse(xy=(center_x, center_y),
+                              width=width if width > 0 else 0.1,
+                              height=height if height > 0 else 0.1,
+                              angle=0, facecolor=color, alpha=0.4, label=display_name)
+            self.ax.add_patch(ellipse)
+            self.ax.text(center_x, center_y, display_name, ha='center', va='center', fontsize=8,
+                         bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.6))
+
+        self.ax.set_xlabel(f"{x_prop_info['name']} [{x_prop_info['unit']}]")
+        self.ax.set_ylabel(f"{y_prop_info['name']} [{y_prop_info['unit']}]")
+        self.ax.set_title(f"Диаграмма Эшби: {y_prop_info['name']} vs. {x_prop_info['name']}")
+
+        if self.ax.patches:
+            self.ax.autoscale_view()
+            self.ax.legend()
+
+        self.ax.grid(True, linestyle='--', alpha=0.7)
+        self.canvas.draw()
+
+    def _reset_selection(self):
+        """Сбрасывает выбор в списке и очищает график, сохраняя оси."""
+        self.mat_listbox.selection_clear(0, tk.END)
+        self.ax.clear()
+
+        x_selection_text = self.x_axis_combo.get()
+        y_selection_text = self.y_axis_combo.get()
+
+        if x_selection_text and y_selection_text:
+            x_prop_info = self.ashby_properties_map[self.ashby_prop_keys[self.ashby_prop_names.index(x_selection_text)]]
+            y_prop_info = self.ashby_properties_map[self.ashby_prop_keys[self.ashby_prop_names.index(y_selection_text)]]
+            self.ax.set_xlabel(f"{x_prop_info['name']} [{x_prop_info['unit']}]")
+            self.ax.set_ylabel(f"{y_prop_info['name']} [{y_prop_info['unit']}]")
+            self.ax.set_title(f"Диаграмма Эшби: {y_prop_info['name']} vs. {x_prop_info['name']}")
+        else:
+            self.ax.set_title("Диаграмма Эшби")
+
+        self.ax.grid(True, linestyle='--', alpha=0.7)
+        self.canvas.draw()
 
 
 # --- Классы для вкладки "Редактор" ---
