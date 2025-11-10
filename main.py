@@ -10,6 +10,26 @@ from matplotlib.patches import Ellipse
 import copy
 import sys
 
+# --- Константа для конвертации единиц измерения ---
+
+# 1 МПа = 10.19716 кгс/см²
+# 1 кгс/см² = 0.0980665 МПа
+
+UNIT_CONVERSION_GROUPS = {
+    # Группа для единиц давления/напряжения
+    "pressure": {
+        "base_unit": "МПа",
+        "units": ["МПа", "кгс/см²"],
+        "factors": {
+            # Коэффициенты для пересчета ИЗ базовой единицы (МПа) В целевую
+            "МПа": 1.0,
+            "кгс/см²": 10.19716,
+        }
+    }
+    # В будущем сюда можно добавить другие группы, например:
+    # "length": { "base_unit": "м", "units": ["м", "мм"], "factors": { "м": 1.0, "мм": 1000.0 } }
+}
+
 # --- Константы с описанием свойств ---
 
 PHYSICAL_PROPERTIES_MAP = {
@@ -34,11 +54,11 @@ MECHANICAL_PROPERTIES_MAP = {
                                                    "unit": "МПа"},
     "сreep_strain_rate_1_100_thousands_hours": {"name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                                                 "symbol": "σ_1_100", "unit": "МПа"},
-    "decrement_oscillations_at_800": {"name": "Декремент колебаний при 800 кгс/см²", "symbol": "δψ_800", "unit": "-"},
+    "decrement_oscillations_at_800": {"name": "Декремент колебаний при 800 кгс/см²", "symbol": "δψ_800", "unit": "МПа"},
     "decrement_oscillations_at_1200": {"name": "Декремент колебаний при 1200 кгс/см²", "symbol": "δψ_1200",
-                                       "unit": "-"},
+                                       "unit": "МПа"},
     "decrement_oscillations_at_1600": {"name": "Декремент колебаний при 1600 кгс/см²", "symbol": "δψ_1600",
-                                       "unit": "-"},
+                                       "unit": "МПа"},
     "fatigue_limit_for_smooth_specimen": {"name": "Предел выносливости (гладкий образец, N=10e7)",
                                           "symbol": "σ_-1_smooth", "unit": "МПа"},
     "fatigue_limit_for_notched_specimen": {"name": "Предел выносливости (образец с надрезом, N=10e7)",
@@ -369,24 +389,27 @@ class ViewerFrame(ttk.Frame):
 
         # Создаем все вкладки
         self.temp_tab = TempSelectionTab(self.notebook, self.app_data)
+        # --- НОВАЯ СТРОКА: Создаем экземпляр нашей новой вкладки ---
+        self.calc_tab = SingleCalculationTab(self.notebook, self.app_data)
         self.prop_tab = PropertyComparisonTab(self.notebook, self.app_data)
         self.chem_tab = ChemComparisonTab(self.notebook, self.app_data)
-        # --- НОВАЯ СТРОКА: Создаем экземпляр нашей новой вкладки ---
         self.ashby_tab = AshbyDiagramTab(self.notebook, self.app_data)
 
         # Добавляем вкладки в Notebook в нужном порядке
         self.notebook.add(self.temp_tab, text="Подбор по температуре")
+        # --- НОВАЯ СТРОКА: Добавляем новую вкладку в нужное место ---
+        self.notebook.add(self.calc_tab, text="Расчет отдельно")
         self.notebook.add(self.prop_tab, text="Сравнение материалов (свойства)")
         self.notebook.add(self.chem_tab, text="Сравнение материалов (хим. состав)")
-        # --- НОВАЯ СТРОКА: Добавляем новую вкладку в конец ---
         self.notebook.add(self.ashby_tab, text="Диаграмма Эшби")
 
     def update_view(self):
         """Обновляет все дочерние вкладки."""
         self.temp_tab.update_comboboxes()
+        # --- НОВАЯ СТРОКА: Не забываем обновить и новую вкладку ---
+        self.calc_tab.update_comboboxes()
         self.prop_tab.update_lists()
         self.chem_tab.update_lists()
-        # --- НОВАЯ СТРОКА: Не забываем обновить и новую вкладку ---
         self.ashby_tab.update_lists()
 
 
@@ -638,6 +661,238 @@ class CustomToolbar(NavigationToolbar2Tk):
         """
         # Вызываем нашу функцию, которая всё сделает сама
         self.plot_callback()
+
+
+class SingleCalculationTab(ttk.Frame):
+    """Вкладка для расчета свойств с возможностью конвертации единиц измерения."""
+
+    def __init__(self, parent, app_data):
+        super().__init__(parent)
+        self.app_data = app_data
+        self.result_widgets = {}
+        self.material_map = {}
+        # --- НОВЫЕ АТРИБУТЫ ---
+        self.unit_combos = {}  # Словарь для хранения выпадающих списков с ед. изм.
+        self.base_values = {}  # Словарь для хранения рассчитанных базовых значений
+        self._setup_widgets()
+
+    def _setup_widgets(self):
+        controls_frame = ttk.Frame(self, padding=10)
+        controls_frame.pack(fill="x", side="top")
+
+        ttk.Label(controls_frame, text="Область применения:").grid(row=0, column=0, padx=(0, 5), pady=5, sticky="w")
+        self.area_combo = ttk.Combobox(controls_frame, state="readonly", width=60)
+        self.area_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        self.area_combo.bind("<<ComboboxSelected>>", self._filter_materials)
+
+        ttk.Label(controls_frame, text="Выбор материала:").grid(row=1, column=0, padx=(0, 5), pady=5, sticky="w")
+        self.material_combo = ttk.Combobox(controls_frame, state="readonly", width=60)
+        self.material_combo.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+
+        ttk.Label(controls_frame, text="Температура, °С:").grid(row=0, column=2, padx=(20, 5), pady=5, sticky="w")
+        self.temp_entry = ttk.Entry(controls_frame, width=10)
+        self.temp_entry.grid(row=0, column=3, padx=5, pady=5, sticky="w")
+        self.temp_entry.insert(0, "20")
+
+        calc_button = ttk.Button(controls_frame, text="Рассчитать", command=self._on_calculate)
+        calc_button.grid(row=0, column=4, padx=10, pady=5)
+
+        reset_button = ttk.Button(controls_frame, text="Сбросить", command=self._on_reset)
+        reset_button.grid(row=0, column=5, padx=5, pady=5)
+
+        results_canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=results_canvas.yview)
+        scrollable_frame = ttk.Frame(results_canvas, padding=10)
+
+        scrollable_frame.bind("<Configure>",
+                              lambda e: results_canvas.configure(scrollregion=results_canvas.bbox("all")))
+        results_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        results_canvas.configure(yscrollcommand=scrollbar.set)
+
+        def on_mousewheel(event):
+            results_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        results_canvas.bind("<MouseWheel>", on_mousewheel)
+        scrollable_frame.bind("<MouseWheel>", on_mousewheel)
+
+        results_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        scrollable_frame.columnconfigure(1, weight=1)
+
+        row_counter = 0
+        for prop_key, prop_info in ALL_PROPERTIES_MAP.items():
+            label_text = f"{prop_info['name']} ({prop_info['symbol']}), {prop_info['unit']}"
+            ttk.Label(scrollable_frame, text=label_text).grid(row=row_counter, column=0, sticky="w", pady=3, padx=5)
+
+            # --- ИЗМЕНЕНИЕ: Добавляем Frame для значения и выпадающего списка ---
+            value_frame = ttk.Frame(scrollable_frame)
+            value_frame.grid(row=row_counter, column=1, sticky="w", pady=3, padx=5)
+
+            result_entry = ttk.Entry(value_frame, width=20)
+            result_entry.insert(0, "-")
+            result_entry.config(state="readonly")
+            result_entry.pack(side="left")
+            self.result_widgets[prop_key] = result_entry
+
+            # --- Создаем выпадающий список для единиц измерения ---
+            unit_combo = ttk.Combobox(value_frame, width=8, state="disabled")
+            unit_combo.pack(side="left", padx=(5, 0))
+            self.unit_combos[prop_key] = unit_combo
+
+            # Проверяем, можно ли конвертировать эту единицу
+            base_unit = prop_info.get("unit")
+            for group in UNIT_CONVERSION_GROUPS.values():
+                if base_unit == group["base_unit"]:
+                    unit_combo.config(values=group["units"], state="readonly")
+                    unit_combo.set(base_unit)
+                    # Привязываем событие, передавая ключ свойства через lambda
+                    unit_combo.bind("<<ComboboxSelected>>", lambda e, k=prop_key: self._on_unit_change(k))
+                    break  # Нашли группу, выходим из цикла
+            row_counter += 1
+
+    def _on_unit_change(self, prop_key):
+        """Вызывается при смене единицы измерения в выпадающем списке."""
+        base_value = self.base_values.get(prop_key)
+        if base_value is not None:
+            self._display_value(prop_key, base_value)
+
+    def _display_value(self, prop_key, base_value):
+        """Отображает значение, конвертируя его в выбранную единицу измерения."""
+        widget = self.result_widgets[prop_key]
+        unit_combo = self.unit_combos[prop_key]
+
+        display_value = base_value
+
+        # Если значение числовое, пытаемся его конвертировать
+        if isinstance(base_value, (int, float)):
+            target_unit = unit_combo.get()
+            base_unit = ALL_PROPERTIES_MAP[prop_key].get("unit")
+
+            for group in UNIT_CONVERSION_GROUPS.values():
+                if base_unit == group["base_unit"]:
+                    factor = group["factors"].get(target_unit, 1.0)
+                    converted_value = base_value * factor
+                    display_value = f"{converted_value:.2f}"
+                    break
+
+        widget.config(state="normal")
+        widget.delete(0, tk.END)
+        widget.insert(0, str(display_value))
+        widget.config(state="readonly")
+
+    def _on_calculate(self):
+        """Вычисляет базовые значения и затем отображает их."""
+        selected_display_name = self.material_combo.get()
+        if not selected_display_name:
+            messagebox.showwarning("Внимание", "Выберите материал для расчета.")
+            return
+
+        try:
+            temp = float(self.temp_entry.get())
+        except ValueError:
+            messagebox.showerror("Ошибка", "Температура должна быть числом.")
+            return
+
+        material_obj, category_data = self.material_map.get(selected_display_name, (None, None))
+        if not material_obj: return
+
+        self.base_values.clear()  # Очищаем старые базовые значения
+
+        for prop_key in ALL_PROPERTIES_MAP.keys():
+            # Вычисляем значение в базовой единице
+            base_value = self.get_property_at_temp(material_obj, category_data, prop_key, temp)
+
+            # Конвертируем в число, если возможно
+            try:
+                numeric_value = float(base_value)
+                self.base_values[prop_key] = numeric_value
+            except (ValueError, TypeError):
+                self.base_values[prop_key] = base_value  # Сохраняем как есть (например, "-")
+
+            # Отображаем значение с учетом выбранной единицы измерения
+            self._display_value(prop_key, self.base_values[prop_key])
+
+    def _on_reset(self):
+        """Сбрасывает все поля, включая базовые значения и единицы измерения."""
+        self.base_values.clear()
+        for prop_key, widget in self.result_widgets.items():
+            widget.config(state="normal")
+            widget.delete(0, tk.END)
+            widget.insert(0, "-")
+            widget.config(state="readonly")
+
+            # Сбрасываем выпадающий список
+            unit_combo = self.unit_combos[prop_key]
+            if unit_combo['state'] != 'disabled':
+                base_unit = ALL_PROPERTIES_MAP[prop_key].get("unit")
+                unit_combo.set(base_unit)
+
+    # Остальные методы (update_comboboxes, _filter_materials, get_property_at_temp) остаются без изменений
+    def update_comboboxes(self):
+        areas = ["Все"] + self.app_data.application_areas
+        self.area_combo.config(values=areas)
+        self.area_combo.set("Все")
+        self._filter_materials()
+        self._on_reset()
+
+    def _filter_materials(self, event=None):
+        selected_area = self.area_combo.get()
+        self.material_map.clear()
+        display_names = []
+
+        for mat in self.app_data.materials:
+            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
+                continue
+
+            base_name = mat.get_display_name()
+            strength_categories = mat.data.get("mechanical_properties", {}).get("strength_category", [])
+
+            if strength_categories:
+                for i, cat in enumerate(strength_categories):
+                    cat_name = cat.get('value_strength_category', f'КП {i + 1}')
+                    display_name = f"{base_name} ({cat_name})"
+                    display_names.append(display_name)
+                    self.material_map[display_name] = (mat, cat)
+            else:
+                display_names.append(base_name)
+                self.material_map[base_name] = (mat, None)
+
+        self.material_combo.config(values=sorted(display_names))
+        if display_names:
+            self.material_combo.current(0)
+        else:
+            self.material_combo.set("")
+
+    def get_property_at_temp(self, material, category_data, prop_key, temp):
+        prop_data = None
+        is_mechanical = prop_key in MECHANICAL_PROPERTIES_MAP
+
+        if is_mechanical:
+            if category_data and prop_key in category_data:
+                prop_data = category_data[prop_key]
+        else:
+            if prop_key in material.data.get("physical_properties", {}):
+                prop_data = material.data["physical_properties"][prop_key]
+
+        if not prop_data or "temperature_value_pairs" not in prop_data: return "-"
+        pairs = sorted(prop_data["temperature_value_pairs"], key=lambda p: p[0])
+        if not pairs: return "-"
+        for t, val in pairs:
+            if t == temp: return val
+        lower_point, upper_point = None, None
+        for t, val in pairs:
+            if t < temp:
+                lower_point = (t, val)
+            elif t > temp:
+                upper_point = (t, val);
+                break
+        if lower_point and upper_point:
+            t1, v1 = lower_point;
+            t2, v2 = upper_point
+            if t2 - t1 == 0: return v1
+            interpolated_val = v1 + (temp - t1) * (v2 - v1) / (t2 - t1)
+            return f"{interpolated_val:.2f}"
+        return "-"
 
 
 class PropertyComparisonTab(ttk.Frame):
