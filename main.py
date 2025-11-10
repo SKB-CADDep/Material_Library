@@ -34,6 +34,15 @@ UNIT_CONVERSION_GROUPS = {
     # В будущем сюда можно добавить другие группы
 }
 
+# --- Константа для "умного" сравнения списков в логах ---
+# Указывает, по какому ключу идентифицировать элементы в конкретном списке
+LIST_ITEM_KEYS = {
+    # Путь к списку в JSON                       # Уникальный ключ элемента
+    ("mechanical_properties", "strength_category"): "value_strength_category",
+    ("chemical_properties", "composition"):         "composition_source",
+    ("chemical_properties", "composition", "other_elements"): "element" # Для вложенных списков
+}
+
 # --- Константы с описанием свойств ---
 
 PHYSICAL_PROPERTIES_MAP = {
@@ -155,77 +164,79 @@ def get_username():
         return os.environ.get("USERNAME", "unknown_user")
 
 
-def find_changes(old_data, new_data, path=""):
-    """Рекурсивно сравнивает два словаря и возвращает список изменений."""
-    changes = []
+def find_changes(old_data, new_data):
+    """
+    Главная функция для поиска изменений. Подготавливает данные и вызывает рекурсивный хелпер.
+    Возвращает структурированный список изменений.
+    """
 
-    # Работаем с глубокими копиями, чтобы безопасно удалять ключи
+    def find_changes_recursive(d1, d2, path):
+        """Рекурсивно сравнивает словари и списки, возвращая структурированный список изменений."""
+        changes = []
+
+        # --- Сравнение СЛОВАРЕЙ ---
+        if isinstance(d1, dict) and isinstance(d2, dict):
+            all_keys = sorted(list(set(d1.keys()) | set(d2.keys())))
+            for key in all_keys:
+                if key in ["material_id", "property_last_updated"]: continue
+                new_path = path + [key]
+                val1, val2 = d1.get(key), d2.get(key)
+                if val1 is None and val2 is not None:
+                    changes.append({'path': new_path, 'type': 'added', 'new': val2})
+                elif val1 is not None and val2 is None:
+                    changes.append({'path': new_path, 'type': 'removed', 'old': val1})
+                elif val1 != val2:
+                    changes.extend(find_changes_recursive(val1, val2, new_path))
+
+        # --- Сравнение СПИСКОВ ---
+        elif isinstance(d1, list) and isinstance(d2, list):
+            # Проверяем, является ли этот список "особенным" (списком словарей с ключом)
+            unique_key_name = LIST_ITEM_KEYS.get(tuple(path))
+
+            # Проверяем, что все элементы - словари и содержат уникальный ключ
+            is_list_of_dicts_with_key = (unique_key_name and
+                                         all(isinstance(item, dict) and unique_key_name in item for item in d1 + d2))
+
+            if is_list_of_dicts_with_key:
+                # "Умное" сравнение для списка словарей
+                old_map = {item[unique_key_name]: item for item in d1}
+                new_map = {item[unique_key_name]: item for item in d2}
+                all_item_keys = sorted(list(set(old_map.keys()) | set(new_map.keys())))
+
+                for item_key in all_item_keys:
+                    old_item = old_map.get(item_key)
+                    new_item = new_map.get(item_key)
+                    # Создаем описательный путь, например: 'strength_category[КП 100]'
+                    item_path = path + [f"{path[-1]}[{item_key}]"]
+
+                    if old_item is None:
+                        changes.append({'path': item_path, 'type': 'added', 'new': new_item})
+                    elif new_item is None:
+                        changes.append({'path': item_path, 'type': 'removed', 'old': old_item})
+                    elif old_item != new_item:
+                        changes.extend(find_changes_recursive(old_item, new_item, item_path))
+            else:
+                # Простое сравнение для обычных списков (например, список строк)
+                if json.dumps(d1, sort_keys=True) != json.dumps(d2, sort_keys=True):
+                    changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
+
+        # --- Сравнение ПРОСТЫХ ЗНАЧЕНИЙ ---
+        elif d1 != d2:
+            changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
+
+        return changes
+
     old_copy = copy.deepcopy(old_data)
     new_copy = copy.deepcopy(new_data)
-
-    # Исключаем ключи, которые не должны отслеживаться
-    keys_to_ignore = ["property_last_updated", "material_id"]
-    for key in keys_to_ignore:
-        old_copy.pop(key, None)
-        new_copy.pop(key, None)
-        if "metadata" in old_copy: old_copy["metadata"].pop(key, None)
-        if "metadata" in new_copy: new_copy["metadata"].pop(key, None)
-
-    old_keys = set(old_copy.keys())
-    new_keys = set(new_copy.keys())
-
-    added_keys = new_keys - old_keys
-    removed_keys = old_keys - new_keys
-    common_keys = old_keys & new_keys
-
-    for key in added_keys:
-        # Для списков и словарей выводим их строковое представление
-        changes.append(f"{path}{key}: [ДОБАВЛЕНО] -> '{new_copy[key]}'")
-
-    for key in removed_keys:
-        changes.append(f"{path}{key}: [УДАЛЕНО] -> (было '{old_copy[key]}')")
-
-    for key in common_keys:
-        old_val = old_copy[key]
-        new_val = new_copy[key]
-        current_path = f"{path}{key} -> "
-
-        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
-
-        # 1. Рекурсивно обрабатываем ТОЛЬКО вложенные словари
-        if isinstance(old_val, dict) and isinstance(new_val, dict):
-            # Сравниваем JSON-представления для надежности, так как порядок ключей в словаре не важен
-            old_json = json.dumps(old_val, sort_keys=True, ensure_ascii=False)
-            new_json = json.dumps(new_val, sort_keys=True, ensure_ascii=False)
-            if old_json != new_json:
-                changes.extend(find_changes(old_val, new_val, path=current_path))
-
-        # 2. Для всех остальных типов (включая СПИСКИ, строки, числа) используем прямое сравнение
-        elif old_val != new_val:
-            # Python корректно сравнивает списки, и их строковое представление идеально подходит для лога.
-            # Эта ветка теперь обрабатывает и простые значения, и списки.
-            changes.append(f"{current_path[:-4]}: [БЫЛО] '{old_val}' -> [СТАЛО] '{new_val}'")
-
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
-    return changes
+    return find_changes_recursive(old_copy, new_copy, [])
 
 
 def log_changes(material_name, changes_list):
-    """Записывает изменения в лог-файл."""
+    """Записывает изменения в лог-файл в иерархическом виде."""
     if not changes_list:
-        return  # Не логируем, если изменений нет
+        return
 
-    # Определяем путь к лог-файлу (рядом с .exe или .py)
-    if getattr(sys, 'frozen', False):
-        # Если приложение "заморожено" (например, PyInstaller)
-        log_dir = os.path.dirname(sys.executable)
-    else:
-        # Если запускается как обычный .py скрипт
-        log_dir = os.path.dirname(os.path.abspath(__file__))
-
-    log_path = os.path.join(log_dir, LOG_FILENAME)
-
+    log_path = os.path.join(get_app_directory(), LOG_FILENAME)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     username = get_username()
 
@@ -236,8 +247,42 @@ def log_changes(material_name, changes_list):
             f.write(f"Пользователь: {username}\n")
             f.write(f"Материал: {material_name}\n")
             f.write("Изменения:\n")
+
+            printed_headers = set()
+
             for change in changes_list:
-                f.write(f"  - {change}\n")
+                path = change['path']
+
+                # --- Печать иерархических заголовков ---
+                for i in range(len(path) - 1):
+                    # Создаем путь к заголовку (например, 'metadata' или 'metadata.density')
+                    header_path_tuple = tuple(path[:i + 1])
+
+                    if header_path_tuple not in printed_headers:
+                        indent = "  " * (i + 1)
+                        header_name = path[i]
+                        # Проверяем, не является ли ключ числом (индекс списка)
+                        if isinstance(header_name, int):
+                            f.write(f"{indent}Изменения в элементе с индексом [{header_name}]:\n")
+                        else:
+                            f.write(f"{indent}Изменения в '{header_name}':\n")
+                        printed_headers.add(header_path_tuple)
+
+                # --- Печать самого изменения ---
+                leaf_key = path[-1]
+                indent = "  " * len(path)
+
+                change_type = change['type']
+
+                if change_type == 'modified':
+                    line = f"{indent}- '{leaf_key}': [БЫЛО] '{change['old']}' -> [СТАЛО] '{change['new']}'\n"
+                elif change_type == 'added':
+                    line = f"{indent}- '{leaf_key}': [ДОБАВЛЕНО] -> '{change['new']}'\n"
+                elif change_type == 'removed':
+                    line = f"{indent}- '{leaf_key}': [УДАЛЕНО] (было '{change['old']}')\n"
+
+                f.write(line)
+
             f.write("\n")
     except Exception as e:
         print(f"Ошибка записи в лог-файл: {e}")
