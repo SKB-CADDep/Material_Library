@@ -470,198 +470,258 @@ class TempSelectionTab(ttk.Frame):
         self.app_data = app_data
         self.treeview_data = []
 
+        self.PROP_TYPES = ["Физические свойства", "Механические свойства", "Твердость"]
+        self.PROPERTY_COLUMN_WIDTH = 100
+
+        self.HARDNESS_COLUMNS = {
+            "min_value": {"name": "Min", "width": self.PROPERTY_COLUMN_WIDTH},
+            "max_value": {"name": "Max", "width": self.PROPERTY_COLUMN_WIDTH},
+            "unit_value": {"name": "Ед. изм.", "width": self.PROPERTY_COLUMN_WIDTH}
+        }
+
+        self._after_id = None
+
         style = ttk.Style()
-        style.configure("Treeview.Heading", padding=(5, 70), wraplength=95)
+        style.configure("Treeview.Heading", padding=(5, 5), wraplength=120, font=('TkDefaultFont', 9))
+        style.map("Treeview", background=[("selected", "lightblue")])
 
         self._setup_widgets()
         self._setup_treeview()
+        self._reconfigure_scrollable_treeview(self.PROP_TYPES[0])
 
     def _setup_widgets(self):
         controls_frame = ttk.Frame(self)
         controls_frame.pack(fill="x", padx=10, pady=10)
-
-        ttk.Label(controls_frame, text="Область применения:").pack(side="left", padx=(0, 5))
+        ttk.Label(controls_frame, text="Тип свойств:").pack(side="left", padx=(0, 5))
+        self.prop_type_combo = ttk.Combobox(controls_frame, state="readonly", width=20, values=self.PROP_TYPES)
+        self.prop_type_combo.pack(side="left", padx=5)
+        self.prop_type_combo.set(self.PROP_TYPES[0])
+        self.prop_type_combo.bind("<<ComboboxSelected>>", self._trigger_calculate)
+        ttk.Label(controls_frame, text="Область применения:").pack(side="left", padx=(10, 5))
         self.area_combo = ttk.Combobox(controls_frame, state="readonly", width=30)
         self.area_combo.pack(side="left", padx=5)
-
+        self.area_combo.bind("<<ComboboxSelected>>", self._trigger_calculate)
         ttk.Label(controls_frame, text="Температура, °С:").pack(side="left", padx=(20, 5))
         self.temp_entry = ttk.Entry(controls_frame, width=10)
         self.temp_entry.pack(side="left", padx=5)
         self.temp_entry.insert(0, "20")
+        self.temp_entry.bind("<KeyRelease>", self._trigger_calculate)
 
-        calc_button = ttk.Button(controls_frame, text="Рассчитать", command=self._on_calculate)
-        calc_button.pack(side="left", padx=20)
+    def _trigger_calculate(self, event=None):
+        if self._after_id:
+            self.after_cancel(self._after_id)
+        self._after_id = self.after(300, self._on_calculate)
 
     def _setup_treeview(self):
         tree_container = ttk.Frame(self)
         tree_container.pack(expand=True, fill="both", padx=10, pady=(0, 10))
         tree_container.grid_rowconfigure(0, weight=1)
         tree_container.grid_columnconfigure(1, weight=1)
-
-        # --- Таблица 1: Фиксированные колонки (теперь их две) ---
-        frozen_columns = ["material_name", "strength_category"]
+        frozen_columns = ["material_name", "strength_category", "source", "max_temp"]
         self.tree_frozen = ttk.Treeview(tree_container, columns=frozen_columns, show="headings")
+        self.tree_scrollable = ttk.Treeview(tree_container, columns=[], show="headings")
         self.tree_frozen.grid(row=0, column=0, sticky="nswe")
-
-        # Настраиваем колонку "Материал"
+        self.tree_scrollable.grid(row=0, column=1, sticky="nswe")
         self.tree_frozen.heading("material_name", text="Материал",
                                  command=lambda: self._sort_column("material_name", False))
-        self.tree_frozen.column("material_name", width=100, minwidth=150)
-
+        self.tree_frozen.column("material_name", width=150, minwidth=150)
         self.tree_frozen.heading("strength_category", text="КП",
                                  command=lambda: self._sort_column("strength_category", False))
-        self.tree_frozen.column("strength_category", width=100, minwidth=50)
-
-        # --- Таблица 2: Прокручиваемые колонки (только свойства) ---
-        scrollable_columns = list(ALL_PROPERTIES_MAP.keys())
-        self.tree_scrollable = ttk.Treeview(tree_container, columns=scrollable_columns, show="headings")
-        self.tree_scrollable.grid(row=0, column=1, sticky="nswe")
-
-        for prop_key, prop_info in ALL_PROPERTIES_MAP.items():
-            header_text = f"{prop_info['name']}, {prop_info['unit']}"
-            self.tree_scrollable.heading(prop_key, text=header_text,
-                                         command=lambda k=prop_key: self._sort_column(k, False))
-            self.tree_scrollable.column(prop_key, width=130, minwidth=100, anchor="center")
-
-        # --- Скроллбары и синхронизация (без изменений) ---
+        self.tree_frozen.column("strength_category", width=50, minwidth=50)
+        self.tree_frozen.heading("source", text="НТД", command=lambda: self._sort_column("source", False))
+        self.tree_frozen.column("source", width=120, minwidth=120)
+        self.tree_frozen.heading("max_temp", text="t прим. ДО, °С",
+                                 command=lambda: self._sort_column("max_temp", False))
+        self.tree_frozen.column("max_temp", width=80, minwidth=80, anchor="center")
         vsb = ttk.Scrollbar(tree_container, orient="vertical", command=self._on_vertical_scroll)
         vsb.grid(row=0, column=2, sticky="ns")
         hsb = ttk.Scrollbar(tree_container, orient="horizontal", command=self.tree_scrollable.xview)
         hsb.grid(row=1, column=1, sticky="ew")
-
         self.tree_frozen.configure(yscrollcommand=vsb.set)
         self.tree_scrollable.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
         self.tree_frozen.bind("<MouseWheel>", self._on_mousewheel)
         self.tree_scrollable.bind("<MouseWheel>", self._on_mousewheel)
         self.tree_frozen.bind("<Button-4>", lambda e: self._on_mousewheel(e, -1))
         self.tree_frozen.bind("<Button-5>", lambda e: self._on_mousewheel(e, 1))
         self.tree_scrollable.bind("<Button-4>", lambda e: self._on_mousewheel(e, -1))
         self.tree_scrollable.bind("<Button-5>", lambda e: self._on_mousewheel(e, 1))
-
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="Копировать", command=self._copy_cell_value)
         self.last_clicked_tree = None
         self.tree_frozen.bind("<Button-3>", self._show_context_menu)
         self.tree_scrollable.bind("<Button-3>", self._show_context_menu)
 
+    def _reconfigure_scrollable_treeview(self, prop_type):
+        for col in self.tree_scrollable["columns"]:
+            pass
+        self.tree_scrollable["columns"] = []
+        prop_map = {}
+        if prop_type == "Физические свойства":
+            prop_map = PHYSICAL_PROPERTIES_MAP
+        elif prop_type == "Механические свойства":
+            prop_map = MECHANICAL_PROPERTIES_MAP
+        elif prop_type == "Твердость":
+            prop_map = self.HARDNESS_COLUMNS
+        new_columns = list(prop_map.keys())
+        self.tree_scrollable["columns"] = new_columns
+        for prop_key, prop_info in prop_map.items():
+            header_text = prop_info.get('symbol', prop_info.get('name', prop_key))
+            if 'unit' in prop_info and prop_info['unit']:
+                header_text += f", {prop_info['unit']}"
+            self.tree_scrollable.heading(prop_key, text=header_text,
+                                         command=lambda k=prop_key: self._sort_column(k, False))
+            self.tree_scrollable.column(prop_key, width=self.PROPERTY_COLUMN_WIDTH, minwidth=80, anchor="center")
+
     def _get_value_from_prop_data(self, prop_data, temp):
-        """Вспомогательный метод для интерполяции значения из конкретного словаря свойства."""
         if not prop_data or "temperature_value_pairs" not in prop_data: return "-"
-        pairs = sorted(prop_data["temperature_value_pairs"], key=lambda p: p[0])
+        pairs = sorted(prop_data.get("temperature_value_pairs", []), key=lambda p: p[0])
         if not pairs: return "-"
         for t, val in pairs:
             if t == temp: return val
         lower_point, upper_point = None, None
         for t, val in pairs:
-            if t < temp:
-                lower_point = (t, val)
-            elif t > temp:
-                upper_point = (t, val); break
+            try:
+                t_float, v_float = float(t), float(val)
+                if t_float < temp:
+                    lower_point = (t_float, v_float)
+                elif t_float > temp:
+                    upper_point = (t_float, v_float)
+                    break
+            except (ValueError, TypeError):
+                continue
         if lower_point and upper_point:
-            t1, v1 = lower_point
+            t1, v1 = lower_point;
             t2, v2 = upper_point
             if t2 - t1 == 0: return v1
-            interpolated_val = v1 + (temp - t1) * (v2 - v1) / (t2 - t1)
-            return f"{interpolated_val:.2f}"
+            return f"{v1 + (temp - t1) * (v2 - v1) / (t2 - t1):.2f}"
         return "-"
 
     def _on_calculate(self):
-        """Полностью переработанный метод для сбора данных по категориям."""
+        selected_prop_type = self.prop_type_combo.get()
+        self._reconfigure_scrollable_treeview(selected_prop_type)
+        temp_str = self.temp_entry.get()
         try:
-            temp = float(self.temp_entry.get())
+            temp = float(temp_str if temp_str else "0")
         except ValueError:
-            messagebox.showerror("Ошибка", "Температура должна быть числом.")
             return
-
         selected_area = self.area_combo.get()
         filtered_materials = [m for m in self.app_data.materials if
                               selected_area == "Все" or selected_area in m.data.get("metadata", {}).get(
                                   "application_area", [])]
-
         self.treeview_data = []
         for mat in filtered_materials:
-            # 1. Рассчитываем физические свойства ОДИН РАЗ для материала
-            phys_props_values = {}
-            for prop_key in PHYSICAL_PROPERTIES_MAP:
-                prop_data = mat.data.get("physical_properties", {}).get(prop_key)
-                phys_props_values[prop_key] = self._get_value_from_prop_data(prop_data, temp)
-
-            # 2. Получаем список категорий прочности
+            max_app_temp = mat.data.get("metadata", {}).get("temperature_application", {}).get("value", "-")
             strength_categories = mat.data.get("mechanical_properties", {}).get("strength_category", [])
-
-            # 3. Создаем строки на основе категорий
-            if strength_categories:
-                # Если есть категории, создаем по строке на каждую
-                for category in strength_categories:
-                    row_data = {"material_name": mat.get_display_name(), "obj": mat}
-                    row_data["strength_category"] = category.get("value_strength_category", "N/A")
-
-                    # Добавляем общие физические свойства
-                    row_data.update(phys_props_values)
-
-                    # Рассчитываем уникальные механические свойства для этой категории
-                    for prop_key in MECHANICAL_PROPERTIES_MAP:
-                        prop_data = category.get(prop_key)
-                        row_data[prop_key] = self._get_value_from_prop_data(prop_data, temp)
-
+            is_phys = selected_prop_type == "Физические свойства"
+            if selected_prop_type in ["Физические свойства", "Механические свойства"]:
+                prop_map = PHYSICAL_PROPERTIES_MAP if is_phys else MECHANICAL_PROPERTIES_MAP
+                phys_sources = set(p.get("property_source") for p in mat.data.get("physical_properties", {}).values() if
+                                   p.get("property_source")) if is_phys else set()
+                if strength_categories:
+                    for category in strength_categories:
+                        mech_sources = set(category.get(pk, {}).get("property_source") for pk in prop_map if
+                                           category.get(pk, {}).get("property_source")) if not is_phys else set()
+                        source_str = ", ".join(sorted(phys_sources if is_phys else mech_sources)) or "-"
+                        row_data = {"material_name": mat.get_display_name(), "obj": mat,
+                                    "strength_category": category.get("value_strength_category", "N/A"),
+                                    "source": source_str, "max_temp": max_app_temp}
+                        for prop_key in prop_map:
+                            prop_data_dict = mat.data.get("physical_properties", {}).get(
+                                prop_key) if is_phys else category.get(prop_key)
+                            row_data[prop_key] = self._get_value_from_prop_data(prop_data_dict, temp)
+                        self.treeview_data.append(row_data)
+                else:
+                    source_str = ", ".join(sorted(phys_sources)) if is_phys else "-"
+                    row_data = {"material_name": mat.get_display_name(), "obj": mat, "strength_category": "-",
+                                "source": source_str, "max_temp": max_app_temp}
+                    for prop_key in prop_map:
+                        prop_data_dict = mat.data.get("physical_properties", {}).get(prop_key) if is_phys else None
+                        row_data[prop_key] = self._get_value_from_prop_data(prop_data_dict, temp)
                     self.treeview_data.append(row_data)
-            else:
-                # Если категорий нет, создаем ОДНУ строку для материала
-                row_data = {"material_name": mat.get_display_name(), "obj": mat}
-                row_data["strength_category"] = "-"  # Заглушка для категории
-
-                # Добавляем физические свойства
-                row_data.update(phys_props_values)
-
-                # Механические свойства будут пустыми
-                for prop_key in MECHANICAL_PROPERTIES_MAP:
-                    row_data[prop_key] = "-"
-
-                self.treeview_data.append(row_data)
-
+            elif selected_prop_type == "Твердость":
+                if strength_categories:
+                    for category in strength_categories:
+                        hardness_data = category.get("hardness", [])
+                        if hardness_data:
+                            for h_data in hardness_data:
+                                source_str = h_data.get("property_source", "")
+                                sub_source = h_data.get("property_subsource", "")
+                                if sub_source: source_str += f" ({sub_source})"
+                                self.treeview_data.append({"material_name": mat.get_display_name(), "obj": mat,
+                                                           "strength_category": category.get("value_strength_category",
+                                                                                             "N/A"),
+                                                           "source": source_str or "-", "max_temp": max_app_temp,
+                                                           "min_value": h_data.get("min_value", "-"),
+                                                           "max_value": h_data.get("max_value", "-"),
+                                                           "unit_value": h_data.get("unit_value", "-")})
+                        else:
+                            self.treeview_data.append({"material_name": mat.get_display_name(), "obj": mat,
+                                                       "strength_category": category.get("value_strength_category",
+                                                                                         "N/A"), "source": "-",
+                                                       "max_temp": max_app_temp, "min_value": "-", "max_value": "-",
+                                                       "unit_value": "-"})
+                else:
+                    self.treeview_data.append(
+                        {"material_name": mat.get_display_name(), "obj": mat, "strength_category": "-", "source": "-",
+                         "max_temp": max_app_temp, "min_value": "-", "max_value": "-", "unit_value": "-"})
         self._populate_treeview()
 
     def _populate_treeview(self):
-        """Обновлено для заполнения двух колонок в tree_frozen."""
         for i in self.tree_frozen.get_children(): self.tree_frozen.delete(i)
         for i in self.tree_scrollable.get_children(): self.tree_scrollable.delete(i)
-
+        scrollable_cols = self.tree_scrollable["columns"]
+        frozen_cols = self.tree_frozen["columns"]
         for row in self.treeview_data:
-            frozen_values = [row.get("material_name", "-"), row.get("strength_category", "-")]
-            scrollable_values = [row.get(col, "-") for col in self.tree_scrollable["columns"]]
-
+            frozen_values = [row.get(c, "-") or "-" for c in frozen_cols]
+            scrollable_values = [row.get(c, "-") or "-" for c in scrollable_cols]
             self.tree_frozen.insert("", "end", values=frozen_values)
             self.tree_scrollable.insert("", "end", values=scrollable_values)
 
     def _sort_column(self, col, reverse):
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Полностью переработанная функция сортировки ---
         def get_sort_key(item):
-            value = item.get(col, "-")
-            if isinstance(value, str) and value != "-":
-                try:
-                    return float(value)
-                except ValueError:
-                    return -float('inf') if reverse else float('inf')
-            elif isinstance(value, (int, float)):
-                return value
-            return -float('inf') if reverse else float('inf')
+            """
+            Возвращает кортеж (type_indicator, value) для 'умной' сортировки.
+            - type_indicator: 0 для чисел, 1 для строк.
+            - value: само значение для сравнения.
+            Это позволяет сначала отсортировать все числа, а потом все строки,
+            избегая TypeError.
+            """
+            value = item.get(col)
 
+            # Прочерки и пустые значения всегда отправляем в конец
+            if value is None or value == "-":
+                # Используем 2 как индикатор, чтобы они были после чисел и строк
+                return (2, None)
+
+            # Пытаемся преобразовать значение в число
+            try:
+                # Возвращаем кортеж (0, числовое_значение)
+                return (0, float(value))
+            except (ValueError, TypeError):
+                # Если не получилось, считаем это строкой
+                # Возвращаем кортеж (1, строковое_значение)
+                return (1, str(value).lower())
+
+        # Сортируем данные, используя наш новый ключ
         self.treeview_data.sort(key=get_sort_key, reverse=reverse)
 
-        # Обновляем команду для правильного дерева
-        if col in ["material_name", "strength_category"]:
+        # Обновляем команду сортировки, чтобы следующий клик инвертировал порядок
+        if col in self.tree_frozen['columns']:
             self.tree_frozen.heading(col, command=lambda: self._sort_column(col, not reverse))
-        else:
+        elif col in self.tree_scrollable['columns']:
             self.tree_scrollable.heading(col, command=lambda: self._sort_column(col, not reverse))
 
         self._populate_treeview()
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     def _on_vertical_scroll(self, *args):
         self.tree_frozen.yview(*args)
         self.tree_scrollable.yview(*args)
 
     def _on_mousewheel(self, event, delta_direction=None):
-        delta = delta_direction if delta_direction else (-1 * (event.delta // 120))
+        delta = delta_direction if delta_direction else (
+            -1 * (event.delta // 120) if hasattr(event, 'delta') else (1 if event.num == 5 else -1))
         self.tree_frozen.yview_scroll(delta, "units")
         self.tree_scrollable.yview_scroll(delta, "units")
         return "break"
@@ -669,8 +729,9 @@ class TempSelectionTab(ttk.Frame):
     def update_comboboxes(self):
         areas = ["Все"] + self.app_data.application_areas
         self.area_combo.config(values=areas)
-        self.area_combo.set("Все")
-        self._on_calculate()
+        if not self.area_combo.get(): self.area_combo.set("Все")
+        if not self.prop_type_combo.get(): self.prop_type_combo.set(self.PROP_TYPES[0])
+        self._trigger_calculate()
 
     def _show_context_menu(self, event):
         self.last_clicked_tree = event.widget
