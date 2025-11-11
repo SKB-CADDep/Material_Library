@@ -1889,15 +1889,19 @@ class GeneralDataTab(ttk.Frame):
 
     def _setup_widgets(self):
         self.columnconfigure(1, weight=1)
+
+        # Основные поля
         ttk.Label(self, text="Наименование (стандарт):").grid(row=0, column=0, sticky="w", pady=2)
         self.name_entry = ttk.Entry(self, width=60)
         self.name_entry.grid(row=0, column=1, sticky="we", pady=2)
         ttk.Label(self, text="Альтернативные названия\n(через запятую):").grid(row=1, column=0, sticky="nw", pady=2)
         self.alt_names_entry = ttk.Entry(self, width=60)
         self.alt_names_entry.grid(row=1, column=1, sticky="we", pady=2)
-        ttk.Label(self, text="Комментарий:").grid(row=2, column=0, sticky="nw", pady=2)
+        ttk.Label(self, text="Общий комментарий:").grid(row=2, column=0, sticky="nw", pady=2)
         self.comment_entry = ttk.Entry(self, width=60)
         self.comment_entry.grid(row=2, column=1, sticky="we", pady=2)
+
+        # Классификация
         class_frame = ttk.LabelFrame(self, text="Классификация", padding=5)
         class_frame.grid(row=3, column=0, columnspan=2, sticky="we", pady=10)
         class_frame.columnconfigure(1, weight=1)
@@ -1910,16 +1914,16 @@ class GeneralDataTab(ttk.Frame):
         ttk.Label(class_frame, text="Подкласс:").grid(row=2, column=0, sticky="w")
         self.subclass_entry = ttk.Entry(class_frame)
         self.subclass_entry.grid(row=2, column=1, sticky="we", padx=5)
+
+        # Области применения
         area_frame = ttk.LabelFrame(self, text="Области применения", padding=5)
         area_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=10)
         self.rowconfigure(4, weight=1)
         checkbox_canvas = tk.Canvas(area_frame, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(area_frame, orient="vertical", command=checkbox_canvas.yview)
         self.checkbox_container = ttk.Frame(checkbox_canvas)
-        self.checkbox_container.bind(
-            "<Configure>",
-            lambda e: checkbox_canvas.configure(scrollregion=checkbox_canvas.bbox("all"))
-        )
+        self.checkbox_container.bind("<Configure>",
+                                     lambda e: checkbox_canvas.configure(scrollregion=checkbox_canvas.bbox("all")))
         checkbox_canvas.create_window((0, 0), window=self.checkbox_container, anchor="nw")
         checkbox_canvas.configure(yscrollcommand=scrollbar.set)
         on_scroll = lambda e: self._on_mousewheel(e, checkbox_canvas)
@@ -1931,21 +1935,27 @@ class GeneralDataTab(ttk.Frame):
         scrollbar.pack(side="right", fill="y")
         add_area_frame = ttk.Frame(area_frame)
         add_area_frame.pack(fill="x", expand=False, pady=(5, 0), side="bottom")
-
-        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
-        # 1. Создаем надпись
         add_label = ttk.Label(add_area_frame, text="Добавить область применения:")
         add_label.pack(side="left", padx=(0, 5))
-
-        # 2. Создаем кнопку и размещаем ее СПРАВА
         add_button = ttk.Button(add_area_frame, text="Добавить", command=self._add_new_area)
         add_button.pack(side="right")
-
-        # 3. Создаем поле ввода и размещаем его, чтобы оно заполнило оставшееся пространство
         self.new_area_entry = ttk.Entry(add_area_frame)
         self.new_area_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Новые поля температуры применения ---
+        temp_app_frame = ttk.LabelFrame(self, text="Параметры применения", padding=5)
+        temp_app_frame.grid(row=5, column=0, columnspan=2, sticky="we", pady=10)
+        temp_app_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(temp_app_frame, text="Температура применения ДО, °С:").grid(row=0, column=0, sticky="w", padx=5,
+                                                                              pady=2)
+        self.temp_app_value_entry = ttk.Entry(temp_app_frame)
+        self.temp_app_value_entry.grid(row=0, column=1, sticky="we", padx=5, pady=2)
+
+        ttk.Label(temp_app_frame, text="Комментарий к температуре:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+        self.temp_app_comment_entry = ttk.Entry(temp_app_frame)
+        self.temp_app_comment_entry.grid(row=1, column=1, sticky="we", padx=5, pady=2)
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     def _add_new_area(self):
         new_area = self.new_area_entry.get().strip()
@@ -2003,6 +2013,16 @@ class GeneralDataTab(ttk.Frame):
             cb.bind("<Button-5>", on_scroll)
             self.area_widgets[area] = (cb, var)
 
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Заполняем новые поля ---
+        # Использование .get() гарантирует, что код не сломается на старых файлах
+        temp_app_data = meta.get("temperature_application", {})
+        self.temp_app_value_entry.delete(0, tk.END)
+        # Если значение None или его нет, вставится пустая строка
+        self.temp_app_value_entry.insert(0, temp_app_data.get("value", ""))
+        self.temp_app_comment_entry.delete(0, tk.END)
+        self.temp_app_comment_entry.insert(0, temp_app_data.get("comment", ""))
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
     def collect_data(self, material):
         meta = material.data["metadata"]
         meta["name_material_standard"] = self.name_entry.get()
@@ -2015,6 +2035,31 @@ class GeneralDataTab(ttk.Frame):
         cls["classification_subclass"] = self.subclass_entry.get()
         selected_areas = [area_name for area_name, (widget, var) in self.area_widgets.items() if var.get()]
         meta["application_area"] = selected_areas
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Сбор данных из новых полей ---
+        temp_val_str = self.temp_app_value_entry.get().strip()
+        temp_comment_str = self.temp_app_comment_entry.get().strip()
+
+        # Преобразуем температуру в число, если это возможно
+        temp_val = None
+        if temp_val_str:
+            try:
+                # Используем float для большей гибкости (например, 20.5)
+                temp_val = float(temp_val_str)
+            except ValueError:
+                # Если введено не число, просто сохраняем None
+                pass
+
+                # Сохраняем блок temperature_application, только если есть что сохранять
+        if temp_val is not None or temp_comment_str:
+            # setdefault создаст словарь, если его нет
+            temp_app_data = meta.setdefault("temperature_application", {})
+            temp_app_data["value"] = temp_val
+            temp_app_data["comment"] = temp_comment_str
+        elif "temperature_application" in meta:
+            # Если оба поля были очищены, удаляем весь блок из JSON для чистоты
+            del meta["temperature_application"]
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 
 class PropertyEditorTab(ttk.Frame):
