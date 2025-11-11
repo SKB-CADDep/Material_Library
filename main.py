@@ -1219,6 +1219,7 @@ class ChemComparisonTab(ttk.Frame):
         super().__init__(parent)
         self.app_data = app_data
 
+        # Словарь с подсказками не меняется
         self.element_tooltips = {
             "C": "Углерод.\nПовышает: Твердость, прочность, упругость.\nСнижает: Пластичность, вязкость.",
             "Si": "Кремний.\nПовышает: Прочность, упругость, электросопротивление, жаростойкость, твердость.\nСнижает: -.",
@@ -1254,13 +1255,26 @@ class ChemComparisonTab(ttk.Frame):
     def _setup_widgets(self):
         main_frame = ttk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # --- Левая панель управления ---
         controls_frame = ttk.Frame(main_frame, width=250)
         controls_frame.pack(side="left", fill="y", padx=(0, 10))
         controls_frame.pack_propagate(False)
+
         ttk.Label(controls_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
         self.area_combo = ttk.Combobox(controls_frame, state="readonly")
         self.area_combo.pack(fill="x", pady=(0, 10))
-        self.area_combo.bind("<<ComboboxSelected>>", self._filter_materials)
+        # Привязываем к новому общему методу обновления
+        self.area_combo.bind("<<ComboboxSelected>>", self._update_material_listbox)
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ 2: Поле поиска ---
+        ttk.Label(controls_frame, text="Поиск материала:").pack(fill="x", pady=(0, 2))
+        self.search_entry = ttk.Entry(controls_frame)
+        self.search_entry.pack(fill="x", pady=(0, 10))
+        # Привязываем к новому общему методу обновления
+        self.search_entry.bind("<KeyRelease>", self._update_material_listbox)
+        # --- КОНЕЦ ИЗМЕНЕНИЙ 2 ---
+
         ttk.Label(controls_frame, text="Выберите материалы:").pack(fill="x", pady=(0, 2))
         list_frame = ttk.Frame(controls_frame)
         list_frame.pack(fill="both", expand=True, pady=(0, 10))
@@ -1269,11 +1283,16 @@ class ChemComparisonTab(ttk.Frame):
         self.mat_listbox.config(yscrollcommand=list_scrollbar.set)
         list_scrollbar.pack(side="right", fill="y")
         self.mat_listbox.pack(side="left", fill="both", expand=True)
+        # Этот биндинг остается, чтобы работало ручное выделение
         self.mat_listbox.bind("<<ListboxSelect>>", self._setup_comparison_view)
+
+        # --- Правая панель для результатов ---
         results_area_frame = ttk.Frame(main_frame)
         results_area_frame.pack(side="right", fill="both", expand=True)
         self.filter_frame = ttk.LabelFrame(results_area_frame, text="Фильтры по элементам (%)", padding=10)
         self.filter_frame.pack(fill="x", pady=(0, 10))
+
+        # Контейнер для прокрутки результатов
         scrollable_container = ttk.Frame(results_area_frame)
         scrollable_container.pack(fill="both", expand=True)
         scrollable_container.grid_rowconfigure(0, weight=1)
@@ -1287,95 +1306,80 @@ class ChemComparisonTab(ttk.Frame):
         self.canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
         self.results_grid_frame = ttk.Frame(self.canvas)
         self.canvas.create_window((0, 0), window=self.results_grid_frame, anchor="nw")
-        self.results_grid_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))) # Убедитесь, что эта строка использует self.canvas
+        self.results_grid_frame.bind("<Configure>",
+                                     lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
 
-        # Привязываем прокрутку к самому canvas и к фрейму внутри него
         for widget in (self.canvas, self.results_grid_frame):
             widget.bind("<MouseWheel>", self._on_mousewheel)
-            # Для совместимости с Linux
             widget.bind("<Button-4>", self._on_mousewheel)
             widget.bind("<Button-5>", self._on_mousewheel)
 
-    def _on_mousewheel(self, event):
-        """Обрабатывает прокрутку колесиком мыши для canvas."""
-        # Для Windows/macOS event.delta, для Linux event.num
-        if event.num == 4 or event.delta > 0:
-            self.canvas.yview_scroll(-1, "units")
-        elif event.num == 5 or event.delta < 0:
-            self.canvas.yview_scroll(1, "units")
+    def _reset_element_filters(self):
+        """Очищает все поля фильтров по элементам и обновляет таблицу."""
+        for entry in self.filter_entries.values():
+            entry.delete(0, tk.END)
+        # После очистки полей, нужно заново применить фильтры (теперь пустые)
+        self._apply_filters_and_resort()
 
     def update_lists(self):
-        # Эта строка может вызвать ошибку, если self.app_data.application_areas не существует.
-        # Убедитесь, что `app_data` имеет нужный атрибут.
         self.area_combo.config(values=["Все"] + getattr(self.app_data, 'application_areas', []))
         self.area_combo.set("Все")
-        self._filter_materials()
-        self._setup_comparison_view()
+        # Очищаем поле поиска при полной перезагрузке
+        self.search_entry.delete(0, tk.END)
+        # Вызываем новый общий метод обновления
+        self._update_material_listbox()
 
-    def _filter_materials(self, event=None):
+    def _update_material_listbox(self, event=None):
+        """Обновляет список материалов на основе области и поиска, и автоматически выделяет."""
         self.mat_listbox.delete(0, tk.END)
-        selected_area = self.area_combo.get()
 
+        selected_area = self.area_combo.get()
+        search_term = self.search_entry.get().lower()
+
+        # Фильтруем материалы
         for mat in self.app_data.materials:
+            # Проверка на наличие хим. состава
+            if not mat.data.get("chemical_properties", {}).get("composition"):
+                continue
+
+            # Фильтр по области применения
             if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area", []):
                 continue
-            if mat.data.get("chemical_properties", {}).get("composition"):
-                self.mat_listbox.insert(tk.END, mat.get_display_name())
 
+            # Фильтр по поиску
+            display_name = mat.get_display_name()
+            if search_term and search_term not in display_name.lower():
+                continue
+
+            self.mat_listbox.insert(tk.END, display_name)
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ 1: Авто-выделение ---
+        # Если выбрана конкретная область применения (и нет поискового запроса), выделяем все
+        if selected_area != "Все" and not search_term:
+            self.mat_listbox.selection_set(0, tk.END)
+        # --- КОНЕЦ ИЗМЕНЕНИЙ 1 ---
+
+        # Обновляем правую часть (таблицу сравнения)
         self._setup_comparison_view()
 
-    def _format_chem_value(self, elem_data):
-        """
-        Форматирует значение химического элемента в строку с учетом наличия
-        минимального и/или максимального значения.
-        - Если есть оба: (min_tol) min - max (max_tol)
-        - Если только max: ≤ max (max_tol)
-        - Если только min: ≥ min (min_tol)
-        """
-        if not elem_data:
-            return "-"
-
-        min_v = elem_data.get("min_value")
-        max_v = elem_data.get("max_value")
-        min_tol = elem_data.get("min_value_tolerance")
-        max_tol = elem_data.get("max_value_tolerance")
-
-        # Трактуем 0 как отсутствующее значение для более чистого отображения
-        if min_v == 0:
-            min_v = None
-        if max_v == 0:
-            max_v = None
-
-        # Случай 1: Есть и минимальное, и максимальное значение (диапазон)
-        if min_v is not None and max_v is not None:
-            min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
-            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            return f"{min_tol_str}{min_v} - {max_v}{max_tol_str}"
-
-        # Случай 2: Есть только максимальное значение (не более чем)
-        elif max_v is not None:
-            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            return f"≤ {max_v}{max_tol_str}"
-
-        # Случай 3: Есть только минимальное значение (не менее чем)
-        elif min_v is not None:
-            # Обратите внимание на пробел до скобки для симметрии с max
-            min_tol_str = f" ({min_tol})" if min_tol not in (None, '') else ""
-            return f"≥ {min_v}{min_tol_str}"
-
-        # Случай 4: Значений нет
-        else:
-            return "-"
+    # Метод _filter_materials больше не нужен, его логика переехала в _update_material_listbox
 
     def _setup_comparison_view(self, event=None):
         saved_filter_values = {elem: entry.get() for elem, entry in self.filter_entries.items() if entry.get()}
+
+        # Очищаем старые виджеты
         for widget in self.filter_frame.winfo_children(): widget.destroy()
         for widget in self.results_grid_frame.winfo_children(): widget.destroy()
         self.filter_entries.clear()
         self.all_composition_data.clear()
-        selected_mats = [m for m in self.app_data.materials if
-                         m.get_display_name() in [self.mat_listbox.get(i) for i in self.mat_listbox.curselection()]]
+
+        # Собираем данные по ВЫБРАННЫМ материалам
+        selected_indices = self.mat_listbox.curselection()
+        selected_names = {self.mat_listbox.get(i) for i in selected_indices}
+        selected_mats = [m for m in self.app_data.materials if m.get_display_name() in selected_names]
+
         if not selected_mats: return
+
         all_elements = set()
         for mat in selected_mats:
             for comp in mat.data.get("chemical_properties", {}).get("composition", []):
@@ -1388,8 +1392,12 @@ class ChemComparisonTab(ttk.Frame):
                     "elements_map": elements_map
                 })
                 all_elements.update(elements_map.keys())
+
         if not all_elements: return
+
         self.sorted_elements = sorted(list(all_elements))
+
+        # Динамически создаем поля для фильтров
         col = 0
         for elem in self.sorted_elements:
             frame = ttk.Frame(self.filter_frame)
@@ -1402,7 +1410,44 @@ class ChemComparisonTab(ttk.Frame):
             if elem in saved_filter_values:
                 entry.insert(0, saved_filter_values[elem])
             col += 1
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ 3: Кнопка сброса ---
+        reset_button = ttk.Button(self.filter_frame, text="Сбросить", command=self._reset_element_filters)
+        # Размещаем кнопку в следующей строке, чтобы она была под фильтрами
+        reset_button.grid(row=1, column=0, columnspan=col or 1, pady=(10, 0), sticky='w')
+        # --- КОНЕЦ ИЗМЕНЕНИЙ 3 ---
+
         self._apply_filters_and_resort()
+
+    # Остальные методы (_on_mousewheel, _format_chem_value, _apply_filters_and_resort, _populate_results_grid)
+    # остаются без изменений. Копируем их как есть.
+
+    def _on_mousewheel(self, event):
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
+
+    def _format_chem_value(self, elem_data):
+        if not elem_data: return "-"
+        min_v = elem_data.get("min_value")
+        max_v = elem_data.get("max_value")
+        min_tol = elem_data.get("min_value_tolerance")
+        max_tol = elem_data.get("max_value_tolerance")
+        if min_v == 0: min_v = None
+        if max_v == 0: max_v = None
+        if min_v is not None and max_v is not None:
+            min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
+            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
+            return f"{min_tol_str}{min_v} - {max_v}{max_tol_str}"
+        elif max_v is not None:
+            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
+            return f"≤ {max_v}{max_tol_str}"
+        elif min_v is not None:
+            min_tol_str = f" ({min_tol})" if min_tol not in (None, '') else ""
+            return f"≥ {min_v}{min_tol_str}"
+        else:
+            return "-"
 
     def _apply_filters_and_resort(self, event=None):
         targets = {}
@@ -1413,113 +1458,81 @@ class ChemComparisonTab(ttk.Frame):
                     targets[elem] = float(val_str)
                 except ValueError:
                     targets[elem] = None
-
         processed_data = []
         for comp_data in self.all_composition_data:
-            score = 0
-            cell_colors = {}
-            is_fully_matching = True
-
+            score, cell_colors, is_fully_matching = 0, {}, True
             for elem, target_val in targets.items():
                 if target_val is None: continue
-
                 elem_info = comp_data["elements_map"].get(elem)
                 if not elem_info:
                     is_fully_matching = False
                     cell_colors[elem] = "light coral"
                     continue
-
-
-                min_v = elem_info.get("min_value")
-                max_v = elem_info.get("max_value")
-                min_tol_str = elem_info.get("min_value_tolerance")
-                max_tol_str = elem_info.get("max_value_tolerance")
-
+                min_v, max_v = elem_info.get("min_value"), elem_info.get("max_value")
+                min_tol_str, max_tol_str = elem_info.get("min_value_tolerance"), elem_info.get("max_value_tolerance")
                 lower_bound = float('-inf') if min_v is None else min_v
                 if min_tol_str not in (None, ''):
                     try:
                         lower_bound = float(min_tol_str)
                     except (ValueError, TypeError):
                         pass
-
                 upper_bound = float('inf') if max_v is None else max_v
                 if max_tol_str not in (None, ''):
                     try:
                         upper_bound = float(max_tol_str)
                     except (ValueError, TypeError):
                         pass
-
-
                 if lower_bound <= target_val <= upper_bound:
                     score += 1
                     cell_colors[elem] = "pale green"
                 else:
                     is_fully_matching = False
                     cell_colors[elem] = "light coral"
-
-            comp_data['is_match'] = is_fully_matching
-            comp_data['score'] = score if is_fully_matching else -1
-            comp_data['cell_colors'] = cell_colors
+            comp_data['is_match'], comp_data['score'], comp_data[
+                'cell_colors'] = is_fully_matching, score if is_fully_matching else -1, cell_colors
             processed_data.append(comp_data)
-
         processed_data.sort(key=lambda x: (x.get('is_match', False), x.get('score', 0)), reverse=True)
-
         self._populate_results_grid(processed_data)
 
     def _populate_results_grid(self, data_to_show):
-        for widget in self.results_grid_frame.winfo_children():
-            widget.destroy()
-
+        for widget in self.results_grid_frame.winfo_children(): widget.destroy()
         headers = ["Материал", "Источник", "Основа"] + self.sorted_elements
         header_widths = [150, 200, 60] + [100] * len(self.sorted_elements)
-
         for col, text in enumerate(headers):
             self.results_grid_frame.columnconfigure(col, minsize=header_widths[col])
             label = ttk.Label(self.results_grid_frame, text=text, font=("TkDefaultFont", 9, "bold"), anchor="center",
                               relief="groove", padding=5)
             label.grid(row=0, column=col, sticky="nsew")
-
-            if text in self.element_tooltips:
-                Tooltip(label, self.element_tooltips[text])
-
+            if text in self.element_tooltips: Tooltip(label, self.element_tooltips[text])
         for row, comp_data in enumerate(data_to_show, start=1):
             row_bg_color = "honeydew" if comp_data.get('is_match', True) else "misty rose"
-
-            # Создаем ячейки и сразу привязываем к ним событие
             l1 = tk.Label(self.results_grid_frame, text=comp_data["material_name"], relief="groove", padx=5, pady=5,
                           background=row_bg_color)
-            l1.grid(row=row, column=0, sticky="nsew")
-            l1.bind("<MouseWheel>", self._on_mousewheel)
-            l1.bind("<Button-4>", self._on_mousewheel)
+            l1.grid(row=row, column=0, sticky="nsew");
+            l1.bind("<MouseWheel>", self._on_mousewheel);
+            l1.bind("<Button-4>", self._on_mousewheel);
             l1.bind("<Button-5>", self._on_mousewheel)
-
             l2 = tk.Label(self.results_grid_frame, text=comp_data["source"], relief="groove", padx=5, pady=5,
                           background=row_bg_color)
-            l2.grid(row=row, column=1, sticky="nsew")
-            l2.bind("<MouseWheel>", self._on_mousewheel)
-            l2.bind("<Button-4>", self._on_mousewheel)
+            l2.grid(row=row, column=1, sticky="nsew");
+            l2.bind("<MouseWheel>", self._on_mousewheel);
+            l2.bind("<Button-4>", self._on_mousewheel);
             l2.bind("<Button-5>", self._on_mousewheel)
-
             l3 = tk.Label(self.results_grid_frame, text=comp_data["base_element"], anchor="center", relief="groove",
                           padx=5, pady=5, background=row_bg_color)
-            l3.grid(row=row, column=2, sticky="nsew")
-            l3.bind("<MouseWheel>", self._on_mousewheel)
-            l3.bind("<Button-4>", self._on_mousewheel)
+            l3.grid(row=row, column=2, sticky="nsew");
+            l3.bind("<MouseWheel>", self._on_mousewheel);
+            l3.bind("<Button-4>", self._on_mousewheel);
             l3.bind("<Button-5>", self._on_mousewheel)
-            # --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
             for col, elem_name in enumerate(self.sorted_elements, start=3):
                 elem_info = comp_data["elements_map"].get(elem_name)
                 text_val = self._format_chem_value(elem_info)
                 cell_bg_color = comp_data.get("cell_colors", {}).get(elem_name, row_bg_color)
-
                 cell = tk.Label(self.results_grid_frame, text=text_val, background=cell_bg_color, relief="groove",
                                 padx=5, pady=5)
                 cell.grid(row=row, column=col, sticky="nsew")
-
-                # --- ДОБАВЛЕНИЕ ЗДЕСЬ ---
-                cell.bind("<MouseWheel>", self._on_mousewheel)
-                cell.bind("<Button-4>", self._on_mousewheel)
+                cell.bind("<MouseWheel>", self._on_mousewheel);
+                cell.bind("<Button-4>", self._on_mousewheel);
                 cell.bind("<Button-5>", self._on_mousewheel)
 
 
