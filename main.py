@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import json
 import os
+import subprocess
 import uuid
 from datetime import datetime
 from matplotlib.figure import Figure
@@ -2898,236 +2899,136 @@ class ChemicalCompositionTab(ttk.Frame):
 
 
 class SourcesManagerTab(ttk.Frame):
-    """Вкладка для управления источниками данных по всем материалам."""
+    """Вкладка для просмотра всех источников данных и открытия связанных файлов."""
 
     def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
-        self.main_app = main_app
-        self.all_sources_data = []  # Для хранения [источник, материал, область]
         self._setup_widgets()
 
     def _setup_widgets(self):
-        # --- Левая панель для фильтров и действий ---
-        controls_frame = ttk.Frame(self, width=300)
-        controls_frame.pack(side="left", fill="y", padx=10, pady=10)
-        controls_frame.pack_propagate(False)
-
-        # Фильтры
-        filter_frame = ttk.LabelFrame(controls_frame, text="Фильтры")
-        filter_frame.pack(fill="x", pady=(0, 15))
-
-        ttk.Label(filter_frame, text="Область применения:").pack(fill="x", padx=5, pady=(5, 0))
-        self.area_combo = ttk.Combobox(filter_frame, state="readonly")
-        self.area_combo.pack(fill="x", padx=5, pady=(0, 5))
-        self.area_combo.bind("<<ComboboxSelected>>", self.apply_filters)
-
-        ttk.Label(filter_frame, text="Наименование материала:").pack(fill="x", padx=5, pady=(5, 0))
-        self.mat_name_entry = ttk.Entry(filter_frame)
-        self.mat_name_entry.pack(fill="x", padx=5, pady=(0, 10))
-        self.mat_name_entry.bind("<KeyRelease>", self.apply_filters)
-
-        # Действия
-        actions_frame = ttk.LabelFrame(controls_frame, text="Действия")
-        actions_frame.pack(fill="x", pady=10)
-
-        ttk.Button(actions_frame, text="Сохранить список источников в файл", command=self._save_sources_to_file).pack(
-            fill="x", padx=5, pady=5)
-
-        # Замена источников
-        replace_frame = ttk.LabelFrame(actions_frame, text="Заменить источник во всех файлах")
-        replace_frame.pack(fill="x", padx=5, pady=10)
-
-        ttk.Label(replace_frame, text="Найти:").pack(fill="x", padx=5)
-        self.find_source_entry = ttk.Entry(replace_frame)
-        self.find_source_entry.pack(fill="x", padx=5, pady=(0, 5))
-
-        ttk.Label(replace_frame, text="Заменить на:").pack(fill="x", padx=5)
-        self.replace_source_entry = ttk.Entry(replace_frame)
-        self.replace_source_entry.pack(fill="x", padx=5, pady=(0, 10))
-
-        ttk.Button(replace_frame, text="Выполнить замену", command=self._replace_source_name).pack(fill="x", padx=5,
-                                                                                                   pady=5)
-
-        # --- Правая панель для отображения таблицы ---
         tree_frame = ttk.Frame(self)
-        tree_frame.pack(side="right", fill="both", expand=True, padx=(0, 10), pady=10)
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.tree = ttk.Treeview(tree_frame, columns=("source", "material", "area"), show="headings")
-        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        self.sources_tree = ttk.Treeview(
+            tree_frame,
+            columns=("num", "source", "link"),
+            show="headings"
+        )
 
-        self.tree.heading("source", text="Источник", command=lambda: self._sort_tree("source", False))
-        self.tree.heading("material", text="Материал", command=lambda: self._sort_tree("material", False))
-        self.tree.heading("area", text="Область применения", command=lambda: self._sort_tree("area", False))
+        self.sources_tree.heading("num", text="№")
+        self.sources_tree.column("num", width=50, stretch=False, anchor="center")
+        self.sources_tree.heading("source", text="Источник")
+        self.sources_tree.column("source", width=500)
+        self.sources_tree.heading("link", text="Ссылка/Файл")
+        self.sources_tree.column("link", width=250)
 
-        self.tree.column("source", width=300)
-        self.tree.column("material", width=200)
-        self.tree.column("area", width=200)
+        self.sources_tree.tag_configure(
+            'hyperlink',
+            foreground='blue',
+            font=('TkDefaultFont', 9, 'underline')
+        )
+
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.sources_tree.yview)
+        hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.sources_tree.xview)
+        self.sources_tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
-        self.tree.pack(fill="both", expand=True)
+        self.sources_tree.pack(fill="both", expand=True)
+
+        self.sources_tree.bind("<Button-1>", self._on_link_click)
 
     def update_view(self):
-        """Собирает все источники из всех материалов, обеспечивая уникальность."""
-        self.all_sources_data.clear()
-        unique_entries = set()  # Используем set для автоматического удаления дубликатов
+        """Собирает все источники и подисточники, ищет файлы и заполняет таблицу."""
+        self.sources_tree.delete(*self.sources_tree.get_children())
+
+        # --- ИЗМЕНЕНИЕ 2: Собираем источники и подисточники в один набор ---
+        all_sources_set = set()
+
+        def add_sources_from_dict(data_dict):
+            """Вспомогательная функция для добавления источника и подисточника."""
+            if not data_dict or not isinstance(data_dict, dict):
+                return
+
+            # Добавляем основной источник, если он есть
+            main_source = data_dict.get("property_source") or data_dict.get("composition_source")
+            if main_source:
+                all_sources_set.add(main_source)
+
+            # Добавляем подисточник, если он есть
+            sub_source = data_dict.get("property_subsource") or data_dict.get("composition_subsource")
+            if sub_source:
+                all_sources_set.add(sub_source)
 
         for mat in self.app_data.materials:
-            mat_name = mat.get_display_name()
-            app_areas = ", ".join(mat.data.get("metadata", {}).get("application_area", []))
-
-            # Вспомогательная функция для добавления уникальной записи
-            def add_unique_source(source_data):
-                if not source_data: return
-
-                main_source = source_data.get("property_source") or source_data.get("composition_source")
-                sub_source = source_data.get("property_subsource") or source_data.get("composition_subsource")
-
-                if not main_source: return
-
-                # Формируем единую строку для отображения
-                full_source_str = main_source
-                if sub_source:
-                    full_source_str += f" ({sub_source})"
-
-                # Ключ уникальности: (имя материала, полная строка источника)
-                unique_key = (mat_name, full_source_str)
-                if unique_key not in unique_entries:
-                    unique_entries.add(unique_key)
-                    self.all_sources_data.append([full_source_str, mat_name, app_areas])
-
-            # 1. Физические свойства
             for prop in mat.data.get("physical_properties", {}).values():
-                add_unique_source(prop)
-
-            # 2. Механические свойства
+                add_sources_from_dict(prop)
             for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
                 for prop_key, prop_val in cat.items():
-                    if isinstance(prop_val, dict):  # Свойства - это словари
-                        add_unique_source(prop_val)
-                # Твердость
+                    add_sources_from_dict(prop_val)
                 for h_data in cat.get("hardness", []):
-                    add_unique_source(h_data)
-
-            # 3. Химический состав
+                    add_sources_from_dict(h_data)
             for comp in mat.data.get("chemical_properties", {}).get("composition", []):
-                add_unique_source(comp)
+                add_sources_from_dict(comp)
 
-        # Сортируем для единообразия
-        self.all_sources_data.sort(key=lambda x: (x[1], x[0]))
+        sorted_sources = sorted(list(all_sources_set), key=str.lower)
 
-        # Обновляем комбобокс областей применения
-        areas = ["Все"] + self.app_data.application_areas
-        self.area_combo.config(values=areas)
-        self.area_combo.set("Все")
-        self.mat_name_entry.delete(0, tk.END)
+        sources_dir = os.path.join(get_app_directory(), "Источники")
 
-        self.apply_filters()
+        for i, source_name in enumerate(sorted_sources, start=1):
+            file_path = os.path.join(sources_dir, source_name)
 
-    def apply_filters(self, event=None):
-        """Фильтрует и отображает данные в таблице."""
-        for i in self.tree.get_children():
-            self.tree.delete(i)
+            if os.path.isfile(file_path):
+                link_text = source_name
+                tags = ('hyperlink',)
+            else:
+                # --- ИЗМЕНЕНИЕ: Теперь ищем файл с расширениями ---
+                found = False
+                # Список популярных расширений документов
+                extensions_to_check = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.jpg', '.png']
+                for ext in extensions_to_check:
+                    path_with_ext = file_path + ext
+                    if os.path.isfile(path_with_ext):
+                        link_text = os.path.basename(path_with_ext)
+                        tags = ('hyperlink',)
+                        found = True
+                        break
+                if not found:
+                    link_text = "-"
+                    tags = ()
 
-        area_filter = self.area_combo.get()
-        name_filter = self.mat_name_entry.get().lower()
+            self.sources_tree.insert(
+                "", "end",
+                values=(i, source_name, link_text),
+                tags=tags
+            )
 
-        filtered_data = self.all_sources_data
+    def _on_link_click(self, event):
+        item_id = self.sources_tree.identify_row(event.y)
+        if not item_id: return
+        column_id = self.sources_tree.identify_column(event.x)
+        if column_id != '#3': return
+        tags = self.sources_tree.item(item_id, "tags")
+        if 'hyperlink' not in tags: return
 
-        if area_filter != "Все":
-            filtered_data = [row for row in filtered_data if area_filter in row[2]]
+        # --- ИЗМЕНЕНИЕ: Берем имя файла из колонки "Ссылка", а не "Источник" ---
+        file_name_in_cell = self.sources_tree.item(item_id, "values")[2]
 
-        if name_filter:
-            filtered_data = [row for row in filtered_data if name_filter in row[1].lower()]
+        sources_dir = os.path.join(get_app_directory(), "Источники")
+        file_path = os.path.join(sources_dir, file_name_in_cell)
 
-        for row in filtered_data:
-            self.tree.insert("", "end", values=row)
-
-    def _save_sources_to_file(self):
-        """Сохраняет уникальный список источников в .txt файл."""
-        unique_sources = sorted(list(set(row[0] for row in self.all_sources_data)))
-        if not unique_sources:
-            messagebox.showinfo("Информация", "Нет источников для сохранения.")
-            return
-
-        filepath = filedialog.asksaveasfilename(
-            initialdir=self.app_data.work_dir,
-            title="Сохранить список источников",
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt")]
-        )
-        if filepath:
-            try:
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write("\n".join(unique_sources))
-                messagebox.showinfo("Успех", f"Список из {len(unique_sources)} источников сохранен.")
-            except Exception as e:
-                messagebox.showerror("Ошибка", f"Не удалось сохранить файл: {e}")
-
-    def _replace_source_name(self):
-        """Находит и заменяет имя ОСНОВНОГО источника во всех материалах."""
-        find_text = self.find_source_entry.get()
-        replace_text = self.replace_source_entry.get()
-
-        if not find_text:
-            messagebox.showwarning("Внимание", "Введите текст для поиска в поле 'Найти'.")
-            return
-
-        msg = (f"Вы уверены, что хотите заменить основной источник '{find_text}' на '{replace_text}' "
-               f"во ВСЕХ материалах?\n\nЭто действие необратимо и изменит файлы на диске.")
-        if not messagebox.askyesno("Подтверждение", msg):
-            return
-
-        modified_files_count = 0
-        # Проходим по копии списка материалов, чтобы избежать проблем при перезагрузке
-        for mat in list(self.app_data.materials):
-            was_modified = False
-
-            def check_and_replace(data_dict, key):
-                nonlocal was_modified
-                if data_dict.get(key) == find_text:
-                    data_dict[key] = replace_text
-                    was_modified = True
-
-            # 1. Физические свойства
-            for prop in mat.data.get("physical_properties", {}).values():
-                check_and_replace(prop, "property_source")
-
-            # 2. Механические свойства
-            for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
-                for prop_key, prop_val in cat.items():
-                    if isinstance(prop_val, dict):
-                        check_and_replace(prop_val, "property_source")
-                for h_data in cat.get("hardness", []):
-                    check_and_replace(h_data, "property_source")
-
-            # 3. Химический состав
-            for comp in mat.data.get("chemical_properties", {}).get("composition", []):
-                check_and_replace(comp, "composition_source")
-
-            if was_modified:
-                try:
-                    mat.save()
-                    modified_files_count += 1
-                except Exception as e:
-                    messagebox.showerror("Ошибка", f"Не удалось сохранить материал {mat.get_display_name()}: {e}")
-                    return
-
-        messagebox.showinfo("Завершено", f"Замена выполнена. Изменено файлов: {modified_files_count}.")
-
-        # Перезагружаем все данные, чтобы изменения отразились в приложении
-        self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
-
-    def _sort_tree(self, col, reverse):
-        """Сортировка таблицы по колонке."""
-        data = [(self.tree.set(item, col), item) for item in self.tree.get_children('')]
-        data.sort(reverse=reverse)
-        for index, (val, item) in enumerate(data):
-            self.tree.move(item, '', index)
-        self.tree.heading(col, command=lambda: self._sort_tree(col, not reverse))
+        try:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            elif sys.platform == "darwin":
+                subprocess.call(["open", file_path])
+            else:
+                subprocess.call(["xdg-open", file_path])
+        except FileNotFoundError:
+            messagebox.showerror("Ошибка", f"Файл не найден:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось открыть файл:\n{e}")
 
 
 class MainApplication(tk.Tk):
