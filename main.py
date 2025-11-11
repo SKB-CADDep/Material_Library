@@ -693,6 +693,7 @@ class TempSelectionTab(ttk.Frame):
         except (IndexError, tk.TclError):
             pass
 
+
 class CustomToolbar(NavigationToolbar2Tk):
     """
     Пользовательская панель инструментов, которая при нажатии 'Home'
@@ -1874,22 +1875,29 @@ class GeneralDataTab(ttk.Frame):
     def __init__(self, parent, app_data):
         super().__init__(parent, padding=10)
         self.app_data = app_data
+        self.area_widgets = {}
         self._setup_widgets()
 
+    def _on_mousewheel(self, event, canvas_widget):
+        if hasattr(event, 'delta') and event.delta != 0:
+            canvas_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        elif hasattr(event, 'num'):
+            if event.num == 4:
+                canvas_widget.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas_widget.yview_scroll(1, "units")
+
     def _setup_widgets(self):
-        # Виджеты остаются точно такими же, как в предыдущей версии.
-        # Этот метод не меняется.
         self.columnconfigure(1, weight=1)
         ttk.Label(self, text="Наименование (стандарт):").grid(row=0, column=0, sticky="w", pady=2)
         self.name_entry = ttk.Entry(self, width=60)
         self.name_entry.grid(row=0, column=1, sticky="we", pady=2)
-        ttk.Label(self, text="Альтернативные названия\n(каждое с новой строки):").grid(row=1, column=0, sticky="nw",
-                                                                                       pady=2)
-        self.alt_text = tk.Text(self, height=4, width=60)
-        self.alt_text.grid(row=1, column=1, sticky="we", pady=2)
+        ttk.Label(self, text="Альтернативные названия\n(через запятую):").grid(row=1, column=0, sticky="nw", pady=2)
+        self.alt_names_entry = ttk.Entry(self, width=60)
+        self.alt_names_entry.grid(row=1, column=1, sticky="we", pady=2)
         ttk.Label(self, text="Комментарий:").grid(row=2, column=0, sticky="nw", pady=2)
-        self.comment_text = tk.Text(self, height=4, width=60)
-        self.comment_text.grid(row=2, column=1, sticky="we", pady=2)
+        self.comment_entry = ttk.Entry(self, width=60)
+        self.comment_entry.grid(row=2, column=1, sticky="we", pady=2)
         class_frame = ttk.LabelFrame(self, text="Классификация", padding=5)
         class_frame.grid(row=3, column=0, columnspan=2, sticky="we", pady=10)
         class_frame.columnconfigure(1, weight=1)
@@ -1903,48 +1911,68 @@ class GeneralDataTab(ttk.Frame):
         self.subclass_entry = ttk.Entry(class_frame)
         self.subclass_entry.grid(row=2, column=1, sticky="we", padx=5)
         area_frame = ttk.LabelFrame(self, text="Области применения", padding=5)
-        area_frame.grid(row=4, column=0, columnspan=2, sticky="we", pady=10)
-        listbox_frame = ttk.Frame(area_frame)
-        listbox_frame.pack(fill="both", expand=True, pady=(0, 5))
-        self.area_listbox = tk.Listbox(listbox_frame, selectmode=tk.MULTIPLE, height=6)
-        area_scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical", command=self.area_listbox.yview)
-        self.area_listbox.config(yscrollcommand=area_scrollbar.set)
-        area_scrollbar.pack(side="right", fill="y")
-        self.area_listbox.pack(side="left", fill="both", expand=True)
+        area_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=10)
+        self.rowconfigure(4, weight=1)
+        checkbox_canvas = tk.Canvas(area_frame, borderwidth=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(area_frame, orient="vertical", command=checkbox_canvas.yview)
+        self.checkbox_container = ttk.Frame(checkbox_canvas)
+        self.checkbox_container.bind(
+            "<Configure>",
+            lambda e: checkbox_canvas.configure(scrollregion=checkbox_canvas.bbox("all"))
+        )
+        checkbox_canvas.create_window((0, 0), window=self.checkbox_container, anchor="nw")
+        checkbox_canvas.configure(yscrollcommand=scrollbar.set)
+        on_scroll = lambda e: self._on_mousewheel(e, checkbox_canvas)
+        for widget_to_bind in (checkbox_canvas, self.checkbox_container):
+            widget_to_bind.bind("<MouseWheel>", on_scroll)
+            widget_to_bind.bind("<Button-4>", on_scroll)
+            widget_to_bind.bind("<Button-5>", on_scroll)
+        checkbox_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
         add_area_frame = ttk.Frame(area_frame)
-        add_area_frame.pack(fill="x", expand=True, pady=(5, 0))
+        add_area_frame.pack(fill="x", expand=False, pady=(5, 0), side="bottom")
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+        # 1. Создаем надпись
+        add_label = ttk.Label(add_area_frame, text="Добавить область применения:")
+        add_label.pack(side="left", padx=(0, 5))
+
+        # 2. Создаем кнопку и размещаем ее СПРАВА
+        add_button = ttk.Button(add_area_frame, text="Добавить", command=self._add_new_area)
+        add_button.pack(side="right")
+
+        # 3. Создаем поле ввода и размещаем его, чтобы оно заполнило оставшееся пространство
         self.new_area_entry = ttk.Entry(add_area_frame)
         self.new_area_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        add_button = ttk.Button(add_area_frame, text="Добавить", command=self._add_new_area)
-        add_button.pack(side="left")
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 
     def _add_new_area(self):
-        # Этот метод не меняется.
         new_area = self.new_area_entry.get().strip()
-        if not new_area:
-            return
-        current_items = self.area_listbox.get(0, tk.END)
-        if new_area in current_items:
+        if not new_area: return
+        if new_area in self.area_widgets:
             messagebox.showinfo("Информация", f"Область '{new_area}' уже есть в списке.", parent=self)
             return
-        self.area_listbox.insert(tk.END, new_area)
-        self.area_listbox.see(tk.END)
-        self.area_listbox.selection_set(tk.END)
+        var = tk.BooleanVar(value=True)
+        cb = ttk.Checkbutton(self.checkbox_container, text=new_area, variable=var)
+        cb.pack(anchor="w", padx=5, pady=1)
+        canvas_widget = self.checkbox_container.master
+        on_scroll = lambda e: self._on_mousewheel(e, canvas_widget)
+        cb.bind("<MouseWheel>", on_scroll)
+        cb.bind("<Button-4>", on_scroll)
+        cb.bind("<Button-5>", on_scroll)
+        self.area_widgets[new_area] = (cb, var)
         self.new_area_entry.delete(0, tk.END)
 
     def populate_form(self, material):
-        """
-        Заполняет форму данными. Логика для "Областей применения" изменена
-        для динамического сбора данных при каждом вызове.
-        """
-        # --- Заполнение стандартных полей (без изменений) ---
         meta = material.data.get("metadata", {})
         self.name_entry.delete(0, tk.END)
         self.name_entry.insert(0, meta.get("name_material_standard", ""))
-        self.alt_text.delete("1.0", tk.END)
-        self.alt_text.insert("1.0", "\n".join(meta.get("name_material_alternative", [])))
-        self.comment_text.delete("1.0", tk.END)
-        self.comment_text.insert("1.0", meta.get("comment", ""))
+        alt_names_list = meta.get("name_material_alternative", [])
+        self.alt_names_entry.delete(0, tk.END)
+        self.alt_names_entry.insert(0, ", ".join(alt_names_list))
+        self.comment_entry.delete(0, tk.END)
+        self.comment_entry.insert(0, meta.get("comment", ""))
         cls = meta.get("classification", {})
         self.cat_entry.delete(0, tk.END)
         self.cat_entry.insert(0, cls.get("classification_category", ""))
@@ -1952,55 +1980,41 @@ class GeneralDataTab(ttk.Frame):
         self.class_entry.insert(0, cls.get("classification_class", ""))
         self.subclass_entry.delete(0, tk.END)
         self.subclass_entry.insert(0, cls.get("classification_subclass", ""))
-
-        # --- НАЧАЛО ИЗМЕНЕНИЙ: Динамическое формирование списка областей ---
-
-        # 1. Очищаем список перед заполнением
-        self.area_listbox.delete(0, tk.END)
-
-        # 2. Сохраняем области, которые уже присвоены ТЕКУЩЕМУ материалу.
-        #    Они понадобятся нам для последующего выделения в списке.
-        current_material_areas = set(meta.get("application_area", []))
-
-        # 3. Динамически собираем ПОЛНЫЙ список областей из ВСЕХ материалов в app_data.
-        #    Это гарантирует, что список всегда актуален на момент выбора.
+        for widget, var in self.area_widgets.values():
+            widget.destroy()
+        self.area_widgets.clear()
         all_known_areas = set()
         for mat_from_db in self.app_data.materials:
             areas = mat_from_db.data.get("metadata", {}).get("application_area", [])
             all_known_areas.update(areas)
-
-        # 4. Добавляем в общий список области текущего редактируемого материала.
-        #    Это важно, если пользователь добавил новую область, но еще не сохранил файл.
+        current_material_areas = set(meta.get("application_area", []))
         all_known_areas.update(current_material_areas)
-
-        # 5. Сортируем и заполняем Listbox
         sorted_areas = sorted(list(all_known_areas))
+        canvas_widget = self.checkbox_container.master
+        on_scroll = lambda e: self._on_mousewheel(e, canvas_widget)
         for area in sorted_areas:
-            self.area_listbox.insert(tk.END, area)
-
-        # 6. Выделяем в списке те области, которые относятся к текущему материалу.
-        #    `update_idletasks` нужен, чтобы гарантировать, что Tkinter успел
-        #    отрисовать элементы перед тем, как мы попытаемся их выделить.
-        self.update_idletasks()
-        for i in range(self.area_listbox.size()):
-            if self.area_listbox.get(i) in current_material_areas:
-                self.area_listbox.selection_set(i)
-
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+            var = tk.BooleanVar()
+            if area in current_material_areas:
+                var.set(True)
+            cb = ttk.Checkbutton(self.checkbox_container, text=area, variable=var)
+            cb.pack(anchor="w", padx=5, pady=1)
+            cb.bind("<MouseWheel>", on_scroll)
+            cb.bind("<Button-4>", on_scroll)
+            cb.bind("<Button-5>", on_scroll)
+            self.area_widgets[area] = (cb, var)
 
     def collect_data(self, material):
-        # Этот метод не меняется, он уже работает корректно.
         meta = material.data["metadata"]
         meta["name_material_standard"] = self.name_entry.get()
-        meta["name_material_alternative"] = [line for line in self.alt_text.get("1.0", tk.END).split("\n") if
-                                             line.strip()]
-        meta["comment"] = self.comment_text.get("1.0", tk.END).strip()
+        alt_names_str = self.alt_names_entry.get()
+        meta["name_material_alternative"] = [name.strip() for name in alt_names_str.split(',') if name.strip()]
+        meta["comment"] = self.comment_entry.get().strip()
         cls = meta["classification"]
         cls["classification_category"] = self.cat_entry.get()
         cls["classification_class"] = self.class_entry.get()
         cls["classification_subclass"] = self.subclass_entry.get()
-        selected_indices = self.area_listbox.curselection()
-        meta["application_area"] = [self.area_listbox.get(i) for i in selected_indices]
+        selected_areas = [area_name for area_name, (widget, var) in self.area_widgets.items() if var.get()]
+        meta["application_area"] = selected_areas
 
 
 class PropertyEditorTab(ttk.Frame):
@@ -2584,6 +2598,7 @@ class Tooltip:
             self.tip_window.destroy()
             self.tip_window = None
 
+
 class ChemicalCompositionTab(ttk.Frame):
     """Вкладка для редактирования химического состава по источникам."""
 
@@ -3163,6 +3178,7 @@ class MainApplication(tk.Tk):
         text_widget.config(state="disabled")
         ok_button = ttk.Button(instr_window, text="OK", command=instr_window.destroy)
         ok_button.pack(pady=(0, 10))
+
 
 if __name__ == "__main__":
     app = MainApplication()
