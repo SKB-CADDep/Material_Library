@@ -679,7 +679,9 @@ class TempSelectionTab(ttk.Frame):
 
         style = ttk.Style()
         style.configure("Treeview.Heading", padding=(5, 5), wraplength=120, font=('TkDefaultFont', 9))
-        style.map("Treeview", background=[("selected", "lightblue")])
+        style.map("Treeview",
+                  background=[("selected", "gray")],
+                  foreground=[("selected", "white")])
 
         self._setup_widgets()
         self._setup_treeview()
@@ -726,9 +728,9 @@ class TempSelectionTab(ttk.Frame):
         self.tree_frozen.column("strength_category", width=50, minwidth=50)
         self.tree_frozen.heading("source", text="НТД", command=lambda: self._sort_column("source", False))
         self.tree_frozen.column("source", width=120, minwidth=120)
-        self.tree_frozen.heading("max_temp", text="t прим. ДО, °С",
+        self.tree_frozen.heading("max_temp", text="tприм ДО, °С",
                                  command=lambda: self._sort_column("max_temp", False))
-        self.tree_frozen.column("max_temp", width=80, minwidth=80, anchor="center")
+        self.tree_frozen.column("max_temp", width=100, minwidth=100, anchor="center")
         vsb = ttk.Scrollbar(tree_container, orient="vertical", command=self._on_vertical_scroll)
         vsb.grid(row=0, column=2, sticky="ns")
         hsb = ttk.Scrollbar(tree_container, orient="horizontal", command=self.tree_scrollable.xview)
@@ -874,7 +876,6 @@ class TempSelectionTab(ttk.Frame):
             self.tree_scrollable.insert("", "end", values=scrollable_values)
 
     def _sort_column(self, col, reverse):
-        # --- НАЧАЛО ИЗМЕНЕНИЙ: Полностью переработанная функция сортировки ---
         def get_sort_key(item):
             """
             Возвращает кортеж (type_indicator, value) для 'умной' сортировки.
@@ -2048,6 +2049,8 @@ class EditorFrame(ttk.Frame):
             self._populate_all_tabs()
             self._set_tabs_state("normal")
             self._update_button_states(True)  # Включаем кнопки
+            # --- НОВОЕ ИЗМЕНЕНИЕ ---
+            self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
 
     def create_new_material(self):
         self.editing_copy = Material()
@@ -2056,6 +2059,8 @@ class EditorFrame(ttk.Frame):
         self._populate_all_tabs()
         self._set_tabs_state("normal")
         self._update_button_states(True)  # Включаем кнопки
+        # --- НОВОЕ ИЗМЕНЕНИЕ ---
+        self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
 
     # --- ПЕРЕМЕЩЕННЫЕ И АДАПТИРОВАННЫЕ МЕТОДЫ ---
     def save_material(self):
@@ -2188,7 +2193,7 @@ class GeneralDataTab(ttk.Frame):
         # Области применения
         area_frame = ttk.LabelFrame(self, text="Области применения", padding=5)
         area_frame.grid(row=4, column=0, columnspan=2, sticky="nsew", pady=10)
-        self.rowconfigure(4, weight=1)
+        self.rowconfigure(4, weight=1)  # Этот фрейм будет растягиваться по вертикали
         checkbox_canvas = tk.Canvas(area_frame, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(area_frame, orient="vertical", command=checkbox_canvas.yview)
         self.checkbox_container = ttk.Frame(checkbox_canvas)
@@ -2203,19 +2208,27 @@ class GeneralDataTab(ttk.Frame):
             widget_to_bind.bind("<Button-5>", on_scroll)
         checkbox_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        add_area_frame = ttk.Frame(area_frame)
-        add_area_frame.pack(fill="x", expand=False, pady=(5, 0), side="bottom")
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Перенос и реорганизация блока добавления области ---
+        # Создаем отдельный фрейм для строки добавления, размещаем его в основном гриде
+        add_area_frame = ttk.Frame(self)
+        add_area_frame.grid(row=5, column=0, columnspan=2, sticky="we", pady=(0, 10))
+
+        # Размещаем виджеты внутри этого фрейма с помощью pack для нужной компоновки
         add_label = ttk.Label(add_area_frame, text="Добавить область применения:")
         add_label.pack(side="left", padx=(0, 5))
+
         add_button = ttk.Button(add_area_frame, text="Добавить", command=self._add_new_area)
         add_button.pack(side="right")
+
         self.new_area_entry = ttk.Entry(add_area_frame)
         self.new_area_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        # --- НАЧАЛО ИЗМЕНЕНИЙ: Новые поля температуры применения ---
+        # Параметры применения теперь размещаются в ряду 6
         temp_app_frame = ttk.LabelFrame(self, text="Параметры применения", padding=5)
-        temp_app_frame.grid(row=5, column=0, columnspan=2, sticky="we", pady=10)
+        temp_app_frame.grid(row=6, column=0, columnspan=2, sticky="we", pady=10)  # Было row=5
         temp_app_frame.columnconfigure(1, weight=1)
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
         ttk.Label(temp_app_frame, text="Температура применения ДО, °С:").grid(row=0, column=0, sticky="w", padx=5,
                                                                               pady=2)
@@ -2225,7 +2238,6 @@ class GeneralDataTab(ttk.Frame):
         ttk.Label(temp_app_frame, text="Комментарий к температуре:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
         self.temp_app_comment_entry = ttk.Entry(temp_app_frame)
         self.temp_app_comment_entry.grid(row=1, column=1, sticky="we", padx=5, pady=2)
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     def _add_new_area(self):
         new_area = self.new_area_entry.get().strip()
@@ -2283,7 +2295,6 @@ class GeneralDataTab(ttk.Frame):
             cb.bind("<Button-5>", on_scroll)
             self.area_widgets[area] = (cb, var)
 
-        # --- НАЧАЛО ИЗМЕНЕНИЙ: Заполняем новые поля ---
         # Использование .get() гарантирует, что код не сломается на старых файлах
         temp_app_data = meta.get("temperature_application", {})
         self.temp_app_value_entry.delete(0, tk.END)
@@ -2291,7 +2302,6 @@ class GeneralDataTab(ttk.Frame):
         self.temp_app_value_entry.insert(0, temp_app_data.get("value", ""))
         self.temp_app_comment_entry.delete(0, tk.END)
         self.temp_app_comment_entry.insert(0, temp_app_data.get("comment", ""))
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     def collect_data(self, material):
         meta = material.data["metadata"]
@@ -2306,7 +2316,6 @@ class GeneralDataTab(ttk.Frame):
         selected_areas = [area_name for area_name, (widget, var) in self.area_widgets.items() if var.get()]
         meta["application_area"] = selected_areas
 
-        # --- НАЧАЛО ИЗМЕНЕНИЙ: Сбор данных из новых полей ---
         temp_val_str = self.temp_app_value_entry.get().strip()
         temp_comment_str = self.temp_app_comment_entry.get().strip()
 
@@ -2329,7 +2338,6 @@ class GeneralDataTab(ttk.Frame):
         elif "temperature_application" in meta:
             # Если оба поля были очищены, удаляем весь блок из JSON для чистоты
             del meta["temperature_application"]
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 
 class PropertyEditorTab(ttk.Frame):
@@ -2417,9 +2425,9 @@ class PropertyEditorTab(ttk.Frame):
         tree = create_editable_treeview(table_frame, on_update_callback=on_update_callback)
         tree["columns"] = ("temp", "value")
         tree.heading("temp", text="Температура, °C")
-        tree.column("temp", width=100)
+        tree.column("temp", width=140)
         tree.heading("value", text="Значение")
-        tree.column("value", width=100)
+        tree.column("value", width=140)
         tree.grid(row=0, column=0, sticky="nsew")
         widgets["tree"] = tree
 
@@ -2629,9 +2637,9 @@ class MechanicalPropertiesTab(ttk.Frame):
         tree = create_editable_treeview(table_frame, on_update_callback=on_update_callback)
         tree["columns"] = ("temp", "value")
         tree.heading("temp", text="Температура, °C")
-        tree.column("temp", width=100)
+        tree.column("temp", width=140)
         tree.heading("value", text="Значение")
-        tree.column("value", width=100)
+        tree.column("value", width=140)
         tree.grid(row=0, column=0, sticky="nsew")
         widgets["tree"] = tree
 
