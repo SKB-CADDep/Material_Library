@@ -3939,201 +3939,496 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
 
 
 class ChemicalCompositionTab(ttk.Frame):
-    """Вкладка редактора хим. состава (Новая архитектура)."""
+    """Вкладка для редактирования химического состава с логарифмической гистограммой."""
+
+    # Словарь элементов
+    ELEMENTS_MAP = {
+        "Ag": {"name": "Серебро", "color": "#C0C0C0"},
+        "Al": {"name": "Алюминий", "color": "#B5B5B5"},
+        "As": {"name": "Мышьяк", "color": "#7D8080"},
+        "B":  {"name": "Бор", "color": "#2B2B2B"},
+        "Be": {"name": "Бериллий", "color": "#B8CC7A"},
+        "Bi": {"name": "Висмут", "color": "#C885C4"},
+        "C":  {"name": "Углерод", "color": "#363636"},
+        "Ca": {"name": "Кальций", "color": "#808080"},
+        "Cd": {"name": "Кадмий", "color": "#D1C366"},
+        "Ce": {"name": "Церий", "color": "#FFFFC7"},
+        "Cl": {"name": "Хлор", "color": "#1FF22D"},
+        "Co": {"name": "Кобальт", "color": "#1A569E"},
+        "Cr": {"name": "Хром", "color": "#8A9EA8"},
+        "Cu": {"name": "Медь", "color": "#D98048"},
+        "Fe": {"name": "Железо", "color": "#8C3E26"},
+        "H":  {"name": "Водород", "color": "#F0F0F0"},
+        "La": {"name": "Лантан", "color": "#8AFAFA"},
+        "Li": {"name": "Литий", "color": "#B52FED"},
+        "Mg": {"name": "Магний", "color": "#E3E3E3"},
+        "Mn": {"name": "Марганец", "color": "#8C6A8A"},
+        "Mo": {"name": "Молибден", "color": "#8F88A1"},
+        "N":  {"name": "Азот", "color": "#6B85F0"},
+        "Na": {"name": "Натрий", "color": "#F2F20C"},
+        "Nb": {"name": "Ниобий", "color": "#6ED6C6"},
+        "Nd": {"name": "Неодим", "color": "#C7FACF"},
+        "Ni": {"name": "Никель", "color": "#5C8F54"},
+        "O":  {"name": "Кислород", "color": "#E60E0E"},
+        "P":  {"name": "Фосфор", "color": "#DE5914"},
+        "Pb": {"name": "Свинец", "color": "#525252"},
+        "S":  {"name": "Сера", "color": "#F2E82E"},
+        "Sb": {"name": "Сурьма", "color": "#A1759C"},
+        "Si": {"name": "Кремний", "color": "#8C8C8C"},
+        "Sn": {"name": "Олово", "color": "#858282"},
+        "Ti": {"name": "Титан", "color": "#85878A"},
+        "V":  {"name": "Ванадий", "color": "#949494"},
+        "W":  {"name": "Вольфрам", "color": "#5C5857"},
+        "Y":  {"name": "Иттрий", "color": "#8AFAFA"},
+        "Zn": {"name": "Цинк", "color": "#797D82"},
+        "Zr": {"name": "Цирконий", "color": "#C4E0B6"},
+        "РЗМ": {"name": "РЗМ", "color": "#E0E0E0"},
+        "Au": {"name": "Золото", "color": "#FFD700"},
+        "Ba": {"name": "Барий", "color": "#00C900"},
+        "F":  {"name": "Фтор", "color": "#DAA520"},
+        "Ga": {"name": "Галлий", "color": "#C2C2C2"},
+        "Hg": {"name": "Ртуть", "color": "#E6E6E6"},
+        "In": {"name": "Индий", "color": "#4B0082"},
+        "Ir": {"name": "Иридий", "color": "#FFDEAD"},
+        "Pd": {"name": "Палладий", "color": "#006400"},
+        "Pt": {"name": "Платина", "color": "#E5E4E2"},
+        "Rh": {"name": "Родий", "color": "#FF00FF"},
+        "Se": {"name": "Селен", "color": "#A0522D"},
+        "Ta": {"name": "Тантал", "color": "#4682B4"},
+        "Te": {"name": "Теллур", "color": "#D2691E"},
+        "Tl": {"name": "Таллий", "color": "#A52A2A"},
+        "Ru": {"name": "Рутений", "color": "#708090"}
+    }
 
     def __init__(self, parent):
         super().__init__(parent, padding=10)
         self.material = None
         self.current_source_idx = -1
         self.app_data = None
-        self.source_map = {}
+        self.element_menu = None
+
+        # Переменные для чекбоксов графика
+        self.var_min = tk.BooleanVar(value=False)
+        self.var_max = tk.BooleanVar(value=True)
+
+        # График
+        self.fig = None
+        self.ax = None
+        self.canvas = None
+
         self._setup_widgets()
 
     def set_app_data(self, app_data):
         self.app_data = app_data
-        self._update_source_list()
-
-    def _update_source_list(self):
-        if not self.app_data or not self.app_data.source_manager: return
-        sources = self.app_data.source_manager.get_all()
-        self.source_map = {s["name_source"]: s["id_source"] for s in sources}
-        sorted_names = sorted(self.source_map.keys())
-        self.source_combo['values'] = sorted_names  # Для выбора нового источника в панели редактирования
 
     def _setup_widgets(self):
-        # Список доступных составов (верх)
+        # --- Верхняя панель ---
         top_frame = ttk.Frame(self)
         top_frame.pack(fill="x", pady=(0, 10))
-        ttk.Label(top_frame, text="Варианты состава:").pack(side="left", padx=(0, 5))
-        self.comp_list_combo = ttk.Combobox(top_frame, state="readonly", width=40)
-        self.comp_list_combo.pack(side="left", fill="x", expand=True)
-        self.comp_list_combo.bind("<<ComboboxSelected>>", self._on_comp_select)
-        ttk.Button(top_frame, text="+", width=3, command=self._add_comp).pack(side="left", padx=5)
-        ttk.Button(top_frame, text="-", width=3, command=self._delete_comp).pack(side="left")
+        ttk.Label(top_frame, text="Источник состава:").pack(side="left", padx=(0, 5))
+        self.source_combo = ttk.Combobox(top_frame, state="readonly", width=40)
+        self.source_combo.pack(side="left", fill="x", expand=True)
+        self.source_combo.bind("<<ComboboxSelected>>", self._on_source_select)
+        ttk.Button(top_frame, text="+", width=3, command=self._add_source).pack(side="left", padx=5)
+        ttk.Button(top_frame, text="-", width=3, command=self._delete_source).pack(side="left")
 
-        # Панель редактирования
+        # --- Основной контейнер редактора ---
         self.editor_content_frame = ttk.Frame(self)
+        self.editor_content_frame.pack(fill="both", expand=True)
+        self.editor_content_frame.pack_forget()
 
-        meta_frame = ttk.LabelFrame(self.editor_content_frame, text="Параметры источника", padding=5)
+        # 1. Метаданные
+        meta_frame = ttk.LabelFrame(self.editor_content_frame, text="Данные источника", padding=5)
         meta_frame.pack(fill="x", pady=5)
+        meta_frame.columnconfigure(1, weight=1)
 
         ttk.Label(meta_frame, text="Источник:").grid(row=0, column=0, sticky="w")
-        self.source_combo = ttk.Combobox(meta_frame, state="readonly", width=50)
-        self.source_combo.grid(row=0, column=1, sticky="we", padx=5)
+        self.source_entry = ttk.Entry(meta_frame)
+        self.source_entry.grid(row=0, column=1, sticky="we", padx=5, pady=2)
 
         ttk.Label(meta_frame, text="Под-источник:").grid(row=1, column=0, sticky="w")
-        self.subsource_entry = ttk.Entry(meta_frame, width=30)
-        self.subsource_entry.grid(row=1, column=1, sticky="w", padx=5, pady=2)
+        self.subsource_entry = ttk.Entry(meta_frame)
+        self.subsource_entry.grid(row=1, column=1, sticky="we", padx=5, pady=2)
 
-        ttk.Label(meta_frame, text="Основа:").grid(row=2, column=0, sticky="w")
-        self.base_elem_entry = ttk.Entry(meta_frame, width=10)
-        self.base_elem_entry.grid(row=2, column=1, sticky="w", padx=5)
+        ttk.Label(meta_frame, text="Комментарий:").grid(row=2, column=0, sticky="w")
+        self.comment_entry = ttk.Entry(meta_frame)
+        self.comment_entry.grid(row=2, column=1, sticky="we", padx=5, pady=2)
 
-        # Таблица
-        tbl_frame = ttk.LabelFrame(self.editor_content_frame, text="Элементы", padding=5)
-        tbl_frame.pack(fill="both", expand=True)
-        self.elements_tree = self._create_table(tbl_frame)
+        ttk.Label(meta_frame, text="Основной элемент:").grid(row=3, column=0, sticky="w")
+        self.base_element_entry = ttk.Combobox(meta_frame, values=["Fe", "Ti"], width=10)
+        self.base_element_entry.grid(row=3, column=1, sticky="w", padx=5, pady=2)
+        self.base_element_entry.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
+        self.base_element_entry.bind("<KeyRelease>", lambda e: self._update_chart())
 
-    def _create_table(self, parent):
-        t_frame = ttk.Frame(parent)
-        t_frame.pack(fill="both", expand=True)
-        tree = create_editable_treeview(t_frame)
-        tree["columns"] = ("elem", "min", "max", "unit")
-        tree.heading("elem", text="Элемент");
-        tree.column("elem", width=80)
-        tree.heading("min", text="Min");
-        tree.column("min", width=80)
-        tree.heading("max", text="Max");
-        tree.column("max", width=80)
-        tree.heading("unit", text="Ед.");
-        tree.column("unit", width=60)
+        ttk.Label(meta_frame, text="Ед. изм.:").grid(row=4, column=0, sticky="w")
+        units = UnitManager.get_units("Безразмерный")
+        self.unit_combo = ttk.Combobox(meta_frame, values=units, state="readonly", width=10)
+        self.unit_combo.grid(row=4, column=1, sticky="w", padx=5, pady=2)
+        self.unit_combo.set("%")
+
+        # 2. Разделенный контейнер
+        split_container = ttk.Frame(self.editor_content_frame)
+        split_container.pack(fill="both", expand=True, pady=5)
+
+        # -- Левая часть: Таблица --
+        left_pane = ttk.Frame(split_container)
+        left_pane.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
+        elements_frame = ttk.LabelFrame(left_pane, text="Элементы (ПКМ по названию для выбора)", padding=5)
+        elements_frame.pack(fill="both", expand=True)
+        self.elements_tree = self._create_elements_table(elements_frame)
+
+        # -- Правая часть: График --
+        right_pane = ttk.Frame(split_container)
+        right_pane.pack(side="right", fill="both", expand=True, padx=(5, 0))
+        self._create_chart_panel(right_pane)
+
+        # Меню ПКМ
+        self.element_menu = tk.Menu(self, tearoff=0)
+        sorted_items = sorted(self.ELEMENTS_MAP.items(), key=lambda x: x[1]["name"])
+        for symbol, data in sorted_items:
+            # data теперь словарь, берем имя из него
+            name = data["name"]
+            label_text = f"{name} ({symbol})"
+            self.element_menu.add_command(label=label_text,
+                                          command=lambda s=symbol, n=name: self._fill_element_from_menu(s, n))
+
+    def _create_elements_table(self, parent_frame):
+        table_frame = ttk.Frame(parent_frame)
+        table_frame.pack(fill="both", expand=True)
+        table_frame.columnconfigure(0, weight=1)
+
+        tree = create_editable_treeview(table_frame, on_update_callback=self._update_chart)
+        tree.configure(show="headings")
+        tree["columns"] = ("name", "elem", "min", "max", "min_tol", "max_tol")
+
+        tree.heading("name", text="Название элемента")
+        tree.column("name", width=120)
+        tree.heading("elem", text="Элемент")
+        tree.column("elem", width=60, anchor="center")
+        tree.heading("min", text="Min")
+        tree.column("min", width=60, anchor="center")
+        tree.heading("max", text="Max")
+        tree.column("max", width=60, anchor="center")
+        tree.heading("min_tol", text="Допуск Min")
+        tree.column("min_tol", width=80, anchor="center")
+        tree.heading("max_tol", text="Допуск Max")
+        tree.column("max_tol", width=80, anchor="center")
+
         tree.pack(side="left", fill="both", expand=True)
 
-        b_frame = ttk.Frame(t_frame)
-        b_frame.pack(side="left", fill="y", padx=5)
-        ttk.Button(b_frame, text="+", width=2, command=lambda: tree.insert("", "end", values=["", "", "", "%"])).pack(
-            pady=2)
-        ttk.Button(b_frame, text="-", width=2, command=lambda: tree.delete(tree.selection())).pack(pady=2)
+        btn_frame = ttk.Frame(table_frame)
+        btn_frame.pack(side="left", fill="y", padx=5)
+
+        def add_row():
+            tree.insert("", "end", values=["", "", "", "", "", ""])
+            self._update_chart()
+
+        def del_row():
+            sel = tree.selection()
+            if sel:
+                tree.delete(sel)
+                self._update_chart()
+
+        ttk.Button(btn_frame, text="+", width=2, command=add_row).pack(pady=2)
+        ttk.Button(btn_frame, text="-", width=2, command=del_row).pack(pady=2)
+
+        tree.bind("<Button-3>", self._on_tree_right_click)
         return tree
 
+    def _create_chart_panel(self, parent):
+        """Создает панель с графиком и переключателями."""
+
+        # 1. Верхний контейнер для ГРАФИКА
+        # Используем weight=1, чтобы график занимал всё свободное место
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(0, weight=1)
+
+        plot_frame = ttk.LabelFrame(parent, text="Распределение элементов в составе")
+        plot_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+        self.fig = Figure(figsize=(5, 4), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.fig.subplots_adjust(left=0.2, right=0.95, top=0.9, bottom=0.15)
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        # 2. Нижний контейнер для ЧЕКБОКСОВ
+        # row=1, не растягивается по вертикали (weight=0 по умолчанию)
+        ctrl_frame = ttk.Frame(parent)
+        ctrl_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+
+        # Логика переключения
+        def toggle_min():
+            if self.var_min.get():
+                self.var_max.set(False)
+            elif not self.var_max.get():
+                self.var_max.set(True)
+            self._update_chart()
+
+        def toggle_max():
+            if self.var_max.get():
+                self.var_min.set(False)
+            elif not self.var_min.get():
+                self.var_min.set(True)
+            self._update_chart()
+
+        # Чекбоксы
+        cb_min = ttk.Checkbutton(ctrl_frame, text="Min", variable=self.var_min, command=toggle_min)
+        cb_min.pack(side="left", padx=10)
+
+        cb_max = ttk.Checkbutton(ctrl_frame, text="Max", variable=self.var_max, command=toggle_max)
+        cb_max.pack(side="left", padx=10)
+
+    def _update_chart(self):
+        """
+        Перестраивает график: горизонтальные бары с логарифмической шкалой.
+        Только Min или Max значения.
+        """
+        if not self.ax or not self.canvas: return
+
+        self.ax.clear()
+
+        # Данные для построения: список словарей {label, value, color}
+        plot_data = []
+
+        base_elem_sym = self.base_element_entry.get().strip()
+        if not base_elem_sym: base_elem_sym = "Основа"
+        base_elem_name = self.ELEMENTS_MAP.get(base_elem_sym, {}).get("name", "Основа")
+        base_elem_color = self.ELEMENTS_MAP.get(base_elem_sym, {}).get("color", "#444444")
+
+        use_max = self.var_max.get()
+        # Если не Max, значит Min
+
+        total_elements_amount = 0.0
+
+        for item_id in self.elements_tree.get_children():
+            row = self.elements_tree.item(item_id, "values")
+            # row: name, elem, min, max, min_tol, max_tol
+            elem_sym = row[1]
+            if not elem_sym: continue
+
+            # Получаем цвет
+            color = self.ELEMENTS_MAP.get(elem_sym, {}).get("color", "#1f77b4")
+
+            val_min = safe_float(row[2])
+            val_max = safe_float(row[3])
+
+            value = 0.0
+
+            if use_max:
+                # Режим MAX
+                if val_max is not None: value = val_max
+            else:
+                # Режим MIN
+                if val_min is not None: value = val_min
+
+            if value > 0:
+                plot_data.append({
+                    "label": elem_sym,
+                    "value": value,
+                    "color": color
+                })
+                total_elements_amount += value
+
+        # Рассчитываем основу (100% - сумма элементов)
+        base_percent = 100.0 - total_elements_amount
+        if base_percent < 0: base_percent = 0
+
+        # Добавляем основу
+        plot_data.append({
+            "label": base_elem_sym,
+            "value": base_percent,
+            "color": base_elem_color
+        })
+
+        if not plot_data:
+            self.ax.text(0.5, 0.5, "Нет данных", ha='center', va='center')
+        else:
+            # Сортировка: Сначала большие значения (Основа), потом мелкие
+            plot_data.sort(key=lambda x: x["value"], reverse=False)
+
+            labels = [d["label"] for d in plot_data]
+            values = [d["value"] for d in plot_data]
+            colors = [d["color"] for d in plot_data]
+
+            # Рисуем бары
+            bars = self.ax.barh(labels, values, color=colors)
+
+            # ЛОГАРИФМИЧЕСКАЯ ШКАЛА
+            self.ax.set_xscale('log')
+            self.ax.grid(True, axis='x', which="both", ls="--", alpha=0.4)
+
+            unit = self.unit_combo.get()
+
+            # Подписи значений
+            for i, val in enumerate(values):
+                # Форматирование текста
+                text_val = f"{val:.4f}".rstrip('0').rstrip('.') if val < 0.1 else f"{val:.2f}"
+                txt = f" {text_val} {unit}"
+
+                self.ax.text(val, i, txt, va='center', ha='left', fontsize=8, fontweight='bold')
+
+            self.ax.set_xlabel(f"Содержание ({unit})")
+
+            # Пределы X
+            # Максимум на графике (обычно это Основа ~100 или меньше)
+            max_val_graph = max(values) if values else 100
+
+            # Минимум (не ноль для логарифма)
+            non_zero_vals = [v for v in values if v > 0]
+            min_val_graph = min(non_zero_vals) if non_zero_vals else 0.001
+
+            # Ставим пределы с запасом справа для текста
+            self.ax.set_xlim(min_val_graph * 0.5, max_val_graph * 5)
+
+        self.fig.tight_layout()
+        self.canvas.draw()
+
     def populate_form(self, material):
-        if self.material and self.material != material: self._save_current_comp()
+        if self.material and self.material != material:
+            self._save_current_source()
+
         self.material = material
         self.current_source_idx = -1
-        self._update_source_list()
 
-        comps = material.data.get("chemical_properties", {}).get("composition", [])
+        compositions = material.data.get("chemical_properties", {}).get("composition", [])
+        self.source_combo["values"] = [comp.get("composition_source", f"Источник {i + 1}") for i, comp in
+                                       enumerate(compositions)]
 
-        # Формируем имена для списка выбора (сверху)
-        display_names = []
-        for c in comps:
-            sid = c.get("source_ref_id")
-            if sid and self.app_data:
-                name = self.app_data.source_manager.get_name_by_id(sid)
-            else:
-                name = c.get("composition_source", "Неизвестный источник")
-            display_names.append(name)
-
-        self.comp_list_combo["values"] = display_names
-
-        if comps:
-            self.editor_content_frame.pack(fill="both", expand=True)
-            self.comp_list_combo.current(0)
-            self._on_comp_select()
+        if compositions:
+            self.source_combo.current(0)
+            self._on_source_select()
         else:
-            self.comp_list_combo.set("")
+            self.source_combo.set("")
             self.editor_content_frame.pack_forget()
 
-    def _on_comp_select(self, event=None):
-        idx = self.comp_list_combo.current()
-        if idx == -1: return
-        if self.current_source_idx != -1 and self.current_source_idx != idx:
-            self._save_current_comp()
-        self.current_source_idx = idx
+    def _on_source_select(self, event=None):
+        self._save_current_source()
 
-        c_data = self.material.data["chemical_properties"]["composition"][idx]
-
-        # Источник
-        sid = c_data.get("source_ref_id")
-        if sid and self.app_data:
-            name = self.app_data.source_manager.get_name_by_id(sid)
-            self.source_combo.set(name)
-        else:
-            self.source_combo.set("")  # Старый формат - источник не выбран
-
-        self.subsource_entry.delete(0, tk.END)
-        self.subsource_entry.insert(0, c_data.get("composition_subsource", ""))
-        self.base_elem_entry.delete(0, tk.END)
-        self.base_elem_entry.insert(0, c_data.get("base_element", ""))
-
-        tree = self.elements_tree
-        for i in tree.get_children(): tree.delete(i)
-        for e in c_data.get("other_elements", []):
-            tree.insert("", "end",
-                        values=[e.get("element"), e.get("min_value"), e.get("max_value"), e.get("unit_value", "%")])
-
-    def _add_comp(self):
-        if not self.material: return
-        self._save_current_comp()
-        new_c = {"other_elements": []}
-        if "chemical_properties" not in self.material.data:
-            self.material.data["chemical_properties"] = {"composition": []}
-
-        self.material.data["chemical_properties"]["composition"].append(new_c)
-        self.populate_form(self.material)
-        self.comp_list_combo.current(len(self.comp_list_combo["values"]) - 1)
-        self._on_comp_select()
-
-    def _delete_comp(self):
-        if not self.material or self.current_source_idx == -1: return
-        if messagebox.askyesno("Удаление", "Удалить состав?"):
-            del self.material.data["chemical_properties"]["composition"][self.current_source_idx]
-            self.current_source_idx = -1
-            self.populate_form(self.material)
-
-    def _save_current_comp(self):
-        if not self.material or self.current_source_idx == -1: return
-        try:
-            c_data = self.material.data["chemical_properties"]["composition"][self.current_source_idx]
-        except:
+        idx = self.source_combo.current()
+        if idx == -1:
+            self.editor_content_frame.pack_forget()
             return
 
-        # Источник
-        src_name = self.source_combo.get()
-        if src_name and self.app_data:
-            sid = self.source_map.get(src_name)
-            if sid:
-                c_data["source_ref_id"] = sid
-                if "composition_source" in c_data: del c_data["composition_source"]
+        self.current_source_idx = idx
+        comp_data = self.material.data["chemical_properties"]["composition"][idx]
+        self._populate_source_fields(comp_data)
+        self.editor_content_frame.pack(fill="both", expand=True)
 
-        c_data["composition_subsource"] = self.subsource_entry.get()
-        c_data["base_element"] = self.base_elem_entry.get()
+    def _populate_source_fields(self, comp_data):
+        """Заполняет поля редактирования из данных (Обновлено для новой структуры ELEMENTS_MAP)."""
+        self.source_entry.delete(0, tk.END)
+        self.source_entry.insert(0, comp_data.get("composition_source", ""))
+        self.subsource_entry.delete(0, tk.END)
+        self.subsource_entry.insert(0, comp_data.get("composition_subsource", ""))
+        self.comment_entry.delete(0, tk.END)
+        self.comment_entry.insert(0, comp_data.get("comment", ""))
 
-        elems = []
-        for item in self.elements_tree.get_children():
-            v = self.elements_tree.set(item)
-            if not v["elem"]: continue
+        self.base_element_entry.set(comp_data.get("base_element", ""))
 
-            # --- ИСПРАВЛЕНИЕ: ИСПОЛЬЗУЕМ safe_float ---
-            e = {"element": v["elem"], "unit_value": v["unit"]}
+        first_elem = comp_data.get("other_elements", [{}])[0] if comp_data.get("other_elements") else {}
+        unit = first_elem.get("unit_value", "%")
+        self.unit_combo.set(unit)
 
-            # Было: try: e["min_value"] = float(v["min"]) ...
-            # Стало:
-            e["min_value"] = safe_float(v["min"])
-            e["max_value"] = safe_float(v["max"])
-            # ------------------------------------------
+        for i in self.elements_tree.get_children(): self.elements_tree.delete(i)
 
-            elems.append(e)
-        c_data["other_elements"] = elems
+        for elem in comp_data.get("other_elements", []):
+            symbol = elem.get("element", "")
+            # ИЗМЕНЕНИЕ: Получаем имя из словаря словарей
+            name = self.ELEMENTS_MAP.get(symbol, {}).get("name", "")
 
-        # Обновляем имя в списке выбора
-        new_name = src_name if src_name else "Неизвестный источник"
-        vals = list(self.comp_list_combo['values'])
-        vals[self.current_source_idx] = new_name
-        self.comp_list_combo['values'] = vals
+            self.elements_tree.insert("", "end", values=[
+                name,
+                symbol,
+                elem.get("min_value", ""),
+                elem.get("max_value", ""),
+                elem.get("min_value_tolerance", ""),
+                elem.get("max_value_tolerance", "")
+            ])
+
+        self._update_chart()
+
+    def _add_source(self):
+        if not self.material: return
+        self._save_current_source()
+        new_source = {"composition_source": "Новый источник", "other_elements": []}
+        compositions = self.material.data["chemical_properties"]["composition"]
+        compositions.append(new_source)
+        self.populate_form(self.material)
+        self.source_combo.current(len(compositions) - 1)
+        self._on_source_select()
+
+    def _delete_source(self):
+        if not self.material or self.current_source_idx == -1: return
+        if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить этот источник хим. состава?"):
+            compositions = self.material.data["chemical_properties"]["composition"]
+            del compositions[self.current_source_idx]
+            self.source_combo.set("")
+            self.populate_form(self.material)
+
+    def _save_current_source(self):
+        if not self.material or self.current_source_idx == -1: return
+        try:
+            comp_data = self.material.data["chemical_properties"]["composition"][self.current_source_idx]
+        except IndexError:
+            return
+
+        comp_data["composition_source"] = self.source_entry.get()
+        comp_data["composition_subsource"] = self.subsource_entry.get()
+        comp_data["comment"] = self.comment_entry.get()
+        comp_data["base_element"] = self.base_element_entry.get()
+
+        common_unit = self.unit_combo.get()
+
+        elements_list = []
+        for item_id in self.elements_tree.get_children():
+            values = self.elements_tree.set(item_id)
+            if not values.get("elem"): continue
+
+            elem_data = {
+                "element": values["elem"],
+                "unit_value": common_unit
+            }
+
+            elem_data["min_value"] = safe_float(values["min"])
+            elem_data["max_value"] = safe_float(values["max"])
+
+            if values["min_tol"]: elem_data["min_value_tolerance"] = values["min_tol"]
+            if values["max_tol"]: elem_data["max_value_tolerance"] = values["max_tol"]
+
+            elements_list.append(elem_data)
+        comp_data["other_elements"] = elements_list
+        self._update_chart()
 
     def collect_data(self, material):
-        if self.material == material: self._save_current_comp()
+        self._save_current_source()
+        self.material = material
+
+    def _on_tree_right_click(self, event):
+        region = self.elements_tree.identify_region(event.x, event.y)
+        if region == "cell":
+            item = self.elements_tree.identify_row(event.y)
+            column = self.elements_tree.identify_column(event.x)
+            if column in ("#1", "#2"):
+                self.elements_tree.selection_set(item)
+                self.elements_tree.focus(item)
+                self.element_menu.post(event.x_root, event.y_root)
+
+    def _fill_element_from_menu(self, symbol, name):
+        """Обновлено для новой структуры map."""
+        selected_item = self.elements_tree.selection()
+        if not selected_item: return
+
+        item_id = selected_item[0]
+        current_values = list(self.elements_tree.item(item_id, "values"))
+
+        current_values[0] = name
+        current_values[1] = symbol
+
+        self.elements_tree.item(item_id, values=current_values)
+        self._update_chart()
 
 
 class EditorFrame(ttk.Frame):
@@ -4603,7 +4898,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.2)")
+        self.title("Material_Lib (2.1.3)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
