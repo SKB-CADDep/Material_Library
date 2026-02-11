@@ -4,12 +4,465 @@ import json
 import os
 import subprocess
 import uuid
+import copy
+import sys
 from datetime import datetime
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.patches import Ellipse
-import copy
-import sys
+
+
+# ======================================================================================
+# БЛОК 1: КОНФИГУРАЦИЯ И КОНСТАНТЫ
+# ======================================================================================
+
+class Schema:
+    """Константы для ключей JSON структуры материала."""
+    METADATA = "metadata"
+    PHYSICAL = "physical_properties"
+    MECHANICAL = "mechanical_properties"
+    CHEMICAL = "chemical_properties"
+
+    # Вложенные ключи
+    STRENGTH_CAT = "strength_category"
+    COMPOSITION = "composition"
+    TEMP_PAIRS = "temperature_value_pairs"
+    APP_AREA = "application_area"
+    NAME_STD = "name_material_standard"
+    NAME_ALT = "name_material_alternative"
+
+    # Поля значений
+    REF_ID = "source_ref_id"
+    VAL_STR_CAT = "value_strength_category"
+
+
+# Константа для логов
+LOG_FILENAME = "material_changelog.txt"
+
+# Маппинги свойств
+PHYSICAL_PROPERTIES_MAP = {
+    "modulus_elasticity": {
+        "name": "Модуль упругости",
+        "symbol": "E",
+        "unit": "МПа",
+        "unit_type": "Модуль упругости"
+    },
+    "coefficient_linear_expansion": {
+        "name": "Коэффициент линейного расширения (·10¯⁶)",
+        "symbol": "α",
+        "unit": "1/С",
+        "unit_type": "Коэфф. лин. расширения"
+    },
+    "coefficient_thermal_conductivity": {
+        "name": "Коэффициент теплопроводности",
+        "symbol": "λ",
+        "unit": "Вт/(м*С)",
+        "unit_type": "Теплопроводность"
+    },
+    "density": {
+        "name": "Плотность",
+        "symbol": "ρ",
+        "unit": "кг/м3",
+        "unit_type": "Плотность"
+    },
+    "specific_heat": {
+        "name": "Удельная теплоемкость",
+        "symbol": "С",
+        "unit": "Дж/(кг*С)",
+        "unit_type": "Удельная теплоемкость"
+    },
+}
+
+MECHANICAL_PROPERTIES_MAP = {
+    "yield_strength": {
+        "name": "Предел текучести",
+        "symbol": "σ_0,2",
+        "unit": "МПа",
+        "unit_type": "Предел текучести"
+    },
+    "tensile_strength": {
+        "name": "Предел прочности",
+        "symbol": "σ_в",
+        "unit": "МПа",
+        "unit_type": "Предел прочности"
+    },
+    "impact_strength": {
+        "name": "Ударная вязкость",
+        "symbol": "KCU",
+        "unit": "Дж/см2",
+        "unit_type": "Ударная вязкость"
+    },
+    "tensile_strength_limit_10_thousands_hours": {
+        "name": "Предел длит. прочности за 10 тыс.ч",
+        "symbol": "σ_дп_10",
+        "unit": "МПа",
+        "unit_type": "Предел длит. прочности"
+    },
+    "tensile_strength_limit_100_thousands_hours": {
+        "name": "Предел длит. прочности за 100 тыс.ч",
+        "symbol": "σ_дп_100",
+        "unit": "МПа",
+        "unit_type": "Предел длит. прочности"
+    },
+    "tensile_strength_limit_200_thousands_hours": {
+        "name": "Предел длит. прочности за 200 тыс.ч",
+        "symbol": "σ_дп_200",
+        "unit": "МПа",
+        "unit_type": "Предел длит. прочности"
+    },
+    "tensile_strength_limit_250_thousands_hours": {
+        "name": "Предел длит. прочности за 250 тыс.ч",
+        "symbol": "σ_дп_250",
+        "unit": "МПа",
+        "unit_type": "Предел длит. прочности"
+    },
+    "сreep_strain_rate_1_100_thousands_hours": {
+        "name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
+        "symbol": "σ_1_100",
+        "unit": "МПа",
+        "unit_type": "Ползучесть"
+    },
+    "decrement_oscillations_at_800": {
+        "name": "Декремент колебаний при 800 (·10¯⁴)",
+        "symbol": "δψ_800",
+        "unit": "кгс/см2",
+        "unit_type": "Декремент колебаний"
+    },
+    "decrement_oscillations_at_1200": {
+        "name": "Декремент колебаний при 1200 (·10¯⁴)",
+        "symbol": "δψ_1200",
+        "unit": "кгс/см2",
+        "unit_type": "Декремент колебаний"
+    },
+    "decrement_oscillations_at_1600": {
+        "name": "Декремент колебаний при 1600 (·10¯⁴)",
+        "symbol": "δψ_1600",
+        "unit": "кгс/см2",
+        "unit_type": "Декремент колебаний"
+    },
+    "fatigue_limit_for_smooth_specimen": {
+        "name": "Предел выносливости (гладкий образец, N=10e7)",
+        "symbol": "σ_-1_smooth",
+        "unit": "МПа",
+        "unit_type": "Предел выносливости"
+    },
+    "fatigue_limit_for_notched_specimen": {
+        "name": "Предел выносливости (образец с надрезом, N=10e7)",
+        "symbol": "σ_-1_notched",
+        "unit": "МПа",
+        "unit_type": "Предел выносливости"
+    },
+}
+
+ALL_PROPERTIES_MAP = {**PHYSICAL_PROPERTIES_MAP, **MECHANICAL_PROPERTIES_MAP}
+
+# Константа для сравнения списков (для логов)
+LIST_ITEM_KEYS = {
+    (Schema.MECHANICAL, Schema.STRENGTH_CAT): Schema.VAL_STR_CAT,
+    (Schema.CHEMICAL, Schema.COMPOSITION): "composition_source",
+    (Schema.CHEMICAL, Schema.COMPOSITION, "other_elements"): "element"
+}
+
+# Текстовые константы (сокращены для примера, используйте свои полные версии)
+APP_TEXT = """Приложение "Material_Lib"
+Версия: 2.02
+Год: 2025.11.11
+Промт-инженер: Гаврилов П.Я.
+Тестировщики: Лалаева С.Г., Гаврилова Н.Я.
+AI ассистент (кодогенерирующий): gemini-2.5-pro
+
+Приложение для управления и анализа
+свойств конструкционных материалов.
+"""
+INSTR_TEXT = """1. НАЧАЛО РАБОТЫ
+
+1.1. Для начала работы выберите меню "Файл" -> "Открыть директорию..." и укажите папку, в которой находятся ваши JSON-файлы материалов.
+1.2. Если рядом с приложением есть папка "БД Материалов", она будет загружена автоматически при старте.
+1.3. Области применения собираются автоматически из загруженных файлов (metadata.application_area). Для добавления новых областей используйте вкладку "Добавление / Редактирование материала" -> "Общие данные".
+1.4. После загрузки материалов вкладки приложения станут активны.
+
+2. ВКЛАДКА "ПОДБОР МАТЕРИАЛА"
+
+Эта вкладка предназначена для анализа существующих материалов (без изменения файлов).
+
+2.1. Подбор по температуре:
+   - Отфильтруйте материалы по "Область применения" (необязательно).
+   - Выберите тип свойств: "Физические свойства", "Механические свойства" или "Твердость".
+   - Введите температуру (°С) — расчёт выполняется автоматически (интерполяция между ближайшими точками).
+   - В таблице показываются материалы, категория прочности (КП), источники (НТД) и значения свойств при выбранной температуре.
+   - Сортировка: щёлкните по заголовку столбца. Копирование: ПКМ по ячейке -> "Копировать".
+
+2.2. Расчёт отдельно:
+   - Фильтруйте по "Область применения" (необязательно), затем выберите материал и (при наличии) его категорию прочности.
+   - Введите температуру и нажмите "Рассчитать".
+   - Будут показаны значения всех ключевых свойств при заданной температуре.
+   - Переключение единиц доступно для свойств, где предусмотрена конвертация (например, МПа ⇄ кгс/см²). Кнопка "Сбросить" возвращает значения и единицы по умолчанию.
+
+2.3. Сравнение материалов (свойства):
+   - Выберите свойство из выпадающего списка.
+   - Найдите материалы через поле "Поиск" и добавьте их в список "Выбранные" двойным кликом. Удаление — тоже двойной клик по выбранному.
+   - Нажмите "Построить график". Строится зависимость выбранного свойства от температуры для каждого материала/категории.
+   - Подписи точек отображают значения. Кнопка "Домой" сбрасывает вид (перерисовка), Zoom/панорамирование доступны на панели.
+   - Ограничение цвета: одновременно различимо до 10 кривых.
+
+2.4. Сравнение материалов (хим. состав):
+   - Отфильтруйте материалы по "Область применения" и/или используйте поиск.
+   - Выделите один или несколько материалов (список слева). При выборе конкретной области (и пустом поиске) все материалы выделяются автоматически.
+   - В таблице показывается химический состав по источникам. Над таблицей — поля фильтров по элементам (%).
+   - Ввод целевого значения по элементу подсвечивает строки:
+     * Зеленым — совпадение по всем заданным фильтрам;
+     * Розовым — есть несовпадение.
+   - Подсказки по влиянию элементов доступны при наведении на заголовок столбца с символом элемента.
+
+2.5. Диаграмма Эшби:
+   - Выберите свойства для осей X и Y.
+   - Через поиск добавьте материалы в список "Выбранные" (двойной клик), удаление — двойной клик по выбранному.
+   - На диаграмме каждый материал отображается эллипсом, охватывающим диапазон значений (min..max) по каждой оси.
+   - По умолчанию: X — "Предел текучести (σ_0,2)", Y — "Температура (T)". Панель инструментов поддерживает масштабирование и панорамирование.
+
+3. ВКЛАДКА "ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ МАТЕРИАЛА"
+
+Все изменения выполняются во временной копии и не попадают в файл до сохранения.
+
+3.1. Верхняя панель:
+   - Выбор материала из выпадающего списка.
+   - Кнопки: "Сохранить", "Сохранить как...", "Отменить изменения".
+     • "Сохранить" — перезаписывает исходный файл (если он есть).
+     • "Сохранить как..." — сохраняет под новым именем/в новую папку и перезагружает базу из выбранной директории.
+     • "Отменить изменения" — откатывает несохранённые правки текущего материала.
+
+3.2. Общие данные:
+   - Наименование (стандарт), альтернативные названия, общий комментарий.
+   - Классификация: категория, класс, подкласс.
+   - Области применения: список чекбоксов + поле "Добавить область применения".
+   - Параметры применения: "Температура применения ДО, °С" и комментарий.
+
+3.3. Физические свойства:
+   - Для каждого свойства указываются источник, под-источник, комментарий и таблица точек (температура — значение).
+   - Редактирование ячейки — двойной клик; "+" добавляет строку; "-" удаляет выбранную строку.
+   - График справа обновляется по мере изменения таблицы.
+   - Числовые значения вводите с точкой (например, 20.5).
+
+3.4. Механические свойства:
+   - Свойства задаются по категориям прочности (КП). Добавляйте/удаляйте категории кнопками "+" / "-".
+   - Внутри каждой категории свойства редактируются аналогично физическим (источник, таблица точек, график).
+   - Блок "Твердость" редактируется отдельной таблицей (источник, под-источник, min/max, ед. изм.).
+
+3.5. Химический состав:
+   - Источники состава: добавление/удаление источников и их редактирование.
+   - Таблица элементов: элемент, min/max (%), единица (по умолчанию "%"), допуски min/max (строки).
+   - Строки без названия элемента игнорируются при сохранении.
+
+3.6. Сохранение и логирование:
+   - При сохранении вычисляются и записываются изменения в файл "material_changelog.txt" (рядом с приложением).
+   - В журнал попадает: время, пользователь, материал и список изменённых полей.
+
+4. ВКЛАДКА "РАБОТА С ИСТОЧНИКАМИ"
+
+4.1. Просмотр:
+   - Автоматически собираются все уникальные источники и под-источники из физических/механических свойств, твердости и хим. состава.
+   - Если в папке "Источники" (рядом с приложением) найден файл с таким именем (или тем же именем и популярным расширением: .pdf, .docx, .xlsx, .txt, .jpg, .png), в таблице появляется кликабельная ссылка.
+   - Клик по ссылке открывает файл системным приложением.
+
+5. ВАЖНЫЕ ЗАМЕЧАНИЯ
+
+5.1. Структура JSON: Приложение ожидает корректную структуру (metadata, physical_properties, mechanical_properties.strength_category, chemical_properties.composition). Нарушение структуры может вызвать ошибки.
+5.2. Числовые значения: Вводите числа через точку (например, 123.45). Запись с запятой (",") будет проигнорирована.
+5.3. Горячие клавиши: Копирование/вставка/вырезание/выделение работают только на английской раскладке.
+5.4. Папки рядом с приложением: "БД Материалов" (для автозагрузки базы при старте — по желанию) и "Источники" (для открытия связанных файлов) можно держать рядом с .exe.
+"""
+CHANGELOG_TEXT = """
+"""
+
+# ======================================================================================
+# БЛОК 2: УТИЛИТЫ
+# ======================================================================================
+
+class MathUtils:
+    """Утилиты для математических расчетов."""
+
+    @staticmethod
+    def safe_float(value, default=None):
+        """Безопасное преобразование строки в float."""
+        if value is None: return default
+        if isinstance(value, (float, int)): return float(value)
+        try:
+            return float(str(value).strip().replace(',', '.'))
+        except (ValueError, TypeError):
+            return default
+
+    @staticmethod
+    def linear_interpolate(pairs, target_x):
+        """
+        Линейная интерполяция значения Y для target_x по списку пар [(x, y), ...].
+        Не выполняет экстраполяцию (возвращает None).
+        """
+        if not pairs: return None
+
+        # Сортировка пар по X
+        sorted_pairs = sorted(pairs, key=lambda p: p[0])
+
+        # Проверка границ
+        if target_x < sorted_pairs[0][0] or target_x > sorted_pairs[-1][0]:
+            return None  # Экстраполяция запрещена или невозможна
+
+        # Точное совпадение
+        for x, y in sorted_pairs:
+            if x == target_x: return y
+
+        # Поиск интервала
+        for i in range(len(sorted_pairs) - 1):
+            x1, y1 = sorted_pairs[i]
+            x2, y2 = sorted_pairs[i + 1]
+            if x1 < target_x < x2:
+                if x2 - x1 == 0: return y1
+                return y1 + (target_x - x1) * (y2 - y1) / (x2 - x1)
+
+        return None
+
+
+def get_app_directory():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
+
+
+def get_username():
+    try:
+        return os.getlogin()
+    except Exception:
+        return os.environ.get("USERNAME", "unknown_user")
+
+
+def read_text_from_file(filename):
+    embedded = {"app_list.txt": APP_TEXT, "instruction_list.txt": INSTR_TEXT, "change_list.txt": CHANGELOG_TEXT}
+    return embedded.get(filename, f"ОШИБКА: Не удалось прочитать '{filename}'")
+
+
+def find_changes(old_data, new_data):
+    """
+    Главная функция для поиска изменений. Подготавливает данные и вызывает рекурсивный хелпер.
+    Возвращает структурированный список изменений.
+    """
+
+    def find_changes_recursive(d1, d2, path):
+        changes = []
+        if isinstance(d1, dict) and isinstance(d2, dict):
+            all_keys = sorted(list(set(d1.keys()) | set(d2.keys())))
+            for key in all_keys:
+                if key in ["material_id", "property_last_updated"]: continue
+                new_path = path + [key]
+                val1, val2 = d1.get(key), d2.get(key)
+                if val1 is None and val2 is not None:
+                    changes.append({'path': new_path, 'type': 'added', 'new': val2})
+                elif val1 is not None and val2 is None:
+                    changes.append({'path': new_path, 'type': 'removed', 'old': val1})
+                elif val1 != val2:
+                    changes.extend(find_changes_recursive(val1, val2, new_path))
+        elif isinstance(d1, list) and isinstance(d2, list):
+            unique_key_name = LIST_ITEM_KEYS.get(tuple(path))
+            is_list_of_dicts_with_key = (unique_key_name and
+                                         all(isinstance(item, dict) and unique_key_name in item for item in d1 + d2))
+            if is_list_of_dicts_with_key:
+                old_map = {item[unique_key_name]: item for item in d1}
+                new_map = {item[unique_key_name]: item for item in d2}
+                all_item_keys = sorted(list(set(old_map.keys()) | set(new_map.keys())))
+                for item_key in all_item_keys:
+                    old_item = old_map.get(item_key)
+                    new_item = new_map.get(item_key)
+                    item_path = path + [f"{path[-1]}[{item_key}]"]
+                    if old_item is None:
+                        changes.append({'path': item_path, 'type': 'added', 'new': new_item})
+                    elif new_item is None:
+                        changes.append({'path': item_path, 'type': 'removed', 'old': old_item})
+                    elif old_item != new_item:
+                        changes.extend(find_changes_recursive(old_item, new_item, item_path))
+            else:
+                if json.dumps(d1, sort_keys=True) != json.dumps(d2, sort_keys=True):
+                    changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
+        elif d1 != d2:
+            changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
+        return changes
+
+    return find_changes_recursive(copy.deepcopy(old_data), copy.deepcopy(new_data), [])
+
+
+def log_changes(material_name, changes_list):
+    """Записывает изменения в лог-файл в иерархическом виде."""
+    if not changes_list: return
+    log_path = os.path.join(get_app_directory(), LOG_FILENAME)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    username = get_username()
+    try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write("=" * 80 + "\n")
+            f.write(f"Время: {timestamp}\n")
+            f.write(f"Пользователь: {username}\n")
+            f.write(f"Материал: {material_name}\n")
+            f.write("Изменения:\n")
+            printed_headers = set()
+            for change in changes_list:
+                path = change['path']
+                for i in range(len(path) - 1):
+                    header_path_tuple = tuple(path[:i + 1])
+                    if header_path_tuple not in printed_headers:
+                        indent = "  " * (i + 1)
+                        header_name = path[i]
+                        if isinstance(header_name, int): f.write(f"{indent}Изменения в элементе с индексом [{header_name}]:\n")
+                        else: f.write(f"{indent}Изменения в '{header_name}':\n")
+                        printed_headers.add(header_path_tuple)
+                leaf_key = path[-1]
+                indent = "  " * len(path)
+                ct = change['type']
+                if ct == 'modified': f.write(f"{indent}- '{leaf_key}': [БЫЛО] '{change['old']}' -> [СТАЛО] '{change['new']}'\n")
+                elif ct == 'added': f.write(f"{indent}- '{leaf_key}': [ДОБАВЛЕНО] -> '{change['new']}'\n")
+                elif ct == 'removed': f.write(f"{indent}- '{leaf_key}': [УДАЛЕНО] (было '{change['old']}')\n")
+            f.write("\n")
+    except Exception as e:
+        print(f"Ошибка записи в лог-файл: {e}")
+
+
+def safe_float(value, default=None):
+    """
+    Безопасное преобразование строки в float.
+    Меняет запятую на точку. Возвращает default при ошибке.
+    """
+    if value is None: return default
+    if isinstance(value, (float, int)): return float(value)
+    try:
+        # Убираем пробелы и меняем запятую на точку
+        return float(str(value).strip().replace(',', '.'))
+    except (ValueError, TypeError):
+        return default
+
+
+class ScrollableMixin:
+    """Миксин для прокрутки колесом мыши."""
+    def bind_mouse_wheel(self, widget, target_widget=None):
+        target = target_widget if target_widget else widget
+        def _on_mousewheel(event):
+            if isinstance(event.widget, ttk.Combobox): pass
+            if hasattr(event, 'delta') and event.delta != 0:
+                target.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            elif hasattr(event, 'num'):
+                if event.num == 4: target.yview_scroll(-1, "units")
+                elif event.num == 5: target.yview_scroll(1, "units")
+            return "break"
+        widget.bind("<MouseWheel>", _on_mousewheel)
+        widget.bind("<Button-4>", _on_mousewheel)
+        widget.bind("<Button-5>", _on_mousewheel)
+
+    def bind_all_children(self, parent_widget, target_canvas):
+        self.bind_mouse_wheel(parent_widget, target_canvas)
+        for child in parent_widget.winfo_children():
+            self.bind_all_children(child, target_canvas)
+
+
+# ======================================================================================
+# БЛОК 3: БИЗНЕС-ЛОГИКА (CORE)
+# ======================================================================================
+
 
 class UnitManager:
     """
@@ -1009,515 +1462,79 @@ class UnitManager:
 
         return val / factor
 
-# --- Константа для "умного" сравнения списков в логах ---
-# Указывает, по какому ключу идентифицировать элементы в конкретном списке
-LIST_ITEM_KEYS = {
-    # Путь к списку в JSON                       # Уникальный ключ элемента
-    ("mechanical_properties", "strength_category"): "value_strength_category",
-    ("chemical_properties", "composition"):         "composition_source",
-    ("chemical_properties", "composition", "other_elements"): "element" # Для вложенных списков
-}
 
-# --- Константы с описанием свойств ---
+class SourceManager:
+    """Менеджер источников."""
+    FILENAME = "source.json"
 
-PHYSICAL_PROPERTIES_MAP = {
-    "modulus_elasticity": {
-        "name": "Модуль упругости",
-        "symbol": "E",
-        "unit": "МПа",
-        "unit_type": "Модуль упругости"
-    },
-    "coefficient_linear_expansion": {
-        "name": "Коэффициент линейного расширения (·10¯⁶)",
-        "symbol": "α",
-        "unit": "1/С",
-        "unit_type": "Коэфф. лин. расширения"
-    },
-    "coefficient_thermal_conductivity": {
-        "name": "Коэффициент теплопроводности",
-        "symbol": "λ",
-        "unit": "Вт/(м*С)",
-        "unit_type": "Теплопроводность"
-    },
-    "density": {
-        "name": "Плотность",
-        "symbol": "ρ",
-        "unit": "кг/м3",
-        "unit_type": "Плотность"
-    },
-    "specific_heat": {
-        "name": "Удельная теплоемкость",
-        "symbol": "С",
-        "unit": "Дж/(кг*С)",
-        "unit_type": "Удельная теплоемкость"
-    },
-}
+    def __init__(self):
+        self.app_dir = get_app_directory()
+        self.filepath = os.path.join(self.app_dir, self.FILENAME)
+        self.sources = []
+        self.load()
 
-MECHANICAL_PROPERTIES_MAP = {
-    "yield_strength": {
-        "name": "Предел текучести",
-        "symbol": "σ_0,2",
-        "unit": "МПа",
-        "unit_type": "Предел текучести"
-    },
-    "tensile_strength": {
-        "name": "Предел прочности",
-        "symbol": "σ_в",
-        "unit": "МПа",
-        "unit_type": "Предел прочности"
-    },
-    "impact_strength": {
-        "name": "Ударная вязкость",
-        "symbol": "KCU",
-        "unit": "Дж/см2",
-        "unit_type": "Ударная вязкость"
-    },
-    "tensile_strength_limit_10_thousands_hours": {
-        "name": "Предел длит. прочности за 10 тыс.ч",
-        "symbol": "σ_дп_10",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "tensile_strength_limit_100_thousands_hours": {
-        "name": "Предел длит. прочности за 100 тыс.ч",
-        "symbol": "σ_дп_100",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "tensile_strength_limit_200_thousands_hours": {
-        "name": "Предел длит. прочности за 200 тыс.ч",
-        "symbol": "σ_дп_200",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "tensile_strength_limit_250_thousands_hours": {
-        "name": "Предел длит. прочности за 250 тыс.ч",
-        "symbol": "σ_дп_250",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "сreep_strain_rate_1_100_thousands_hours": {
-        "name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
-        "symbol": "σ_1_100",
-        "unit": "МПа",
-        "unit_type": "Ползучесть"
-    },
-    "decrement_oscillations_at_800": {
-        "name": "Декремент колебаний при 800 (·10¯⁴)",
-        "symbol": "δψ_800",
-        "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
-    },
-    "decrement_oscillations_at_1200": {
-        "name": "Декремент колебаний при 1200 (·10¯⁴)",
-        "symbol": "δψ_1200",
-        "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
-    },
-    "decrement_oscillations_at_1600": {
-        "name": "Декремент колебаний при 1600 (·10¯⁴)",
-        "symbol": "δψ_1600",
-        "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
-    },
-    "fatigue_limit_for_smooth_specimen": {
-        "name": "Предел выносливости (гладкий образец, N=10e7)",
-        "symbol": "σ_-1_smooth",
-        "unit": "МПа",
-        "unit_type": "Предел выносливости"
-    },
-    "fatigue_limit_for_notched_specimen": {
-        "name": "Предел выносливости (образец с надрезом, N=10e7)",
-        "symbol": "σ_-1_notched",
-        "unit": "МПа",
-        "unit_type": "Предел выносливости"
-    },
-}
-
-ALL_PROPERTIES_MAP = {**PHYSICAL_PROPERTIES_MAP, **MECHANICAL_PROPERTIES_MAP}
-
-
-# --- Вспомогательная функция для редактирования ячеек Treeview ---
-def create_editable_treeview(parent_frame, on_update_callback=None):
-    """Создает Treeview и добавляет к нему логику редактирования ячеек."""
-    tree = ttk.Treeview(parent_frame)
-
-    def on_tree_double_click(event):
-        region = tree.identify("region", event.x, event.y)
-        if region != "cell":
+    def load(self):
+        if not os.path.exists(self.filepath):
+            self.sources = []
+            self.save()
             return
-
-        item_id = tree.focus()
-        column = tree.identify_column(event.x)
-
-        # Получаем геометрию ячейки
-        x, y, width, height = tree.bbox(item_id, column)
-
-        # Создаем временное поле для ввода
-        entry_var = tk.StringVar()
-        entry = ttk.Entry(tree, textvariable=entry_var)
-
-        # Получаем текущее значение и устанавливаем его в поле
-        current_value = tree.set(item_id, column)
-        entry_var.set(current_value)
-
-        entry.place(x=x, y=y, width=width, height=height)
-        entry.focus_set()
-        entry.selection_range(0, tk.END)
-
-        def on_focus_out(event):
-            tree.set(item_id, column, entry_var.get())
-            entry.destroy()
-            # Вызываем callback, если он был передан
-            if on_update_callback:
-                on_update_callback()
-
-        def on_enter_press(event):
-            on_focus_out(event)
-
-        entry.bind("<FocusOut>", on_focus_out)
-        entry.bind("<Return>", on_enter_press)
-
-    tree.bind("<Double-1>", on_tree_double_click)
-    return tree
-
-def get_app_directory():
-    """Возвращает путь к директории, где находится exe или .py файл."""
-    if getattr(sys, 'frozen', False):
-        # Если приложение "заморожено" (PyInstaller)
-        return os.path.dirname(sys.executable)
-    else:
-        # Если запускается как обычный .py скрипт
-        return os.path.dirname(os.path.abspath(__file__))
-
-APP_TEXT = """Приложение "Material_Lib"
-Версия: 2.02
-Год: 2025.11.11
-Промт-инженер: Гаврилов П.Я.
-Тестировщики: Лалаева С.Г., Гаврилова Н.Я.
-AI ассистент (кодогенерирующий): gemini-2.5-pro
-
-Приложение для управления и анализа
-свойств конструкционных материалов.
-"""
-INSTR_TEXT = """1. НАЧАЛО РАБОТЫ
-
-1.1. Для начала работы выберите меню "Файл" -> "Открыть директорию..." и укажите папку, в которой находятся ваши JSON-файлы материалов.
-1.2. Если рядом с приложением есть папка "БД Материалов", она будет загружена автоматически при старте.
-1.3. Области применения собираются автоматически из загруженных файлов (metadata.application_area). Для добавления новых областей используйте вкладку "Добавление / Редактирование материала" -> "Общие данные".
-1.4. После загрузки материалов вкладки приложения станут активны.
-
-2. ВКЛАДКА "ПОДБОР МАТЕРИАЛА"
-
-Эта вкладка предназначена для анализа существующих материалов (без изменения файлов).
-
-2.1. Подбор по температуре:
-   - Отфильтруйте материалы по "Область применения" (необязательно).
-   - Выберите тип свойств: "Физические свойства", "Механические свойства" или "Твердость".
-   - Введите температуру (°С) — расчёт выполняется автоматически (интерполяция между ближайшими точками).
-   - В таблице показываются материалы, категория прочности (КП), источники (НТД) и значения свойств при выбранной температуре.
-   - Сортировка: щёлкните по заголовку столбца. Копирование: ПКМ по ячейке -> "Копировать".
-
-2.2. Расчёт отдельно:
-   - Фильтруйте по "Область применения" (необязательно), затем выберите материал и (при наличии) его категорию прочности.
-   - Введите температуру и нажмите "Рассчитать".
-   - Будут показаны значения всех ключевых свойств при заданной температуре.
-   - Переключение единиц доступно для свойств, где предусмотрена конвертация (например, МПа ⇄ кгс/см²). Кнопка "Сбросить" возвращает значения и единицы по умолчанию.
-
-2.3. Сравнение материалов (свойства):
-   - Выберите свойство из выпадающего списка.
-   - Найдите материалы через поле "Поиск" и добавьте их в список "Выбранные" двойным кликом. Удаление — тоже двойной клик по выбранному.
-   - Нажмите "Построить график". Строится зависимость выбранного свойства от температуры для каждого материала/категории.
-   - Подписи точек отображают значения. Кнопка "Домой" сбрасывает вид (перерисовка), Zoom/панорамирование доступны на панели.
-   - Ограничение цвета: одновременно различимо до 10 кривых.
-
-2.4. Сравнение материалов (хим. состав):
-   - Отфильтруйте материалы по "Область применения" и/или используйте поиск.
-   - Выделите один или несколько материалов (список слева). При выборе конкретной области (и пустом поиске) все материалы выделяются автоматически.
-   - В таблице показывается химический состав по источникам. Над таблицей — поля фильтров по элементам (%).
-   - Ввод целевого значения по элементу подсвечивает строки:
-     * Зеленым — совпадение по всем заданным фильтрам;
-     * Розовым — есть несовпадение.
-   - Подсказки по влиянию элементов доступны при наведении на заголовок столбца с символом элемента.
-
-2.5. Диаграмма Эшби:
-   - Выберите свойства для осей X и Y.
-   - Через поиск добавьте материалы в список "Выбранные" (двойной клик), удаление — двойной клик по выбранному.
-   - На диаграмме каждый материал отображается эллипсом, охватывающим диапазон значений (min..max) по каждой оси.
-   - По умолчанию: X — "Предел текучести (σ_0,2)", Y — "Температура (T)". Панель инструментов поддерживает масштабирование и панорамирование.
-
-3. ВКЛАДКА "ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ МАТЕРИАЛА"
-
-Все изменения выполняются во временной копии и не попадают в файл до сохранения.
-
-3.1. Верхняя панель:
-   - Выбор материала из выпадающего списка.
-   - Кнопки: "Сохранить", "Сохранить как...", "Отменить изменения".
-     • "Сохранить" — перезаписывает исходный файл (если он есть).
-     • "Сохранить как..." — сохраняет под новым именем/в новую папку и перезагружает базу из выбранной директории.
-     • "Отменить изменения" — откатывает несохранённые правки текущего материала.
-
-3.2. Общие данные:
-   - Наименование (стандарт), альтернативные названия, общий комментарий.
-   - Классификация: категория, класс, подкласс.
-   - Области применения: список чекбоксов + поле "Добавить область применения".
-   - Параметры применения: "Температура применения ДО, °С" и комментарий.
-
-3.3. Физические свойства:
-   - Для каждого свойства указываются источник, под-источник, комментарий и таблица точек (температура — значение).
-   - Редактирование ячейки — двойной клик; "+" добавляет строку; "-" удаляет выбранную строку.
-   - График справа обновляется по мере изменения таблицы.
-   - Числовые значения вводите с точкой (например, 20.5).
-
-3.4. Механические свойства:
-   - Свойства задаются по категориям прочности (КП). Добавляйте/удаляйте категории кнопками "+" / "-".
-   - Внутри каждой категории свойства редактируются аналогично физическим (источник, таблица точек, график).
-   - Блок "Твердость" редактируется отдельной таблицей (источник, под-источник, min/max, ед. изм.).
-
-3.5. Химический состав:
-   - Источники состава: добавление/удаление источников и их редактирование.
-   - Таблица элементов: элемент, min/max (%), единица (по умолчанию "%"), допуски min/max (строки).
-   - Строки без названия элемента игнорируются при сохранении.
-
-3.6. Сохранение и логирование:
-   - При сохранении вычисляются и записываются изменения в файл "material_changelog.txt" (рядом с приложением).
-   - В журнал попадает: время, пользователь, материал и список изменённых полей.
-
-4. ВКЛАДКА "РАБОТА С ИСТОЧНИКАМИ"
-
-4.1. Просмотр:
-   - Автоматически собираются все уникальные источники и под-источники из физических/механических свойств, твердости и хим. состава.
-   - Если в папке "Источники" (рядом с приложением) найден файл с таким именем (или тем же именем и популярным расширением: .pdf, .docx, .xlsx, .txt, .jpg, .png), в таблице появляется кликабельная ссылка.
-   - Клик по ссылке открывает файл системным приложением.
-
-5. ВАЖНЫЕ ЗАМЕЧАНИЯ
-
-5.1. Структура JSON: Приложение ожидает корректную структуру (metadata, physical_properties, mechanical_properties.strength_category, chemical_properties.composition). Нарушение структуры может вызвать ошибки.
-5.2. Числовые значения: Вводите числа через точку (например, 123.45). Запись с запятой (",") будет проигнорирована.
-5.3. Горячие клавиши: Копирование/вставка/вырезание/выделение работают только на английской раскладке.
-5.4. Папки рядом с приложением: "БД Материалов" (для автозагрузки базы при старте — по желанию) и "Источники" (для открытия связанных файлов) можно держать рядом с .exe.
-"""
-CHANGELOG_TEXT = """
-"""
-
-def read_text_from_file(filename):
-    embedded = {
-        "app_list.txt": APP_TEXT,
-        "instruction_list.txt": INSTR_TEXT,
-        "change_list.txt": CHANGELOG_TEXT,
-    }
-    if filename in embedded:
-        return embedded[filename]
-    # иначе — пробуем читать с диска
-    try:
-        pass #filepath = resource_path(filename)
-        #with open(filepath, 'r', encoding='utf-8') as f:
-            #return f.read()
-    except Exception as e:
-        return f"ОШИБКА: Не удалось прочитать '{filename}'. {e}"
-
-LOG_FILENAME = "material_changelog.txt"
-
-
-def get_username():
-    """Простой способ получить имя пользователя."""
-    try:
-        return os.getlogin()
-    except Exception:
-        # Резервный вариант, если getlogin() не сработает
-        return os.environ.get("USERNAME", "unknown_user")
-
-
-def find_changes(old_data, new_data):
-    """
-    Главная функция для поиска изменений. Подготавливает данные и вызывает рекурсивный хелпер.
-    Возвращает структурированный список изменений.
-    """
-
-    def find_changes_recursive(d1, d2, path):
-        """Рекурсивно сравнивает словари и списки, возвращая структурированный список изменений."""
-        changes = []
-
-        # --- Сравнение СЛОВАРЕЙ ---
-        if isinstance(d1, dict) and isinstance(d2, dict):
-            all_keys = sorted(list(set(d1.keys()) | set(d2.keys())))
-            for key in all_keys:
-                if key in ["material_id", "property_last_updated"]: continue
-                new_path = path + [key]
-                val1, val2 = d1.get(key), d2.get(key)
-                if val1 is None and val2 is not None:
-                    changes.append({'path': new_path, 'type': 'added', 'new': val2})
-                elif val1 is not None and val2 is None:
-                    changes.append({'path': new_path, 'type': 'removed', 'old': val1})
-                elif val1 != val2:
-                    changes.extend(find_changes_recursive(val1, val2, new_path))
-
-        # --- Сравнение СПИСКОВ ---
-        elif isinstance(d1, list) and isinstance(d2, list):
-            # Проверяем, является ли этот список "особенным" (списком словарей с ключом)
-            unique_key_name = LIST_ITEM_KEYS.get(tuple(path))
-
-            # Проверяем, что все элементы - словари и содержат уникальный ключ
-            is_list_of_dicts_with_key = (unique_key_name and
-                                         all(isinstance(item, dict) and unique_key_name in item for item in d1 + d2))
-
-            if is_list_of_dicts_with_key:
-                # "Умное" сравнение для списка словарей
-                old_map = {item[unique_key_name]: item for item in d1}
-                new_map = {item[unique_key_name]: item for item in d2}
-                all_item_keys = sorted(list(set(old_map.keys()) | set(new_map.keys())))
-
-                for item_key in all_item_keys:
-                    old_item = old_map.get(item_key)
-                    new_item = new_map.get(item_key)
-                    # Создаем описательный путь, например: 'strength_category[КП 100]'
-                    item_path = path + [f"{path[-1]}[{item_key}]"]
-
-                    if old_item is None:
-                        changes.append({'path': item_path, 'type': 'added', 'new': new_item})
-                    elif new_item is None:
-                        changes.append({'path': item_path, 'type': 'removed', 'old': old_item})
-                    elif old_item != new_item:
-                        changes.extend(find_changes_recursive(old_item, new_item, item_path))
-            else:
-                # Простое сравнение для обычных списков (например, список строк)
-                if json.dumps(d1, sort_keys=True) != json.dumps(d2, sort_keys=True):
-                    changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
-
-        # --- Сравнение ПРОСТЫХ ЗНАЧЕНИЙ ---
-        elif d1 != d2:
-            changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
-
-        return changes
-
-    old_copy = copy.deepcopy(old_data)
-    new_copy = copy.deepcopy(new_data)
-    return find_changes_recursive(old_copy, new_copy, [])
-
-
-def log_changes(material_name, changes_list):
-    """Записывает изменения в лог-файл в иерархическом виде."""
-    if not changes_list:
-        return
-
-    log_path = os.path.join(get_app_directory(), LOG_FILENAME)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    username = get_username()
-
-    try:
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write("=" * 80 + "\n")
-            f.write(f"Время: {timestamp}\n")
-            f.write(f"Пользователь: {username}\n")
-            f.write(f"Материал: {material_name}\n")
-            f.write("Изменения:\n")
-
-            printed_headers = set()
-
-            for change in changes_list:
-                path = change['path']
-
-                # --- Печать иерархических заголовков ---
-                for i in range(len(path) - 1):
-                    # Создаем путь к заголовку (например, 'metadata' или 'metadata.density')
-                    header_path_tuple = tuple(path[:i + 1])
-
-                    if header_path_tuple not in printed_headers:
-                        indent = "  " * (i + 1)
-                        header_name = path[i]
-                        # Проверяем, не является ли ключ числом (индекс списка)
-                        if isinstance(header_name, int):
-                            f.write(f"{indent}Изменения в элементе с индексом [{header_name}]:\n")
-                        else:
-                            f.write(f"{indent}Изменения в '{header_name}':\n")
-                        printed_headers.add(header_path_tuple)
-
-                # --- Печать самого изменения ---
-                leaf_key = path[-1]
-                indent = "  " * len(path)
-
-                change_type = change['type']
-
-                if change_type == 'modified':
-                    line = f"{indent}- '{leaf_key}': [БЫЛО] '{change['old']}' -> [СТАЛО] '{change['new']}'\n"
-                elif change_type == 'added':
-                    line = f"{indent}- '{leaf_key}': [ДОБАВЛЕНО] -> '{change['new']}'\n"
-                elif change_type == 'removed':
-                    line = f"{indent}- '{leaf_key}': [УДАЛЕНО] (было '{change['old']}')\n"
-
-                f.write(line)
-
-            f.write("\n")
-    except Exception as e:
-        print(f"Ошибка записи в лог-файл: {e}")
-
-
-def safe_float(value, default=None):
-    """
-    Безопасное преобразование строки в float.
-    Меняет запятую на точку. Возвращает default при ошибке.
-    """
-    if value is None: return default
-    if isinstance(value, (float, int)): return float(value)
-    try:
-        # Убираем пробелы и меняем запятую на точку
-        return float(str(value).strip().replace(',', '.'))
-    except (ValueError, TypeError):
-        return default
-
-
-class ScrollableMixin:
-    """Миксин для добавления прокрутки колесом мыши."""
-
-    def bind_mouse_wheel(self, widget, target_widget=None):
-        """
-        widget: виджет, над которым крутим колесо.
-        target_widget: виджет, который должен прокручиваться (Canvas).
-        """
-        target = target_widget if target_widget else widget
-
-        def _on_mousewheel(event):
-            # Проверяем, не является ли виджет Combobox'ом в открытом состоянии
-            # (чтобы не прокручивать страницу, когда выбираем значение)
-            if isinstance(event.widget, ttk.Combobox):
-                # Можно добавить логику проверки состояния, но пока просто скроллим
-                pass
-
-            if hasattr(event, 'delta') and event.delta != 0:
-                target.yview_scroll(int(-1 * (event.delta / 120)), "units")
-            elif hasattr(event, 'num'):
-                if event.num == 4:
-                    target.yview_scroll(-1, "units")
-                elif event.num == 5:
-                    target.yview_scroll(1, "units")
-
-            # Важно вернуть "break" только если мы реально прокрутили,
-            # чтобы не блокировать события в других виджетах, если они нужны.
-            # Но для надежности скролла страницы обычно возвращают break.
-            return "break"
-
-            # Привязываем к виджету
-
-        widget.bind("<MouseWheel>", _on_mousewheel)
-        widget.bind("<Button-4>", _on_mousewheel)
-        widget.bind("<Button-5>", _on_mousewheel)
-
-    def bind_all_children(self, parent_widget, target_canvas):
-        """Рекурсивно привязывает скролл ко всем детям parent_widget."""
-
-        # Привязываем сам родитель
-        self.bind_mouse_wheel(parent_widget, target_canvas)
-
-        # Рекурсивно для детей
-        for child in parent_widget.winfo_children():
-            self.bind_all_children(child, target_canvas)
-
-
-# --- Классы данных ---
+        try:
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                self.sources = json.load(f)
+        except Exception as e:
+            print(f"Ошибка загрузки source.json: {e}")
+            self.sources = []
+
+    def save(self):
+        try:
+            with open(self.filepath, 'w', encoding='utf-8') as f:
+                json.dump(self.sources, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Ошибка сохранения source.json: {e}")
+
+    def get_all(self):
+        return self.sources
+
+    def get_source_by_id(self, source_id):
+        for src in self.sources:
+            if src.get("id_source") == source_id: return src
+        return None
+
+    def get_name_by_id(self, source_id):
+        src = self.get_source_by_id(source_id)
+        return src.get("name_source", "Без названия") if src else "Неизвестный источник"
+
+    def add_source(self, name, description="", hyperlink=""):
+        new_id = str(uuid.uuid4())
+        new_source = {
+            "id_source": new_id, "name_source": name, "description": description, "hyperlink": hyperlink,
+            "user_name_found": get_username(), "data_found": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "user_name_change": "", "data_change": ""
+        }
+        self.sources.append(new_source)
+        self.save()
+        return new_id
+
+    def update_source(self, source_id, name, description, hyperlink):
+        src = self.get_source_by_id(source_id)
+        if src:
+            src.update({"name_source": name, "description": description, "hyperlink": hyperlink,
+                        "user_name_change": get_username(),
+                        "data_change": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+            self.save()
+            return True
+        return False
+
+    def delete_source(self, source_id):
+        self.sources = [s for s in self.sources if s.get("id_source") != source_id]
+        self.save()
 
 
 class Material:
-    """Класс для представления одного материала и его свойств."""
+    """
+    Класс материала. Инкапсулирует доступ к JSON-структуре.
+    Реализует поиск свойств и интерполяцию.
+    """
 
     def __init__(self, filepath=None, data=None):
         self.filepath = filepath
@@ -1528,264 +1545,218 @@ class Material:
             self.data = data
         else:
             self.data = self.get_empty_structure()
-
         self.filename = os.path.basename(self.filepath) if self.filepath else "Новый материал.json"
 
     def get_name(self):
-        return self.data.get("metadata", {}).get("name_material_standard", "Без имени")
+        return self.data.get(Schema.METADATA, {}).get(Schema.NAME_STD, "Без имени")
 
     def get_display_name(self):
-        """Возвращает форматированное имя для отображения: 'Стандартное (альт1, альт2)'."""
-        meta = self.data.get("metadata", {})
-        standard_name = meta.get("name_material_standard", "Без имени")
-        alternatives = meta.get("name_material_alternative", [])
-
-        # Формируем строку только если есть альтернативные названия
-        if alternatives:
-            # Убираем пустые строки на случай, если они есть в JSON
-            valid_alternatives = [alt.strip() for alt in alternatives if alt.strip()]
-            if valid_alternatives:
-                alternatives_str = ", ".join(valid_alternatives)
-                return f"{standard_name} ({alternatives_str})"
-
-        # Если альтернативных имен нет, возвращаем только стандартное
-        return standard_name
+        meta = self.data.get(Schema.METADATA, {})
+        std = meta.get(Schema.NAME_STD, "Без имени")
+        alts = [a.strip() for a in meta.get(Schema.NAME_ALT, []) if a.strip()]
+        return f"{std} ({', '.join(alts)})" if alts else std
 
     @staticmethod
     def get_empty_structure():
-        """Возвращает пустой шаблон для нового материала."""
         return {
             "material_id": str(uuid.uuid4()),
-            "metadata": {
-                "name_material_standard": "", "name_material_alternative": [], "application_area": [],
-                "comment": "", "classification": {"classification_category": "", "classification_class": "",
-                                                  "classification_subclass": ""}
+            Schema.METADATA: {
+                Schema.NAME_STD: "", Schema.NAME_ALT: [], Schema.APP_AREA: [], "comment": "",
+                "classification": {"classification_category": "", "classification_class": "",
+                                   "classification_subclass": ""}
             },
-            "physical_properties": {},
-            "mechanical_properties": {"strength_category": []},
-            "chemical_properties": {"composition": []}
+            Schema.PHYSICAL: {},
+            Schema.MECHANICAL: {Schema.STRENGTH_CAT: []},
+            Schema.CHEMICAL: {Schema.COMPOSITION: []}
         }
 
-    def get_property_at_temp(self, prop_key, temp):
-        prop_data = None
-        if prop_key in self.data.get("physical_properties", {}):
-            prop_data = self.data["physical_properties"][prop_key]
-        else:
-            for category in self.data.get("mechanical_properties", {}).get("strength_category", []):
-                if prop_key in category:
-                    prop_data = category[prop_key]
-                    break
-        if not prop_data or "temperature_value_pairs" not in prop_data: return "-"
-        pairs = sorted(prop_data["temperature_value_pairs"], key=lambda p: p[0])
-        if not pairs: return "-"
-        for t, val in pairs:
-            if t == temp: return val
-        lower_point, upper_point = None, None
-        for t, val in pairs:
-            if t < temp:
-                lower_point = (t, val)
-            elif t > temp:
-                upper_point = (t, val); break
-        if lower_point and upper_point:
-            t1, v1 = lower_point;
-            t2, v2 = upper_point
-            if t2 - t1 == 0: return v1  # Избегаем деления на ноль
-            interpolated_val = v1 + (temp - t1) * (v2 - v1) / (t2 - t1)
-            return f"{interpolated_val:.2f}"
+    def get_strength_categories(self):
+        """Возвращает список категорий прочности."""
+        return self.data.get(Schema.MECHANICAL, {}).get(Schema.STRENGTH_CAT, [])
+
+    def get_interpolated_property(self, prop_key, temp, category_idx=None):
+        """
+        Универсальный метод получения значения свойства при температуре.
+        Ищет сначала в физических, затем в механических (по категории).
+        """
+        # 1. Поиск в физических свойствах
+        phys_props = self.data.get(Schema.PHYSICAL, {})
+        if prop_key in phys_props:
+            pairs = phys_props[prop_key].get(Schema.TEMP_PAIRS, [])
+            val = MathUtils.linear_interpolate(pairs, temp)
+            if val is not None: return val
+
+        # 2. Поиск в механических свойствах
+        cats = self.get_strength_categories()
+
+        # Если категория задана индексом
+        target_cats = [cats[category_idx]] if category_idx is not None and 0 <= category_idx < len(cats) else cats
+
+        for cat in target_cats:
+            if prop_key in cat:
+                pairs = cat[prop_key].get(Schema.TEMP_PAIRS, [])
+                val = MathUtils.linear_interpolate(pairs, temp)
+                if val is not None: return val
+
+        return None
+
+    def get_source_info(self, prop_type, prop_key=None, category_idx=None, source_manager=None):
+        """Получает текстовое описание источника для свойства."""
+
+        def resolve_name(container):
+            rid = container.get(Schema.REF_ID)
+            if rid and source_manager: return source_manager.get_name_by_id(rid)
+            return None
+
+        if prop_type == Schema.PHYSICAL:
+            container = self.data.get(Schema.PHYSICAL, {})
+            name = resolve_name(container)
+            if not name:  # Ищем внутри свойства
+                if prop_key and prop_key in container:
+                    return container[prop_key].get("property_source", "-")
+            return name or "-"
+
+        if prop_type == Schema.MECHANICAL:
+            cats = self.get_strength_categories()
+            if not cats: return "-"
+            # Берем первую или указанную категорию
+            cat = cats[category_idx] if category_idx is not None and 0 <= category_idx < len(cats) else cats[0]
+            name = resolve_name(cat)
+            if not name and prop_key and prop_key in cat:
+                return cat[prop_key].get("property_source", "-")
+            return name or "-"
+
         return "-"
 
     def save(self, filepath=None):
         save_path = filepath or self.filepath
-        if not save_path: raise ValueError("Не указан путь для сохранения файла.")
+        if not save_path: raise ValueError("Путь не указан")
         self.filepath = save_path
         self.filename = os.path.basename(save_path)
         now = datetime.now().isoformat()
-        for prop in self.data.get("physical_properties", {}).values():
+
+        # Обновление времени изменения
+        for prop in self.data.get(Schema.PHYSICAL, {}).values():
             if "property_name" in prop: prop["property_last_updated"] = now
-        for category in self.data.get("mechanical_properties", {}).get("strength_category", []):
-            for m_key, prop in category.items():
-                if isinstance(prop, dict) and "property_name" in prop:
-                    prop["property_last_updated"] = now
+        for cat in self.get_strength_categories():
+            for k, v in cat.items():
+                if isinstance(v, dict) and "property_name" in v: v["property_last_updated"] = now
+
         with open(save_path, 'w', encoding='utf-8') as f:
             json.dump(self.data, f, ensure_ascii=False, indent=2)
 
 
-class SourceManager:
-    """Менеджер для работы с централизованным файлом источников source.json."""
-
-    FILENAME = "source.json"
-
-    def __init__(self):
-        # ИСПРАВЛЕНО: Файл лежит рядом с исполняемым файлом приложения
-        self.app_dir = get_app_directory()
-        self.filepath = os.path.join(self.app_dir, self.FILENAME)
-        self.sources = []
-        self.load()
-
-    def load(self):
-        """Загружает источники из JSON."""
-        if not os.path.exists(self.filepath):
-            # Если файла нет, создаем пустой список и файл
-            self.sources = []
-            self.save()
-            return
-
-        try:
-            with open(self.filepath, 'r', encoding='utf-8') as f:
-                self.sources = json.load(f)
-        except Exception as e:
-            print(f"Ошибка загрузки source.json: {e}")
-            self.sources = []
-
-    def save(self):
-        """Сохраняет текущий список источников в JSON."""
-        try:
-            with open(self.filepath, 'w', encoding='utf-8') as f:
-                json.dump(self.sources, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Ошибка сохранения source.json: {e}")
-
-    def get_all(self):
-        """Возвращает список всех источников (словарей)."""
-        return self.sources
-
-    def get_source_by_id(self, source_id):
-        """Ищет источник по ID. Возвращает словарь или None."""
-        for src in self.sources:
-            if src.get("id_source") == source_id:
-                return src
-        return None
-
-    def get_name_by_id(self, source_id):
-        """Возвращает имя источника по ID или строку 'Неизвестный источник'."""
-        src = self.get_source_by_id(source_id)
-        if src:
-            return src.get("name_source", "Без названия")
-        return "Неизвестный источник"
-
-    def add_source(self, name, description="", hyperlink=""):
-        """Создает новый источник и возвращает его ID."""
-        new_id = str(uuid.uuid4())
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        user = get_username()
-
-        new_source = {
-            "id_source": new_id,
-            "name_source": name,
-            "description": description,
-            "hyperlink": hyperlink,
-            "user_name_found": user,
-            "data_found": now,
-            "user_name_change": "",
-            "data_change": ""
-        }
-        self.sources.append(new_source)
-        self.save()
-        return new_id
-
-    def update_source(self, source_id, name, description, hyperlink):
-        """Обновляет данные существующего источника."""
-        src = self.get_source_by_id(source_id)
-        if src:
-            src["name_source"] = name
-            src["description"] = description
-            src["hyperlink"] = hyperlink
-            src["user_name_change"] = get_username()
-            src["data_change"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self.save()
-            return True
-        return False
-
-    def delete_source(self, source_id):
-        """Удаляет источник по ID."""
-        self.sources = [s for s in self.sources if s.get("id_source") != source_id]
-        self.save()
-
-
 class AppData:
-    """Класс для хранения данных состояния приложения."""
+    """Состояние приложения."""
 
     def __init__(self):
         self.work_dir = ""
         self.materials = []
         self.application_areas = []
         self.current_material = None
-
-        # ВАЖНО: Инициализируем менеджер ЗДЕСЬ и БЕЗ аргументов
-        # Он сам найдет путь к source.json рядом с приложением
         self.source_manager = SourceManager()
 
     def load_materials_from_dir(self, directory):
         self.work_dir = directory
-
-        # ВАЖНО: Мы НЕ создаем здесь self.source_manager заново,
-        # так как source.json общий для всего приложения, а не для папки.
-
         self.materials.clear()
+        if not os.path.isdir(directory): return
+
         for filename in os.listdir(directory):
-            # Игнорируем source.json, если он случайно лежит в папке материалов
             if filename.endswith('.json') and filename != "source.json":
                 try:
-                    filepath = os.path.join(directory, filename)
-                    mat = Material(filepath=filepath)
+                    mat = Material(filepath=os.path.join(directory, filename))
                     self.materials.append(mat)
                 except Exception as e:
-                    print(f"Ошибка загрузки файла {filename}: {e}")
-
+                    print(f"Ошибка чтения {filename}: {e}")
         self.materials.sort(key=lambda m: m.get_display_name())
         self.load_application_areas()
 
     def load_application_areas(self):
-        """
-        Динамически собирает все уникальные области применения
-        из загруженных материалов.
-        """
-        self.application_areas.clear()
         all_areas = set()
-
-        for material in self.materials:
-            areas_for_material = material.data.get("metadata", {}).get("application_area", [])
-            if areas_for_material:
-                all_areas.update(areas_for_material)
-
+        for m in self.materials:
+            all_areas.update(m.data.get(Schema.METADATA, {}).get(Schema.APP_AREA, []))
         self.application_areas = sorted(list(all_areas))
 
 
-# --- Классы для вкладки "Подбор материала" ---
-class ViewerFrame(ttk.Frame):
-    """Контейнер для вкладки 'Подбор материала'."""
-    def __init__(self, parent, app_data):
-        super().__init__(parent)
-        self.app_data = app_data
+# ======================================================================================
+# БЛОК 4: UI HELPERS
+# ======================================================================================
 
-        # Создаем Notebook для вложенных вкладок
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(expand=True, fill="both")
 
-        # Создаем все вкладки
-        self.temp_tab = TempSelectionTab(self.notebook, self.app_data)
-        # --- НОВАЯ СТРОКА: Создаем экземпляр нашей новой вкладки ---
-        self.calc_tab = SingleCalculationTab(self.notebook, self.app_data)
-        self.prop_tab = PropertyComparisonTab(self.notebook, self.app_data)
-        self.chem_tab = ChemComparisonTab(self.notebook, self.app_data)
-        self.ashby_tab = AshbyDiagramTab(self.notebook, self.app_data)
+class CustomToolbar(NavigationToolbar2Tk):
+    """
+    Пользовательская панель инструментов, которая при нажатии 'Home'
+    перерисовывает график, вызывая внешнюю функцию.
+    """
+    def __init__(self, canvas, window, plot_callback):
+        super().__init__(canvas, window)
+        # Сохраняем ссылку на нашу функцию для построения графика
+        self.plot_callback = plot_callback
 
-        # Добавляем вкладки в Notebook в нужном порядке
-        self.notebook.add(self.temp_tab, text="Подбор по температуре")
-        # --- НОВАЯ СТРОКА: Добавляем новую вкладку в нужное место ---
-        self.notebook.add(self.calc_tab, text="Расчет отдельно")
-        self.notebook.add(self.prop_tab, text="Сравнение материалов (свойства)")
-        self.notebook.add(self.chem_tab, text="Сравнение материалов (хим. состав)")
-        self.notebook.add(self.ashby_tab, text="Диаграмма Эшби")
+    def home(self, *args, **kwargs):
+        """
+        Переопределяем стандартное поведение кнопки 'Home'.
+        Вместо сброса вида, мы полностью перерисовываем график.
+        """
+        # Вызываем нашу функцию, которая всё сделает сама
+        self.plot_callback()
 
-    def update_view(self):
-        """Обновляет все дочерние вкладки."""
-        self.temp_tab.update_comboboxes()
-        # --- НОВАЯ СТРОКА: Не забываем обновить и новую вкладку ---
-        self.calc_tab.update_comboboxes()
-        self.prop_tab.update_lists()
-        self.chem_tab.update_lists()
-        self.ashby_tab.update_lists()
+
+class Tooltip:
+    def __init__(self, widget, text, delay=500):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self.tip_window = None
+        self.id = None
+        self.widget.bind("<Enter>", self.schedule_tip)
+        self.widget.bind("<Leave>", self.hide_tip)
+    def schedule_tip(self, event=None):
+        self.id = self.widget.after(self.delay, self.show_tip)
+    def show_tip(self, event=None):
+        if self.tip_window or not self.text: return
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 20
+        self.tip_window = tk.Toplevel(self.widget)
+        self.tip_window.wm_overrideredirect(True)
+        self.tip_window.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(self.tip_window, text=self.text, justify=tk.LEFT,
+                         background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                         font=("TkDefaultFont", 10, "normal"), wraplength=300)
+        label.pack(ipadx=5, ipady=3)
+    def hide_tip(self, event=None):
+        if self.id: self.widget.after_cancel(self.id); self.id = None
+        if self.tip_window: self.tip_window.destroy(); self.tip_window = None
+
+
+def create_editable_treeview(parent_frame, on_update_callback=None):
+    tree = ttk.Treeview(parent_frame)
+    def on_tree_double_click(event):
+        region = tree.identify("region", event.x, event.y)
+        if region != "cell": return
+        item_id = tree.focus()
+        column = tree.identify_column(event.x)
+        x, y, width, height = tree.bbox(item_id, column)
+        entry_var = tk.StringVar()
+        entry = ttk.Entry(tree, textvariable=entry_var)
+        entry_var.set(tree.set(item_id, column))
+        entry.place(x=x, y=y, width=width, height=height)
+        entry.focus_set()
+        entry.selection_range(0, tk.END)
+        def on_focus_out(event):
+            tree.set(item_id, column, entry_var.get())
+            entry.destroy()
+            if on_update_callback: on_update_callback()
+        entry.bind("<FocusOut>", on_focus_out)
+        entry.bind("<Return>", lambda e: on_focus_out(e))
+    tree.bind("<Double-1>", on_tree_double_click)
+    return tree
+
+
+# ======================================================================================
+# БЛОК 5: ВКЛАДКИ ПРОСМОТРА (VIEWER)
+# ======================================================================================
 
 
 class TempSelectionTab(ttk.Frame, ScrollableMixin):
@@ -1796,26 +1767,17 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         self.app_data = app_data
         self.treeview_data = []
         self.column_units = {}
-
         self.PROP_TYPES = ["Физические свойства", "Механические свойства", "Твердость"]
-        self.PROPERTY_COLUMN_WIDTH = 100  # Восстановлена исходная ширина
-
+        self.PROPERTY_COLUMN_WIDTH = 100
         self.HARDNESS_COLUMNS = {
             "min_value": {"name": "Min", "width": self.PROPERTY_COLUMN_WIDTH, "unit_type": "Твердость"},
             "max_value": {"name": "Max", "width": self.PROPERTY_COLUMN_WIDTH, "unit_type": "Твердость"},
             "unit_value": {"name": "Ед. изм.", "width": self.PROPERTY_COLUMN_WIDTH}
         }
-
         self._after_id = None
-
         style = ttk.Style()
         style.configure("Treeview.Heading", padding=(5, 5), wraplength=120, font=('TkDefaultFont', 9))
-
-        # Настройка цветов выделения
-        style.map("Treeview",
-                  background=[("selected", "gray")],
-                  foreground=[("selected", "white")])
-
+        style.map("Treeview", background=[("selected", "gray")], foreground=[("selected", "white")])
         self._setup_widgets()
         self._setup_treeview()
         self._reconfigure_scrollable_treeview(self.PROP_TYPES[0])
@@ -1840,11 +1802,6 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
 
         lbl_hint = ttk.Label(controls_frame, text="(ПКМ по заголовку для смены ед.изм.)", foreground="gray")
         lbl_hint.pack(side="right", padx=10)
-
-    def _trigger_calculate(self, event=None):
-        if self._after_id:
-            self.after_cancel(self._after_id)
-        self._after_id = self.after(300, self._on_calculate)
 
     def _setup_treeview(self):
         tree_container = ttk.Frame(self)
@@ -1899,6 +1856,11 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         self.last_clicked_tree = None
         self.tree_frozen.bind("<Button-3>", self._show_context_menu)
         self.tree_scrollable.bind("<Button-3>", self._on_scrollable_right_click)
+
+    def _trigger_calculate(self, event=None):
+        if self._after_id:
+            self.after_cancel(self._after_id)
+        self._after_id = self.after(300, self._on_calculate)
 
     # Специальный метод скролла для этой вкладки
     def _on_vertical_scroll(self, *args):
@@ -2031,114 +1993,87 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         selected_prop_type = self.prop_type_combo.get()
         current_cols = self.tree_scrollable["columns"]
 
-        prop_map = {}
-        is_phys = False
-        is_hardness = False
+        is_phys = (selected_prop_type == "Физические свойства")
+        is_mech = (selected_prop_type == "Механические свойства")
+        is_hard = (selected_prop_type == "Твердость")
 
-        if selected_prop_type == "Физические свойства":
+        prop_map = {}
+        if is_phys:
             prop_map = PHYSICAL_PROPERTIES_MAP
-            is_phys = True
-        elif selected_prop_type == "Механические свойства":
+        elif is_mech:
             prop_map = MECHANICAL_PROPERTIES_MAP
-        elif selected_prop_type == "Твердость":
+        elif is_hard:
             prop_map = self.HARDNESS_COLUMNS
-            is_hardness = True
 
         if list(current_cols) != list(prop_map.keys()):
             self._reconfigure_scrollable_treeview(selected_prop_type)
 
-        temp_str = self.temp_entry.get()
-        # SAFE FLOAT
-        temp = safe_float(temp_str, default=0.0)
-
+        temp = MathUtils.safe_float(self.temp_entry.get(), default=0.0)
         selected_area = self.area_combo.get()
-        filtered_materials = [m for m in self.app_data.materials if
-                              selected_area == "Все" or selected_area in m.data.get("metadata", {}).get(
-                                  "application_area", [])]
+
+        filtered_materials = [
+            m for m in self.app_data.materials
+            if selected_area == "Все" or selected_area in m.data.get(Schema.METADATA, {}).get(Schema.APP_AREA, [])
+        ]
 
         self.treeview_data = []
 
         for mat in filtered_materials:
-            max_app_temp = mat.data.get("metadata", {}).get("temperature_application", {}).get("value", "-")
-            strength_categories = mat.data.get("mechanical_properties", {}).get("strength_category", [])
+            max_app_temp = mat.data.get(Schema.METADATA, {}).get("temperature_application", {}).get("value", "-")
+            cats = mat.get_strength_categories()
 
-            # --- ГИБРИДНЫЙ ПОИСК ИСТОЧНИКА ---
-            def get_source_name(container):
-                ref_id = container.get("source_ref_id")
-                if ref_id and self.app_data.source_manager:
-                    name = self.app_data.source_manager.get_name_by_id(ref_id)
-                    if name != "Неизвестный источник": return name
-                return None
-
-            if not is_hardness:
-                phys_source_str = "-"
-                if is_phys:
-                    phys_container = mat.data.get("physical_properties", {})
-                    phys_source_str = get_source_name(phys_container)
-                    if not phys_source_str:
-                        phys_sources = set(
-                            p.get("property_source") for p in phys_container.values() if p.get("property_source"))
-                        phys_source_str = ", ".join(sorted(phys_sources)) if phys_sources else "-"
-
-                if strength_categories:
-                    for category in strength_categories:
-                        mech_source_str = "-"
-                        if not is_phys:
-                            mech_source_str = get_source_name(category)
-                            if not mech_source_str:
-                                mech_sources = set(category.get(pk, {}).get("property_source") for pk in prop_map if
-                                                   category.get(pk, {}).get("property_source"))
-                                mech_source_str = ", ".join(sorted(mech_sources)) if mech_sources else "-"
-
-                        final_source = phys_source_str if is_phys else mech_source_str
-                        row_data = {"material_name": mat.get_display_name(), "obj": mat,
-                                    "strength_category": category.get("value_strength_category", "N/A"),
-                                    "source": final_source, "max_temp": max_app_temp}
-                        for prop_key in prop_map:
-                            prop_data_dict = mat.data.get("physical_properties", {}).get(
-                                prop_key) if is_phys else category.get(prop_key)
-                            row_data[prop_key] = self._get_value_from_prop_data(prop_data_dict, temp)
-                        self.treeview_data.append(row_data)
-                else:
-                    final_source = phys_source_str if is_phys else "-"
-                    row_data = {"material_name": mat.get_display_name(), "obj": mat, "strength_category": "-",
-                                "source": final_source, "max_temp": max_app_temp}
-                    for prop_key in prop_map:
-                        prop_data_dict = mat.data.get("physical_properties", {}).get(prop_key) if is_phys else None
-                        row_data[prop_key] = self._get_value_from_prop_data(prop_data_dict, temp)
-                    self.treeview_data.append(row_data)
-
-            elif is_hardness:
-                if strength_categories:
-                    for category in strength_categories:
-                        hardness_data_list = category.get("hardness", [])
-                        if hardness_data_list:
-                            for h_data in hardness_data_list:
-                                source_str = h_data.get("property_source", "")
-                                sub_source = h_data.get("property_subsource", "")
-                                if sub_source: source_str += f" ({sub_source})"
-
-                                row_data = {
+            if is_hard:
+                # Логика твердости сложная, оставляем ручной перебор, но через константы
+                if cats:
+                    for cat in cats:
+                        h_list = cat.get("hardness", [])
+                        if h_list:
+                            for h in h_list:
+                                src = h.get("property_source", "") + (
+                                    f" ({h.get('property_subsource')})" if h.get("property_subsource") else "")
+                                self.treeview_data.append({
                                     "material_name": mat.get_display_name(), "obj": mat,
-                                    "strength_category": category.get("value_strength_category", "N/A"),
-                                    "source": source_str or "-", "max_temp": max_app_temp,
-                                    "min_value": h_data.get("min_value"),
-                                    "max_value": h_data.get("max_value"),
-                                    "unit_value": h_data.get("unit_value", "-")
-                                }
-                                self.treeview_data.append(row_data)
+                                    "strength_category": cat.get(Schema.VAL_STR_CAT, "N/A"),
+                                    "source": src or "-", "max_temp": max_app_temp,
+                                    "min_value": h.get("min_value"), "max_value": h.get("max_value"),
+                                    "unit_value": h.get("unit_value", "-")
+                                })
                         else:
-                            self.treeview_data.append({
-                                "material_name": mat.get_display_name(), "obj": mat,
-                                "strength_category": category.get("value_strength_category", "N/A"),
-                                "source": "-", "max_temp": max_app_temp,
-                                "min_value": None, "max_value": None, "unit_value": "-"
-                            })
+                            self.treeview_data.append({"material_name": mat.get_display_name(),
+                                                       "strength_category": cat.get(Schema.VAL_STR_CAT), "source": "-",
+                                                       "max_temp": max_app_temp, "min_value": None})
                 else:
-                    self.treeview_data.append({
-                        "material_name": mat.get_display_name(), "obj": mat, "strength_category": "-", "source": "-",
-                        "max_temp": max_app_temp, "min_value": None, "max_value": None, "unit_value": "-"
-                    })
+                    self.treeview_data.append(
+                        {"material_name": mat.get_display_name(), "strength_category": "-", "source": "-",
+                         "max_temp": max_app_temp, "min_value": None})
+            else:
+                # Физические и Механические
+                if cats and not is_phys:  # Для механики разбиваем по категориям
+                    for i, cat in enumerate(cats):
+                        source_str = mat.get_source_info(Schema.MECHANICAL if is_mech else Schema.PHYSICAL,
+                                                         category_idx=i, source_manager=self.app_data.source_manager)
+                        row = {
+                            "material_name": mat.get_display_name(), "obj": mat,
+                            "strength_category": cat.get(Schema.VAL_STR_CAT, "N/A"),
+                            "source": source_str, "max_temp": max_app_temp
+                        }
+                        for prop_key in prop_map:
+                            # ! ВЫЗОВ НОВОГО МЕТОДА !
+                            val = mat.get_interpolated_property(prop_key, temp, category_idx=i)
+                            row[prop_key] = val
+                        self.treeview_data.append(row)
+                else:
+                    # Физ свойства (одна строка на материал)
+                    source_str = mat.get_source_info(Schema.PHYSICAL, source_manager=self.app_data.source_manager)
+                    row = {
+                        "material_name": mat.get_display_name(), "obj": mat,
+                        "strength_category": "-", "source": source_str, "max_temp": max_app_temp
+                    }
+                    for prop_key in prop_map:
+                        # ! ВЫЗОВ НОВОГО МЕТОДА !
+                        val = mat.get_interpolated_property(prop_key, temp)
+                        row[prop_key] = val
+                    self.treeview_data.append(row)
 
         self._populate_treeview()
 
@@ -2231,25 +2166,6 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
             self.clipboard_append(value)
         except (IndexError, tk.TclError):
             pass
-
-
-class CustomToolbar(NavigationToolbar2Tk):
-    """
-    Пользовательская панель инструментов, которая при нажатии 'Home'
-    перерисовывает график, вызывая внешнюю функцию.
-    """
-    def __init__(self, canvas, window, plot_callback):
-        super().__init__(canvas, window)
-        # Сохраняем ссылку на нашу функцию для построения графика
-        self.plot_callback = plot_callback
-
-    def home(self, *args, **kwargs):
-        """
-        Переопределяем стандартное поведение кнопки 'Home'.
-        Вместо сброса вида, мы полностью перерисовываем график.
-        """
-        # Вызываем нашу функцию, которая всё сделает сама
-        self.plot_callback()
 
 
 class SingleCalculationTab(ttk.Frame, ScrollableMixin):
@@ -2438,95 +2354,45 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         mat_name = self.material_combo.get()
         material = next((m for m in self.app_data.materials if m.get_display_name() == mat_name), None)
         if not material: return
-
-        phys_props_data = material.data.get("physical_properties", {})
-        mech_props_data = {}
         cat_idx = self.category_combo.current()
-        if cat_idx != -1:
-            cats = material.data.get("mechanical_properties", {}).get("strength_category", [])
-            if cats: mech_props_data = cats[cat_idx]
 
+        # Собираем все температуры
         all_temps = set()
-        for prop_key in self.ALL_KEYS:
-            data = phys_props_data.get(prop_key, {})
-            for t, v in data.get("temperature_value_pairs", []): all_temps.add(t)
-            data = mech_props_data.get(prop_key, {})
-            for t, v in data.get("temperature_value_pairs", []): all_temps.add(t)
+        # Из физ свойств
+        for pk in PHYSICAL_PROPERTIES_MAP:
+            data = material.data.get(Schema.PHYSICAL, {}).get(pk, {})
+            for t, v in data.get(Schema.TEMP_PAIRS, []): all_temps.add(t)
+
+        # Из мех свойств
+        cats = material.get_strength_categories()
+        if cat_idx != -1 and cats:
+            for pk in MECHANICAL_PROPERTIES_MAP:
+                data = cats[cat_idx].get(pk, {})
+                for t, v in data.get(Schema.TEMP_PAIRS, []): all_temps.add(t)
 
         sorted_temps = sorted(list(all_temps))
-
         self.db_data_rows = []
         for t in sorted_temps:
             row = {"temp": t}
             for prop_key in self.ALL_KEYS:
-                # Ищем точное значение
-                p_pairs = phys_props_data.get(prop_key, {}).get("temperature_value_pairs", [])
-                val = next((v for pt, v in p_pairs if pt == t), None)
-                if val is None:
-                    m_pairs = mech_props_data.get(prop_key, {}).get("temperature_value_pairs", [])
-                    val = next((v for pt, v in m_pairs if pt == t), None)
-
+                # Используем нашу универсальную функцию, но здесь нам нужны ТОЧНЫЕ значения,
+                # а не интерполяция, поэтому логику лучше оставить "сырой" или добавить флаг exact в метод Material
+                # Для простоты используем интерполяцию, так как если точка есть, она вернется точно.
+                val = material.get_interpolated_property(prop_key, t, category_idx=cat_idx if cat_idx != -1 else None)
                 row[prop_key] = val
             self.db_data_rows.append(row)
-
         self._render_table()
 
     def _calculate_custom_row(self, temp):
-        """Вычисляет строку свойств для заданной температуры по текущему материалу."""
         mat_name = self.material_combo.get()
         material = next((m for m in self.app_data.materials if m.get_display_name() == mat_name), None)
         if not material: return {"temp": temp}
-
-        mech_cat_data = None
         cat_idx = self.category_combo.current()
-        if cat_idx != -1:
-            cats = material.data.get("mechanical_properties", {}).get("strength_category", [])
-            if cats: mech_cat_data = cats[cat_idx]
 
         row = {"temp": temp}
-
-        # Вспомогательная функция интерполяции
-        def get_interp_value(prop_dict):
-            pairs = sorted(prop_dict.get("temperature_value_pairs", []), key=lambda p: p[0])
-            if not pairs: return None
-
-            # Проверка диапазона (ЗАПРЕТ ЭКСТРАПОЛЯЦИИ)
-            min_t = pairs[0][0]
-            max_t = pairs[-1][0]
-            if temp < min_t or temp > max_t:
-                return None
-
-            # Точное совпадение
-            for t, v in pairs:
-                if t == temp: return v
-
-            # Интерполяция
-            lower, upper = None, None
-            for t, v in pairs:
-                if t < temp:
-                    lower = (t, v)
-                elif t > temp:
-                    upper = (t, v)
-                    break
-
-            if lower and upper:
-                t1, v1 = lower
-                t2, v2 = upper
-                if t2 - t1 == 0: return v1
-                return v1 + (temp - t1) * (v2 - v1) / (t2 - t1)
-            return None
-
         for prop_key in self.ALL_KEYS:
-            val = None
-            # Физ
-            phys_data = material.data.get("physical_properties", {}).get(prop_key)
-            if phys_data: val = get_interp_value(phys_data)
-
-            # Мех
-            if val is None and mech_cat_data:
-                mech_data = mech_cat_data.get(prop_key)
-                if mech_data: val = get_interp_value(mech_data)
-
+             # ! ВЫЗОВ НОВОГО МЕТОДА !
+            val = material.get_interpolated_property(prop_key, temp, category_idx=cat_idx if cat_idx != -1 else None)
             row[prop_key] = val
         return row
 
@@ -3402,187 +3268,164 @@ class AshbyDiagramTab(ttk.Frame):
         self.canvas.draw()
 
 
-# --- Классы для вкладки "Редактор" ---
-class EditorFrame(ttk.Frame):
-    def __init__(self, parent, app_data, main_app):
+# ======================================================================================
+# БЛОК 6: ВКЛАДКИ РЕДАКТОРА
+# ======================================================================================
+
+
+class SinglePropertyEditor(ttk.Frame):
+    """
+    Переиспользуемый компонент для редактирования одного свойства.
+    Содержит: Поля (Unit, Subsource, Comment), Таблицу точек и График.
+    """
+
+    def __init__(self, parent, prop_key, prop_info):
         super().__init__(parent)
-        self.app_data = app_data
-        self.main_app = main_app  # <--- ВОТ ЭТА СТРОКА ВАЖНА
-        self.editing_copy = None
-        self._setup_widgets()
+        self.prop_key = prop_key
+        self.prop_info = prop_info
 
-        # Передаем данные во вкладки для работы с источниками
-        self.phys_tab.set_app_data(app_data)
-        self.mech_tab.set_app_data(app_data)
-        self.chem_tab.set_app_data(app_data)
+        # Данные графика
+        self.fig = None
+        self.ax = None
+        self.canvas = None
 
-        # Изначально кнопки выключены
-        self._update_button_states(False)
+        self._setup_layout()
 
-        self._update_button_states(False)
+    def _setup_layout(self):
+        # Разделение на левую (поля) и правую (график) части
+        content_frame = ttk.Frame(self)
+        content_frame.pack(fill="both", expand=True)
 
-    def _setup_widgets(self):
-        # --- Верхняя панель управления ---
-        top_frame = ttk.Frame(self)
-        top_frame.pack(fill="x", padx=10, pady=10)
+        left_panel = ttk.Frame(content_frame)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
-        ttk.Label(top_frame, text="Выберите материал:").pack(side="left")
-        self.mat_combo = ttk.Combobox(top_frame, state="readonly", width=40)
-        self.mat_combo.pack(side="left", padx=5)
-        self.mat_combo.bind("<<ComboboxSelected>>", self.load_material)
+        right_panel = ttk.Frame(content_frame)
+        right_panel.pack(side="right", fill="both", expand=True)
 
-        new_button = ttk.Button(top_frame, text="Создать новый", command=self.create_new_material)
-        new_button.pack(side="left", padx=(10, 5))
+        # --- ЛЕВАЯ ПАНЕЛЬ (ПОЛЯ ВЕРТИКАЛЬНО) ---
+        left_panel.columnconfigure(1, weight=1)
 
-        # --- НАЧАЛО ИЗМЕНЕНИЙ: Новые кнопки ---
-        self.save_button = ttk.Button(top_frame, text="Сохранить", command=self.save_material)
-        self.save_button.pack(side="left", padx=5)
+        # 1. Единица измерения
+        ttk.Label(left_panel, text="Ед. изм:").grid(row=0, column=0, sticky="w", pady=2)
 
-        self.save_as_button = ttk.Button(top_frame, text="Сохранить как...", command=self.save_material_as)
-        self.save_as_button.pack(side="left", padx=5)
+        unit_type = self.prop_info.get("unit_type")
+        units = UnitManager.get_units(unit_type) if unit_type else [self.prop_info["unit"]]
 
-        self.revert_button = ttk.Button(top_frame, text="Отменить изменения", command=self.revert_changes)
-        self.revert_button.pack(side="left", padx=5)
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+        self.unit_combo = ttk.Combobox(left_panel, values=units, state="readonly", width=15)
+        self.unit_combo.grid(row=0, column=1, sticky="we", pady=2)
+        if self.prop_info["unit"] in units:
+            self.unit_combo.set(self.prop_info["unit"])
 
-        # --- Notebook для вкладок редактора ---
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(expand=True, fill="both", padx=10, pady=(0, 10))
+        # При смене единицы обновляем график
+        self.unit_combo.bind("<<ComboboxSelected>>", lambda e: self.update_graph())
 
-        self.general_tab = GeneralDataTab(self.notebook, self.app_data)
-        self.phys_tab = PropertyEditorTab(self.notebook, "physical_properties", PHYSICAL_PROPERTIES_MAP)
-        self.mech_tab = MechanicalPropertiesTab(self.notebook)
-        self.chem_tab = ChemicalCompositionTab(self.notebook)
+        # 2. Под-источник
+        ttk.Label(left_panel, text="Под-источник:").grid(row=1, column=0, sticky="w", pady=2)
+        self.subsource_entry = ttk.Entry(left_panel)
+        self.subsource_entry.grid(row=1, column=1, sticky="we", pady=2)
 
-        self.notebook.add(self.general_tab, text="Общие данные", state="disabled")
-        self.notebook.add(self.phys_tab, text="Физические свойства", state="disabled")
-        self.notebook.add(self.mech_tab, text="Механические свойства", state="disabled")
-        self.notebook.add(self.chem_tab, text="Химический состав", state="disabled")
+        # 3. Комментарий
+        ttk.Label(left_panel, text="Комментарий:").grid(row=2, column=0, sticky="w", pady=2)
+        self.comment_entry = ttk.Entry(left_panel)
+        self.comment_entry.grid(row=2, column=1, sticky="we", pady=2)
 
-    # --- НОВЫЙ МЕТОД: Управление состоянием кнопок ---
-    def _update_button_states(self, active=False):
-        state = "normal" if active else "disabled"
-        self.save_button.config(state=state)
-        self.save_as_button.config(state=state)
-        self.revert_button.config(state=state)
+        # 4. Таблица
+        table_frame = ttk.Frame(left_panel)
+        table_frame.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=5)
+        left_panel.rowconfigure(3, weight=1)
 
-    def update_view(self):
-        mat_names = [m.get_display_name() for m in self.app_data.materials]
-        self.mat_combo.config(values=mat_names)
+        self.tree = create_editable_treeview(table_frame, on_update_callback=self.update_graph)
 
-        if self.editing_copy and self.editing_copy.get_display_name() in mat_names:
-            self.mat_combo.set(self.editing_copy.get_display_name())
+        self.tree.configure(show="headings")
+        self.tree["columns"] = ("temp", "value")
+
+        self.tree.heading("temp", text="T, °C")
+        self.tree.column("temp", width=130, anchor="center")
+
+        self.tree.heading("value", text="Значение")
+        self.tree.column("value", width=130, anchor="center")
+
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        # Кнопки +/-
+        btn_frame = ttk.Frame(table_frame)
+        btn_frame.pack(side="left", fill="y", padx=5)
+        ttk.Button(btn_frame, text="+", width=2,
+                   command=lambda: (self.tree.insert("", "end", values=["0", "0"]), self.update_graph())).pack(pady=2)
+        ttk.Button(btn_frame, text="-", width=2,
+                   command=lambda: (self.tree.delete(self.tree.selection()), self.update_graph())).pack(pady=2)
+
+        # --- ПРАВАЯ ПАНЕЛЬ (ГРАФИК) ---
+        self.fig = Figure(figsize=(4, 3), dpi=90)
+        self.ax = self.fig.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=right_panel)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def update_graph(self):
+        """Перерисовывает график на основе данных из таблицы."""
+        points = []
+        for item in self.tree.get_children():
+            v = self.tree.set(item)
+            # Safe float для защиты от запятых
+            t_val = safe_float(v["temp"])
+            v_val = safe_float(v["value"])
+            if t_val is not None and v_val is not None:
+                points.append((t_val, v_val))
+
+        points.sort(key=lambda p: p[0])
+
+        self.ax.clear()
+        if points:
+            ts, vs = zip(*points)
+            self.ax.plot(ts, vs, 'o-', markersize=4)
+
+        unit = self.unit_combo.get()
+        self.ax.set_ylabel(unit, fontsize=8)
+        self.ax.set_xlabel("T, °C", fontsize=8)
+        self.ax.grid(True, linestyle='--', alpha=0.6)
+        self.ax.tick_params(labelsize=8)
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+    def set_data(self, prop_data):
+        """Заполняет поля данными из словаря."""
+        unit = prop_data.get("value_unit") or prop_data.get("property_unit")
+        if unit and unit in self.unit_combo['values']:
+            self.unit_combo.set(unit)
         else:
-            self.editing_copy = None
-            self.app_data.current_material = None
-            self.mat_combo.set("")
-            self._set_tabs_state("disabled")
-            self._update_button_states(False)  # Выключаем кнопки
+            self.unit_combo.set(self.prop_info["unit"])
 
-    def load_material(self, event=None):
-        selected_name = self.mat_combo.get()
-        material = next((m for m in self.app_data.materials if m.get_display_name() == selected_name), None)
-        if material:
-            self.app_data.current_material = material
-            self.editing_copy = copy.deepcopy(material)
-            self._populate_all_tabs()
-            self._set_tabs_state("normal")
-            self._update_button_states(True)  # Включаем кнопки
-            # --- НОВОЕ ИЗМЕНЕНИЕ ---
-            self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
+        self.subsource_entry.delete(0, tk.END)
+        self.subsource_entry.insert(0, prop_data.get("property_subsource", ""))
+        self.comment_entry.delete(0, tk.END)
+        self.comment_entry.insert(0, prop_data.get("comment", ""))
 
-    def create_new_material(self):
-        self.editing_copy = Material()
-        self.app_data.current_material = None
-        self.mat_combo.set(self.editing_copy.filename)
-        self._populate_all_tabs()
-        self._set_tabs_state("normal")
-        self._update_button_states(True)  # Включаем кнопки
-        # --- НОВОЕ ИЗМЕНЕНИЕ ---
-        self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
+        for i in self.tree.get_children(): self.tree.delete(i)
+        for t, v in prop_data.get("temperature_value_pairs", []):
+            self.tree.insert("", "end", values=[t, v])
 
-    # --- ПЕРЕМЕЩЕННЫЕ И АДАПТИРОВАННЫЕ МЕТОДЫ ---
-    def save_material(self):
-        if not self.editing_copy: return
-        self.collect_data()
-        material_to_save = self.editing_copy
+        self.update_graph()
 
-        original_material = self.app_data.current_material
-        if original_material:
-            changes = find_changes(original_material.data, material_to_save.data)
-            log_changes(material_to_save.get_display_name(), changes)
+    def get_data(self):
+        """Собирает данные из полей."""
+        pairs = []
+        for item in self.tree.get_children():
+            v = self.tree.set(item)
+            t_val = safe_float(v["temp"])
+            v_val = safe_float(v["value"])
+            if t_val is not None and v_val is not None:
+                pairs.append([t_val, v_val])
 
-        if not material_to_save.filepath:
-            self.save_material_as()
-        else:
-            try:
-                material_to_save.save()
-                messagebox.showinfo("Успех", f"Материал '{material_to_save.get_display_name()}' сохранен.")
-                # Вызываем перезагрузку данных через главный класс
-                self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
-            except Exception as e:
-                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+        has_meta = self.subsource_entry.get() or self.comment_entry.get()
 
-    def save_material_as(self):
-        if not self.editing_copy: return
-        self.collect_data()
-        material_to_save = self.editing_copy
-
-        original_material = self.app_data.current_material
-        if original_material:
-            changes = find_changes(original_material.data, material_to_save.data)
-            log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})",
-                        changes)
-        else:
-            empty_material_data = Material.get_empty_structure()
-            changes = find_changes(empty_material_data, material_to_save.data)
-            log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
-
-        initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
-        new_filepath = filedialog.asksaveasfilename(
-            initialdir=self.app_data.work_dir, initialfile=initial_name, title="Сохранить материал как...",
-            defaultextension=".json", filetypes=[("JSON files", "*.json")])
-
-        if new_filepath:
-            try:
-                # Обновляем рабочую директорию в app_data через main_app
-                self.main_app.app_data.work_dir = os.path.dirname(new_filepath)
-                material_to_save.save(filepath=new_filepath)
-                messagebox.showinfo("Успех", f"Материал сохранен как '{os.path.basename(new_filepath)}'.")
-                # Вызываем перезагрузку данных через главный класс
-                self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
-            except Exception as e:
-                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
-
-    def revert_changes(self):
-        if not self.editing_copy: return
-
-        if not self.app_data.current_material:
-            # Если это новый материал (оригинала нет), то просто сбрасываем редактор
-            if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите сбросить создание нового материала?"):
-                self.create_new_material()
-            return
-
-        if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите отменить все несохраненные изменения?"):
-            self.load_material()
-
-    def _populate_all_tabs(self):
-        if not self.editing_copy: return
-        self.general_tab.populate_form(self.editing_copy)
-        self.phys_tab.populate_form(self.editing_copy)
-        self.mech_tab.populate_form(self.editing_copy)
-        self.chem_tab.populate_form(self.editing_copy)
-
-    def collect_data(self):
-        if not self.editing_copy: return
-        self.general_tab.collect_data(self.editing_copy)
-        self.phys_tab.collect_data(self.editing_copy)
-        self.mech_tab.collect_data(self.editing_copy)
-        self.chem_tab.collect_data(self.editing_copy)
-
-    def _set_tabs_state(self, state):
-        for i in range(self.notebook.index("end")):
-            self.notebook.tab(i, state=state)
+        if pairs or has_meta:
+            return {
+                "temperature_value_pairs": pairs,
+                "value_unit": self.unit_combo.get(),
+                "property_subsource": self.subsource_entry.get(),
+                "comment": self.comment_entry.get()
+            }
+        return None
 
 
 class GeneralDataTab(ttk.Frame, ScrollableMixin):
@@ -3746,161 +3589,6 @@ class GeneralDataTab(ttk.Frame, ScrollableMixin):
             temp_app_data["comment"] = temp_comment_str
         elif "temperature_application" in meta:
             del meta["temperature_application"]
-
-
-class SinglePropertyEditor(ttk.Frame):
-    """
-    Переиспользуемый компонент для редактирования одного свойства.
-    Содержит: Поля (Unit, Subsource, Comment), Таблицу точек и График.
-    """
-
-    def __init__(self, parent, prop_key, prop_info):
-        super().__init__(parent)
-        self.prop_key = prop_key
-        self.prop_info = prop_info
-
-        # Данные графика
-        self.fig = None
-        self.ax = None
-        self.canvas = None
-
-        self._setup_layout()
-
-    def _setup_layout(self):
-        # Разделение на левую (поля) и правую (график) части
-        content_frame = ttk.Frame(self)
-        content_frame.pack(fill="both", expand=True)
-
-        left_panel = ttk.Frame(content_frame)
-        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
-
-        right_panel = ttk.Frame(content_frame)
-        right_panel.pack(side="right", fill="both", expand=True)
-
-        # --- ЛЕВАЯ ПАНЕЛЬ (ПОЛЯ ВЕРТИКАЛЬНО) ---
-        left_panel.columnconfigure(1, weight=1)
-
-        # 1. Единица измерения
-        ttk.Label(left_panel, text="Ед. изм:").grid(row=0, column=0, sticky="w", pady=2)
-
-        unit_type = self.prop_info.get("unit_type")
-        units = UnitManager.get_units(unit_type) if unit_type else [self.prop_info["unit"]]
-
-        self.unit_combo = ttk.Combobox(left_panel, values=units, state="readonly", width=15)
-        self.unit_combo.grid(row=0, column=1, sticky="we", pady=2)
-        if self.prop_info["unit"] in units:
-            self.unit_combo.set(self.prop_info["unit"])
-
-        # При смене единицы обновляем график
-        self.unit_combo.bind("<<ComboboxSelected>>", lambda e: self.update_graph())
-
-        # 2. Под-источник
-        ttk.Label(left_panel, text="Под-источник:").grid(row=1, column=0, sticky="w", pady=2)
-        self.subsource_entry = ttk.Entry(left_panel)
-        self.subsource_entry.grid(row=1, column=1, sticky="we", pady=2)
-
-        # 3. Комментарий
-        ttk.Label(left_panel, text="Комментарий:").grid(row=2, column=0, sticky="w", pady=2)
-        self.comment_entry = ttk.Entry(left_panel)
-        self.comment_entry.grid(row=2, column=1, sticky="we", pady=2)
-
-        # 4. Таблица
-        table_frame = ttk.Frame(left_panel)
-        table_frame.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=5)
-        left_panel.rowconfigure(3, weight=1)
-
-        self.tree = create_editable_treeview(table_frame, on_update_callback=self.update_graph)
-
-        self.tree.configure(show="headings")
-        self.tree["columns"] = ("temp", "value")
-
-        self.tree.heading("temp", text="T, °C")
-        self.tree.column("temp", width=130, anchor="center")
-
-        self.tree.heading("value", text="Значение")
-        self.tree.column("value", width=130, anchor="center")
-
-        self.tree.pack(side="left", fill="both", expand=True)
-
-        # Кнопки +/-
-        btn_frame = ttk.Frame(table_frame)
-        btn_frame.pack(side="left", fill="y", padx=5)
-        ttk.Button(btn_frame, text="+", width=2,
-                   command=lambda: (self.tree.insert("", "end", values=["0", "0"]), self.update_graph())).pack(pady=2)
-        ttk.Button(btn_frame, text="-", width=2,
-                   command=lambda: (self.tree.delete(self.tree.selection()), self.update_graph())).pack(pady=2)
-
-        # --- ПРАВАЯ ПАНЕЛЬ (ГРАФИК) ---
-        self.fig = Figure(figsize=(4, 3), dpi=90)
-        self.ax = self.fig.add_subplot(111)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=right_panel)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True)
-
-    def update_graph(self):
-        """Перерисовывает график на основе данных из таблицы."""
-        points = []
-        for item in self.tree.get_children():
-            v = self.tree.set(item)
-            # Safe float для защиты от запятых
-            t_val = safe_float(v["temp"])
-            v_val = safe_float(v["value"])
-            if t_val is not None and v_val is not None:
-                points.append((t_val, v_val))
-
-        points.sort(key=lambda p: p[0])
-
-        self.ax.clear()
-        if points:
-            ts, vs = zip(*points)
-            self.ax.plot(ts, vs, 'o-', markersize=4)
-
-        unit = self.unit_combo.get()
-        self.ax.set_ylabel(unit, fontsize=8)
-        self.ax.set_xlabel("T, °C", fontsize=8)
-        self.ax.grid(True, linestyle='--', alpha=0.6)
-        self.ax.tick_params(labelsize=8)
-        self.fig.tight_layout()
-        self.canvas.draw()
-
-    def set_data(self, prop_data):
-        """Заполняет поля данными из словаря."""
-        unit = prop_data.get("value_unit") or prop_data.get("property_unit")
-        if unit and unit in self.unit_combo['values']:
-            self.unit_combo.set(unit)
-        else:
-            self.unit_combo.set(self.prop_info["unit"])
-
-        self.subsource_entry.delete(0, tk.END)
-        self.subsource_entry.insert(0, prop_data.get("property_subsource", ""))
-        self.comment_entry.delete(0, tk.END)
-        self.comment_entry.insert(0, prop_data.get("comment", ""))
-
-        for i in self.tree.get_children(): self.tree.delete(i)
-        for t, v in prop_data.get("temperature_value_pairs", []):
-            self.tree.insert("", "end", values=[t, v])
-
-        self.update_graph()
-
-    def get_data(self):
-        """Собирает данные из полей."""
-        pairs = []
-        for item in self.tree.get_children():
-            v = self.tree.set(item)
-            t_val = safe_float(v["temp"])
-            v_val = safe_float(v["value"])
-            if t_val is not None and v_val is not None:
-                pairs.append([t_val, v_val])
-
-        has_meta = self.subsource_entry.get() or self.comment_entry.get()
-
-        if pairs or has_meta:
-            return {
-                "temperature_value_pairs": pairs,
-                "value_unit": self.unit_combo.get(),
-                "property_subsource": self.subsource_entry.get(),
-                "comment": self.comment_entry.get()
-            }
-        return None
 
 
 class PropertyEditorTab(ttk.Frame, ScrollableMixin):
@@ -4250,54 +3938,6 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         if self.material == material: self._save_current_category()
 
 
-class Tooltip:
-    """
-    Создает всплывающую подсказку для виджета.
-    """
-
-    def __init__(self, widget, text, delay=500):
-        self.widget = widget
-        self.text = text
-        self.delay = delay  # Задержка перед появлением подсказки в миллисекундах
-        self.tip_window = None
-        self.id = None
-        self.widget.bind("<Enter>", self.schedule_tip)
-        self.widget.bind("<Leave>", self.hide_tip)
-
-    def schedule_tip(self, event=None):
-        """Планирует показ подсказки через self.delay миллисекунд."""
-        self.id = self.widget.after(self.delay, self.show_tip)
-
-    def show_tip(self, event=None):
-        """Отображает окно с подсказкой."""
-        if self.tip_window or not self.text:
-            return
-
-        # Получаем координаты курсора относительно экрана
-        x, y, _, _ = self.widget.bbox("insert")
-        x += self.widget.winfo_rootx() + 25
-        y += self.widget.winfo_rooty() + 20
-
-        # Создаем всплывающее окно
-        self.tip_window = tk.Toplevel(self.widget)
-        self.tip_window.wm_overrideredirect(True)  # Убираем рамку и заголовок окна
-        self.tip_window.wm_geometry(f"+{x}+{y}")
-
-        label = tk.Label(self.tip_window, text=self.text, justify=tk.LEFT,
-                         background="#ffffe0", relief=tk.SOLID, borderwidth=1,
-                         font=("TkDefaultFont", 10, "normal"), wraplength=300)
-        label.pack(ipadx=5, ipady=3)
-
-    def hide_tip(self, event=None):
-        """Скрывает подсказку и отменяет запланированный показ."""
-        if self.id:
-            self.widget.after_cancel(self.id)
-            self.id = None
-        if self.tip_window:
-            self.tip_window.destroy()
-            self.tip_window = None
-
-
 class ChemicalCompositionTab(ttk.Frame):
     """Вкладка редактора хим. состава (Новая архитектура)."""
 
@@ -4473,15 +4113,16 @@ class ChemicalCompositionTab(ttk.Frame):
         for item in self.elements_tree.get_children():
             v = self.elements_tree.set(item)
             if not v["elem"]: continue
+
+            # --- ИСПРАВЛЕНИЕ: ИСПОЛЬЗУЕМ safe_float ---
             e = {"element": v["elem"], "unit_value": v["unit"]}
-            try:
-                e["min_value"] = float(v["min"]) if v["min"] else None
-            except:
-                pass
-            try:
-                e["max_value"] = float(v["max"]) if v["max"] else None
-            except:
-                pass
+
+            # Было: try: e["min_value"] = float(v["min"]) ...
+            # Стало:
+            e["min_value"] = safe_float(v["min"])
+            e["max_value"] = safe_float(v["max"])
+            # ------------------------------------------
+
             elems.append(e)
         c_data["other_elements"] = elems
 
@@ -4493,6 +4134,223 @@ class ChemicalCompositionTab(ttk.Frame):
 
     def collect_data(self, material):
         if self.material == material: self._save_current_comp()
+
+
+class EditorFrame(ttk.Frame):
+    def __init__(self, parent, app_data, main_app):
+        super().__init__(parent)
+        self.app_data = app_data
+        self.main_app = main_app  # <--- ВОТ ЭТА СТРОКА ВАЖНА
+        self.editing_copy = None
+        self._setup_widgets()
+
+        # Передаем данные во вкладки для работы с источниками
+        self.phys_tab.set_app_data(app_data)
+        self.mech_tab.set_app_data(app_data)
+        self.chem_tab.set_app_data(app_data)
+
+        # Изначально кнопки выключены
+        self._update_button_states(False)
+
+        self._update_button_states(False)
+
+    def _setup_widgets(self):
+        # --- Верхняя панель управления ---
+        top_frame = ttk.Frame(self)
+        top_frame.pack(fill="x", padx=10, pady=10)
+
+        ttk.Label(top_frame, text="Выберите материал:").pack(side="left")
+        self.mat_combo = ttk.Combobox(top_frame, state="readonly", width=40)
+        self.mat_combo.pack(side="left", padx=5)
+        self.mat_combo.bind("<<ComboboxSelected>>", self.load_material)
+
+        new_button = ttk.Button(top_frame, text="Создать новый", command=self.create_new_material)
+        new_button.pack(side="left", padx=(10, 5))
+
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Новые кнопки ---
+        self.save_button = ttk.Button(top_frame, text="Сохранить", command=self.save_material)
+        self.save_button.pack(side="left", padx=5)
+
+        self.save_as_button = ttk.Button(top_frame, text="Сохранить как...", command=self.save_material_as)
+        self.save_as_button.pack(side="left", padx=5)
+
+        self.revert_button = ttk.Button(top_frame, text="Отменить изменения", command=self.revert_changes)
+        self.revert_button.pack(side="left", padx=5)
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+        # --- Notebook для вкладок редактора ---
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(expand=True, fill="both", padx=10, pady=(0, 10))
+
+        self.general_tab = GeneralDataTab(self.notebook, self.app_data)
+        self.phys_tab = PropertyEditorTab(self.notebook, "physical_properties", PHYSICAL_PROPERTIES_MAP)
+        self.mech_tab = MechanicalPropertiesTab(self.notebook)
+        self.chem_tab = ChemicalCompositionTab(self.notebook)
+
+        self.notebook.add(self.general_tab, text="Общие данные", state="disabled")
+        self.notebook.add(self.phys_tab, text="Физические свойства", state="disabled")
+        self.notebook.add(self.mech_tab, text="Механические свойства", state="disabled")
+        self.notebook.add(self.chem_tab, text="Химический состав", state="disabled")
+
+    # --- НОВЫЙ МЕТОД: Управление состоянием кнопок ---
+    def _update_button_states(self, active=False):
+        state = "normal" if active else "disabled"
+        self.save_button.config(state=state)
+        self.save_as_button.config(state=state)
+        self.revert_button.config(state=state)
+
+    def update_view(self):
+        mat_names = [m.get_display_name() for m in self.app_data.materials]
+        self.mat_combo.config(values=mat_names)
+
+        if self.editing_copy and self.editing_copy.get_display_name() in mat_names:
+            self.mat_combo.set(self.editing_copy.get_display_name())
+        else:
+            self.editing_copy = None
+            self.app_data.current_material = None
+            self.mat_combo.set("")
+            self._set_tabs_state("disabled")
+            self._update_button_states(False)  # Выключаем кнопки
+
+    def load_material(self, event=None):
+        selected_name = self.mat_combo.get()
+        material = next((m for m in self.app_data.materials if m.get_display_name() == selected_name), None)
+        if material:
+            self.app_data.current_material = material
+            self.editing_copy = copy.deepcopy(material)
+            self._populate_all_tabs()
+            self._set_tabs_state("normal")
+            self._update_button_states(True)  # Включаем кнопки
+            # --- НОВОЕ ИЗМЕНЕНИЕ ---
+            self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
+
+    def create_new_material(self):
+        self.editing_copy = Material()
+        self.app_data.current_material = None
+        self.mat_combo.set(self.editing_copy.filename)
+        self._populate_all_tabs()
+        self._set_tabs_state("normal")
+        self._update_button_states(True)  # Включаем кнопки
+        # --- НОВОЕ ИЗМЕНЕНИЕ ---
+        self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
+
+    # --- ПЕРЕМЕЩЕННЫЕ И АДАПТИРОВАННЫЕ МЕТОДЫ ---
+    def save_material(self):
+        if not self.editing_copy: return
+        self.collect_data()
+        material_to_save = self.editing_copy
+
+        original_material = self.app_data.current_material
+        if original_material:
+            changes = find_changes(original_material.data, material_to_save.data)
+            log_changes(material_to_save.get_display_name(), changes)
+
+        if not material_to_save.filepath:
+            self.save_material_as()
+        else:
+            try:
+                material_to_save.save()
+                messagebox.showinfo("Успех", f"Материал '{material_to_save.get_display_name()}' сохранен.")
+                # Вызываем перезагрузку данных через главный класс
+                self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
+            except Exception as e:
+                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+
+    def save_material_as(self):
+        if not self.editing_copy: return
+        self.collect_data()
+        material_to_save = self.editing_copy
+
+        original_material = self.app_data.current_material
+        if original_material:
+            changes = find_changes(original_material.data, material_to_save.data)
+            log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})",
+                        changes)
+        else:
+            empty_material_data = Material.get_empty_structure()
+            changes = find_changes(empty_material_data, material_to_save.data)
+            log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
+
+        initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
+        new_filepath = filedialog.asksaveasfilename(
+            initialdir=self.app_data.work_dir, initialfile=initial_name, title="Сохранить материал как...",
+            defaultextension=".json", filetypes=[("JSON files", "*.json")])
+
+        if new_filepath:
+            try:
+                # Обновляем рабочую директорию в app_data через main_app
+                self.main_app.app_data.work_dir = os.path.dirname(new_filepath)
+                material_to_save.save(filepath=new_filepath)
+                messagebox.showinfo("Успех", f"Материал сохранен как '{os.path.basename(new_filepath)}'.")
+                # Вызываем перезагрузку данных через главный класс
+                self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
+            except Exception as e:
+                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+
+    def revert_changes(self):
+        if not self.editing_copy: return
+
+        if not self.app_data.current_material:
+            # Если это новый материал (оригинала нет), то просто сбрасываем редактор
+            if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите сбросить создание нового материала?"):
+                self.create_new_material()
+            return
+
+        if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите отменить все несохраненные изменения?"):
+            self.load_material()
+
+    def _populate_all_tabs(self):
+        if not self.editing_copy: return
+        self.general_tab.populate_form(self.editing_copy)
+        self.phys_tab.populate_form(self.editing_copy)
+        self.mech_tab.populate_form(self.editing_copy)
+        self.chem_tab.populate_form(self.editing_copy)
+
+    def collect_data(self):
+        if not self.editing_copy: return
+        self.general_tab.collect_data(self.editing_copy)
+        self.phys_tab.collect_data(self.editing_copy)
+        self.mech_tab.collect_data(self.editing_copy)
+        self.chem_tab.collect_data(self.editing_copy)
+
+    def _set_tabs_state(self, state):
+        for i in range(self.notebook.index("end")):
+            self.notebook.tab(i, state=state)
+
+
+# ======================================================================================
+# БЛОК 7: ГЛАВНЫЕ ФРЕЙМЫ И ЗАПУСК
+# ======================================================================================
+
+
+class ViewerFrame(ttk.Frame):
+    """Контейнер для вкладки 'Подбор материала'."""
+
+    def __init__(self, parent, app_data):
+        super().__init__(parent)
+        self.app_data = app_data
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(expand=True, fill="both")
+
+        # Вкладки создаются здесь, импортируемые из Блока 5
+        self.temp_tab = TempSelectionTab(self.notebook, self.app_data)
+        self.calc_tab = SingleCalculationTab(self.notebook, self.app_data)
+        self.prop_tab = PropertyComparisonTab(self.notebook, self.app_data)
+        self.chem_tab = ChemComparisonTab(self.notebook, self.app_data)
+        self.ashby_tab = AshbyDiagramTab(self.notebook, self.app_data)
+
+        self.notebook.add(self.temp_tab, text="Подбор по температуре")
+        self.notebook.add(self.calc_tab, text="Расчет отдельно")
+        self.notebook.add(self.prop_tab, text="Сравнение материалов (свойства)")
+        self.notebook.add(self.chem_tab, text="Сравнение материалов (хим. состав)")
+        self.notebook.add(self.ashby_tab, text="Диаграмма Эшби")
+
+    def update_view(self):
+        self.temp_tab.update_comboboxes()
+        self.calc_tab.update_comboboxes()
+        self.prop_tab.update_lists()
+        self.chem_tab.update_lists()
+        self.ashby_tab.update_lists()
 
 
 class SourcesManagerTab(ttk.Frame):
@@ -4756,12 +4614,13 @@ class MainApplication(tk.Tk):
         self.create_menu()
         self.create_widgets()
 
+        # Автозагрузка
         try:
             default_dir = os.path.join(get_app_directory(), "БД Материалов")
             if os.path.isdir(default_dir):
                 self.open_directory(directory=default_dir, show_success_message=False)
         except Exception as e:
-            print(f"Ошибка при автоматической загрузке директории по умолчанию: {e}")
+            print(f"Ошибка автозагрузки: {e}")
 
     def _handle_russian_hotkeys(self, event):
         is_ctrl_pressed = (event.state & 4) != 0
@@ -4784,17 +4643,14 @@ class MainApplication(tk.Tk):
                 return "break"
 
     def create_menu(self):
-        """Создает главное меню приложения."""
         self.menu_bar = tk.Menu(self)
         self.config(menu=self.menu_bar)
 
         file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.menu_bar.add_cascade(label="Файл", menu=file_menu)
         file_menu.add_command(label="Открыть директорию...", command=self.open_directory)
-
         file_menu.add_separator()
         file_menu.add_command(label="Выход", command=self.quit)
-        self.file_menu = file_menu
 
         help_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.menu_bar.add_cascade(label="Справка", menu=help_menu)
@@ -4803,7 +4659,6 @@ class MainApplication(tk.Tk):
         help_menu.add_command(label="Список изменений", command=self.show_change)
 
     def create_widgets(self):
-        """Создает основные виджеты окна."""
         self.main_notebook = ttk.Notebook(self)
         self.main_notebook.pack(expand=True, fill="both", padx=10, pady=10)
 
@@ -4817,10 +4672,7 @@ class MainApplication(tk.Tk):
 
     def open_directory(self, directory=None, show_success_message=True):
         if not directory:
-            filepath = filedialog.askopenfilename(
-                title="Выберите любой .json файл в рабочей директории",
-                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-            )
+            filepath = filedialog.askopenfilename(title="Выберите любой .json", filetypes=[("JSON files", "*.json")])
             if filepath:
                 directory = os.path.dirname(filepath)
             else:
@@ -4829,14 +4681,13 @@ class MainApplication(tk.Tk):
         if directory:
             try:
                 self.app_data.load_materials_from_dir(directory)
-                if show_success_message:
-                    messagebox.showinfo("Успех", f"Загружено {len(self.app_data.materials)} материалов.")
+                if show_success_message: messagebox.showinfo("Успех",
+                                                             f"Загружено {len(self.app_data.materials)} материалов.")
                 self.on_data_load()
             except Exception as e:
-                messagebox.showerror("Ошибка", f"Не удалось загрузить данные: {e}")
+                messagebox.showerror("Ошибка", f"Сбой загрузки: {e}")
 
     def on_data_load(self):
-        """Вызывается после загрузки/перезагрузки данных из директории."""
         self.editor_frame.editing_copy = None
         self.app_data.current_material = None
         self.viewer_frame.update_view()
