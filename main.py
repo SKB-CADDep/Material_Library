@@ -3941,15 +3941,14 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
 class ChemicalCompositionTab(ttk.Frame):
     """Вкладка для редактирования химического состава с логарифмической гистограммой."""
 
-    # Словарь элементов
     ELEMENTS_MAP = {
         "Ag": {"name": "Серебро", "color": "#C0C0C0"},
         "Al": {"name": "Алюминий", "color": "#B5B5B5"},
         "As": {"name": "Мышьяк", "color": "#7D8080"},
-        "B":  {"name": "Бор", "color": "#2B2B2B"},
+        "B": {"name": "Бор", "color": "#2B2B2B"},
         "Be": {"name": "Бериллий", "color": "#B8CC7A"},
         "Bi": {"name": "Висмут", "color": "#C885C4"},
-        "C":  {"name": "Углерод", "color": "#363636"},
+        "C": {"name": "Углерод", "color": "#363636"},
         "Ca": {"name": "Кальций", "color": "#808080"},
         "Cd": {"name": "Кадмий", "color": "#D1C366"},
         "Ce": {"name": "Церий", "color": "#FFFFC7"},
@@ -3958,34 +3957,34 @@ class ChemicalCompositionTab(ttk.Frame):
         "Cr": {"name": "Хром", "color": "#8A9EA8"},
         "Cu": {"name": "Медь", "color": "#D98048"},
         "Fe": {"name": "Железо", "color": "#8C3E26"},
-        "H":  {"name": "Водород", "color": "#F0F0F0"},
+        "H": {"name": "Водород", "color": "#F0F0F0"},
         "La": {"name": "Лантан", "color": "#8AFAFA"},
         "Li": {"name": "Литий", "color": "#B52FED"},
         "Mg": {"name": "Магний", "color": "#E3E3E3"},
         "Mn": {"name": "Марганец", "color": "#8C6A8A"},
         "Mo": {"name": "Молибден", "color": "#8F88A1"},
-        "N":  {"name": "Азот", "color": "#6B85F0"},
+        "N": {"name": "Азот", "color": "#6B85F0"},
         "Na": {"name": "Натрий", "color": "#F2F20C"},
         "Nb": {"name": "Ниобий", "color": "#6ED6C6"},
         "Nd": {"name": "Неодим", "color": "#C7FACF"},
         "Ni": {"name": "Никель", "color": "#5C8F54"},
-        "O":  {"name": "Кислород", "color": "#E60E0E"},
-        "P":  {"name": "Фосфор", "color": "#DE5914"},
+        "O": {"name": "Кислород", "color": "#E60E0E"},
+        "P": {"name": "Фосфор", "color": "#DE5914"},
         "Pb": {"name": "Свинец", "color": "#525252"},
-        "S":  {"name": "Сера", "color": "#F2E82E"},
+        "S": {"name": "Сера", "color": "#F2E82E"},
         "Sb": {"name": "Сурьма", "color": "#A1759C"},
         "Si": {"name": "Кремний", "color": "#8C8C8C"},
         "Sn": {"name": "Олово", "color": "#858282"},
         "Ti": {"name": "Титан", "color": "#85878A"},
-        "V":  {"name": "Ванадий", "color": "#949494"},
-        "W":  {"name": "Вольфрам", "color": "#5C5857"},
-        "Y":  {"name": "Иттрий", "color": "#8AFAFA"},
+        "V": {"name": "Ванадий", "color": "#949494"},
+        "W": {"name": "Вольфрам", "color": "#5C5857"},
+        "Y": {"name": "Иттрий", "color": "#8AFAFA"},
         "Zn": {"name": "Цинк", "color": "#797D82"},
         "Zr": {"name": "Цирконий", "color": "#C4E0B6"},
         "РЗМ": {"name": "РЗМ", "color": "#E0E0E0"},
         "Au": {"name": "Золото", "color": "#FFD700"},
         "Ba": {"name": "Барий", "color": "#00C900"},
-        "F":  {"name": "Фтор", "color": "#DAA520"},
+        "F": {"name": "Фтор", "color": "#DAA520"},
         "Ga": {"name": "Галлий", "color": "#C2C2C2"},
         "Hg": {"name": "Ртуть", "color": "#E6E6E6"},
         "In": {"name": "Индий", "color": "#4B0082"},
@@ -4005,7 +4004,6 @@ class ChemicalCompositionTab(ttk.Frame):
         self.material = None
         self.current_source_idx = -1
         self.app_data = None
-        self.element_menu = None
 
         # Переменные для чекбоксов графика
         self.var_min = tk.BooleanVar(value=False)
@@ -4016,6 +4014,8 @@ class ChemicalCompositionTab(ttk.Frame):
         self.ax = None
         self.canvas = None
 
+        # Для всплывающего окна
+        self.popup_window = None
         self._setup_widgets()
 
     def set_app_data(self, app_data):
@@ -4074,7 +4074,7 @@ class ChemicalCompositionTab(ttk.Frame):
         left_pane = ttk.Frame(split_container)
         left_pane.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
-        elements_frame = ttk.LabelFrame(left_pane, text="Элементы (ПКМ по названию для выбора)", padding=5)
+        elements_frame = ttk.LabelFrame(left_pane, text="Элементы (ПКМ для выбора из списка)", padding=5)
         elements_frame.pack(fill="both", expand=True)
         self.elements_tree = self._create_elements_table(elements_frame)
 
@@ -4082,16 +4082,6 @@ class ChemicalCompositionTab(ttk.Frame):
         right_pane = ttk.Frame(split_container)
         right_pane.pack(side="right", fill="both", expand=True, padx=(5, 0))
         self._create_chart_panel(right_pane)
-
-        # Меню ПКМ
-        self.element_menu = tk.Menu(self, tearoff=0)
-        sorted_items = sorted(self.ELEMENTS_MAP.items(), key=lambda x: x[1]["name"])
-        for symbol, data in sorted_items:
-            # data теперь словарь, берем имя из него
-            name = data["name"]
-            label_text = f"{name} ({symbol})"
-            self.element_menu.add_command(label=label_text,
-                                          command=lambda s=symbol, n=name: self._fill_element_from_menu(s, n))
 
     def _create_elements_table(self, parent_frame):
         table_frame = ttk.Frame(parent_frame)
@@ -4103,13 +4093,13 @@ class ChemicalCompositionTab(ttk.Frame):
         tree["columns"] = ("name", "elem", "min", "max", "min_tol", "max_tol")
 
         tree.heading("name", text="Название элемента")
-        tree.column("name", width=120)
+        tree.column("name", width=140, anchor="center")
         tree.heading("elem", text="Элемент")
         tree.column("elem", width=60, anchor="center")
         tree.heading("min", text="Min")
-        tree.column("min", width=60, anchor="center")
+        tree.column("min", width=50, anchor="center")
         tree.heading("max", text="Max")
-        tree.column("max", width=60, anchor="center")
+        tree.column("max", width=50, anchor="center")
         tree.heading("min_tol", text="Допуск Min")
         tree.column("min_tol", width=80, anchor="center")
         tree.heading("max_tol", text="Допуск Max")
@@ -4137,10 +4127,6 @@ class ChemicalCompositionTab(ttk.Frame):
         return tree
 
     def _create_chart_panel(self, parent):
-        """Создает панель с графиком и переключателями."""
-
-        # 1. Верхний контейнер для ГРАФИКА
-        # Используем weight=1, чтобы график занимал всё свободное место
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(0, weight=1)
 
@@ -4154,12 +4140,9 @@ class ChemicalCompositionTab(ttk.Frame):
         self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
-        # 2. Нижний контейнер для ЧЕКБОКСОВ
-        # row=1, не растягивается по вертикали (weight=0 по умолчанию)
         ctrl_frame = ttk.Frame(parent)
         ctrl_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
 
-        # Логика переключения
         def toggle_min():
             if self.var_min.get():
                 self.var_max.set(False)
@@ -4174,23 +4157,16 @@ class ChemicalCompositionTab(ttk.Frame):
                 self.var_min.set(True)
             self._update_chart()
 
-        # Чекбоксы
         cb_min = ttk.Checkbutton(ctrl_frame, text="Min", variable=self.var_min, command=toggle_min)
         cb_min.pack(side="left", padx=10)
-
         cb_max = ttk.Checkbutton(ctrl_frame, text="Max", variable=self.var_max, command=toggle_max)
         cb_max.pack(side="left", padx=10)
 
+    # === [Логика Графика] ===
     def _update_chart(self):
-        """
-        Перестраивает график: горизонтальные бары с логарифмической шкалой.
-        Только Min или Max значения.
-        """
         if not self.ax or not self.canvas: return
 
         self.ax.clear()
-
-        # Данные для построения: список словарей {label, value, color}
         plot_data = []
 
         base_elem_sym = self.base_element_entry.get().strip()
@@ -4199,44 +4175,40 @@ class ChemicalCompositionTab(ttk.Frame):
         base_elem_color = self.ELEMENTS_MAP.get(base_elem_sym, {}).get("color", "#444444")
 
         use_max = self.var_max.get()
-        # Если не Max, значит Min
-
         total_elements_amount = 0.0
 
+        # Собираем данные
         for item_id in self.elements_tree.get_children():
             row = self.elements_tree.item(item_id, "values")
             # row: name, elem, min, max, min_tol, max_tol
             elem_sym = row[1]
-            if not elem_sym: continue
+            if not elem_sym: continue  # Пропускаем пустые строки
 
-            # Получаем цвет
             color = self.ELEMENTS_MAP.get(elem_sym, {}).get("color", "#1f77b4")
-
             val_min = safe_float(row[2])
             val_max = safe_float(row[3])
 
             value = 0.0
-
             if use_max:
-                # Режим MAX
                 if val_max is not None: value = val_max
             else:
-                # Режим MIN
                 if val_min is not None: value = val_min
 
+            # Считаем сумму для основы
             if value > 0:
-                plot_data.append({
-                    "label": elem_sym,
-                    "value": value,
-                    "color": color
-                })
                 total_elements_amount += value
 
-        # Рассчитываем основу (100% - сумма элементов)
+            # Добавляем элемент в график ДАЖЕ ЕСЛИ VALUE == 0
+            plot_data.append({
+                "label": elem_sym,
+                "value": value,
+                "color": color
+            })
+
+        # Считаем основу
         base_percent = 100.0 - total_elements_amount
         if base_percent < 0: base_percent = 0
 
-        # Добавляем основу
         plot_data.append({
             "label": base_elem_sym,
             "value": base_percent,
@@ -4246,7 +4218,7 @@ class ChemicalCompositionTab(ttk.Frame):
         if not plot_data:
             self.ax.text(0.5, 0.5, "Нет данных", ha='center', va='center')
         else:
-            # Сортировка: Сначала большие значения (Основа), потом мелкие
+            # Сортировка
             plot_data.sort(key=lambda x: x["value"], reverse=False)
 
             labels = [d["label"] for d in plot_data]
@@ -4256,7 +4228,7 @@ class ChemicalCompositionTab(ttk.Frame):
             # Рисуем бары
             bars = self.ax.barh(labels, values, color=colors)
 
-            # ЛОГАРИФМИЧЕСКАЯ ШКАЛА
+            # Логарифмическая шкала
             self.ax.set_xscale('log')
             self.ax.grid(True, axis='x', which="both", ls="--", alpha=0.4)
 
@@ -4264,27 +4236,102 @@ class ChemicalCompositionTab(ttk.Frame):
 
             # Подписи значений
             for i, val in enumerate(values):
-                # Форматирование текста
-                text_val = f"{val:.4f}".rstrip('0').rstrip('.') if val < 0.1 else f"{val:.2f}"
-                txt = f" {text_val} {unit}"
+                # [ИЗМЕНЕНИЕ] Показываем текст, только если значение значимое
+                if val > 0.0001:
+                    text_val = f"{val:.4f}".rstrip('0').rstrip('.') if val < 0.1 else f"{val:.2f}"
+                    txt = f" {text_val} {unit}"
+                    self.ax.text(val, i, txt, va='center', ha='left', fontsize=8, fontweight='bold')
 
-                self.ax.text(val, i, txt, va='center', ha='left', fontsize=8, fontweight='bold')
-
-            self.ax.set_xlabel(f"Содержание ({unit})")
-
-            # Пределы X
-            # Максимум на графике (обычно это Основа ~100 или меньше)
+            # Расчет лимитов оси X (чтобы логарифм не сломался от 0)
             max_val_graph = max(values) if values else 100
-
-            # Минимум (не ноль для логарифма)
             non_zero_vals = [v for v in values if v > 0]
             min_val_graph = min(non_zero_vals) if non_zero_vals else 0.001
 
-            # Ставим пределы с запасом справа для текста
+            # Ставим пределы
             self.ax.set_xlim(min_val_graph * 0.5, max_val_graph * 5)
 
         self.fig.tight_layout()
         self.canvas.draw()
+
+    # === [Кастомное меню выбора] ===
+    def _on_tree_right_click(self, event):
+        region = self.elements_tree.identify_region(event.x, event.y)
+        if region == "cell":
+            item = self.elements_tree.identify_row(event.y)
+            column = self.elements_tree.identify_column(event.x)
+            # Если кликнули по колонкам "Название" (#1) или "Элемент" (#2)
+            if column in ("#1", "#2"):
+                self.elements_tree.selection_set(item)
+                self.elements_tree.focus(item)
+                # Вызываем кастомный скроллируемый список вместо Menu
+                self._show_scrollable_element_picker(event, item)
+
+    def _show_scrollable_element_picker(self, event, row_id):
+        # Закрываем предыдущее, если было
+        if self.popup_window:
+            self.popup_window.destroy()
+
+        # Создаем окно без рамок (Toplevel)
+        self.popup_window = tk.Toplevel(self)
+        self.popup_window.wm_overrideredirect(True)
+        self.popup_window.geometry(f"+{event.x_root}+{event.y_root}")
+
+        # Контейнер для списка
+        frame = ttk.Frame(self.popup_window, relief="solid", borderwidth=1)
+        frame.pack(fill="both", expand=True)
+
+        # Скроллбар
+        scrollbar = ttk.Scrollbar(frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+
+        # Листбокс (высота 10 строк, как просили)
+        listbox = tk.Listbox(frame, height=10, width=30, yscrollcommand=scrollbar.set, exportselection=False)
+        listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=listbox.yview)
+
+        # Заполняем элементами
+        sorted_items = sorted(self.ELEMENTS_MAP.items(), key=lambda x: x[1]["name"])
+        items_data = []  # Храним (символ, имя) для доступа по индексу
+
+        for symbol, data in sorted_items:
+            name = data["name"]
+            display_text = f"{name} ({symbol})"
+            listbox.insert(tk.END, display_text)
+            items_data.append((symbol, name))
+
+        # Функция выбора
+        def on_select(evt):
+            sel_idx = listbox.curselection()
+            if not sel_idx: return
+            idx = sel_idx[0]
+            symbol, name = items_data[idx]
+
+            # Обновляем таблицу
+            current_values = list(self.elements_tree.item(row_id, "values"))
+            current_values[0] = name
+            current_values[1] = symbol
+            self.elements_tree.item(row_id, values=current_values)
+
+            # Обновляем график
+            self._update_chart()
+
+            self.popup_window.destroy()
+            self.popup_window = None
+
+        # Биндинги
+        listbox.bind("<<ListboxSelect>>", on_select)
+        listbox.bind("<Escape>", lambda e: self.popup_window.destroy())
+
+        # Закрытие при потере фокуса
+        self.popup_window.bind("<FocusOut>", lambda e: self.popup_window.destroy())
+
+        # Скролл колесом мыши (для Windows/Linux/Mac)
+        def _on_mousewheel(event):
+            listbox.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            return "break"
+
+        listbox.bind("<MouseWheel>", _on_mousewheel)
+        listbox.focus_set()
 
     def populate_form(self, material):
         if self.material and self.material != material:
@@ -4318,7 +4365,6 @@ class ChemicalCompositionTab(ttk.Frame):
         self.editor_content_frame.pack(fill="both", expand=True)
 
     def _populate_source_fields(self, comp_data):
-        """Заполняет поля редактирования из данных (Обновлено для новой структуры ELEMENTS_MAP)."""
         self.source_entry.delete(0, tk.END)
         self.source_entry.insert(0, comp_data.get("composition_source", ""))
         self.subsource_entry.delete(0, tk.END)
@@ -4336,7 +4382,6 @@ class ChemicalCompositionTab(ttk.Frame):
 
         for elem in comp_data.get("other_elements", []):
             symbol = elem.get("element", "")
-            # ИЗМЕНЕНИЕ: Получаем имя из словаря словарей
             name = self.ELEMENTS_MAP.get(symbol, {}).get("name", "")
 
             self.elements_tree.insert("", "end", values=[
@@ -4405,30 +4450,6 @@ class ChemicalCompositionTab(ttk.Frame):
     def collect_data(self, material):
         self._save_current_source()
         self.material = material
-
-    def _on_tree_right_click(self, event):
-        region = self.elements_tree.identify_region(event.x, event.y)
-        if region == "cell":
-            item = self.elements_tree.identify_row(event.y)
-            column = self.elements_tree.identify_column(event.x)
-            if column in ("#1", "#2"):
-                self.elements_tree.selection_set(item)
-                self.elements_tree.focus(item)
-                self.element_menu.post(event.x_root, event.y_root)
-
-    def _fill_element_from_menu(self, symbol, name):
-        """Обновлено для новой структуры map."""
-        selected_item = self.elements_tree.selection()
-        if not selected_item: return
-
-        item_id = selected_item[0]
-        current_values = list(self.elements_tree.item(item_id, "values"))
-
-        current_values[0] = name
-        current_values[1] = symbol
-
-        self.elements_tree.item(item_id, values=current_values)
-        self._update_chart()
 
 
 class EditorFrame(ttk.Frame):
@@ -4898,7 +4919,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.3)")
+        self.title("Material_Lib (2.1.4)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
