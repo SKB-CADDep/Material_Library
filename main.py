@@ -2174,7 +2174,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
     Особенности:
     - Скрытие/показ колонок.
     - Увеличенная высота заголовков.
-    - Интерполяция произвольной точки (без экстраполяции).
+    - Интерполяция и (для произвольных точек) экстраполяция по двум ближайшим точкам.
     - Автопересчет при смене материала.
     """
 
@@ -2182,7 +2182,9 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         super().__init__(parent)
         self.app_data = app_data
         self.column_units = {}
-        self.column_visibility = {k: True for k in list(PHYSICAL_PROPERTIES_MAP.keys()) + list(MECHANICAL_PROPERTIES_MAP.keys())}
+        self.column_visibility = {
+            k: True for k in list(PHYSICAL_PROPERTIES_MAP.keys()) + list(MECHANICAL_PROPERTIES_MAP.keys())
+        }
         self.ALL_KEYS = list(PHYSICAL_PROPERTIES_MAP.keys()) + list(MECHANICAL_PROPERTIES_MAP.keys())
         self.db_data_rows = []
         self.custom_temps = []
@@ -2242,16 +2244,28 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         tree_frame.grid_rowconfigure(0, weight=1)
         tree_frame.grid_columnconfigure(0, weight=1)
 
-        # Теги для раскраски
+        # Теги для раскраски фона
         self.tree.tag_configure("custom_calc", background="#ffffe0", foreground="black",
                                 font=('TkDefaultFont', 9, 'bold'))
-        # Тег для разделительной линии
         self.tree.tag_configure("separator", background="#555555", foreground="white")
 
         self.tree.bind("<Button-3>", self._on_header_right_click)
         self.bind_mouse_wheel(self.tree)
 
-        # --- 3. НИЖНЯЯ ПАНЕЛЬ (КАЛЬКУЛЯТОР) ---
+        # --- 3. ЛЕГЕНДА ПОД БЛОКОМ РАСЧЕТА ---
+        # ВНИМАНИЕ: пакуем legend_frame ПЕРЕД calc_frame с side="bottom",
+        # чтобы визуально легенда была ПОД блоком "Расчет произвольной точки".
+        legend_frame = ttk.Frame(self, padding=(10, 0))
+        legend_frame.pack(fill="x", padx=10, pady=(0, 5), side="bottom")
+
+        legend_text = (
+            "330.0 - значение соответствует заданному в базе данных; "
+            "(330.0) - значение получено линейной интерполяцией; "
+            "[330.0] - значение получено линейной экстраполяцией по двум ближайшим точкам."
+        )
+        ttk.Label(legend_frame, text=legend_text, foreground="gray").pack(anchor="w")
+
+        # --- 4. НИЖНЯЯ ПАНЕЛЬ (КАЛЬКУЛЯТОР) ---
         calc_frame = ttk.LabelFrame(self, text="Расчет произвольной точки", padding=10)
         calc_frame.pack(fill="x", padx=10, pady=10, side="bottom")
 
@@ -2307,7 +2321,8 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
     def update_comboboxes(self):
         areas = ["Все"] + self.app_data.application_areas
         self.area_combo.config(values=areas)
-        if not self.area_combo.get(): self.area_combo.set("Все")
+        if not self.area_combo.get():
+            self.area_combo.set("Все")
         self._filter_materials()
 
     def _filter_materials(self, event=None):
@@ -2329,7 +2344,8 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
     def _on_material_select(self, event=None):
         mat_name = self.material_combo.get()
         material = next((m for m in self.app_data.materials if m.get_display_name() == mat_name), None)
-        if not material: return
+        if not material:
+            return
 
         cats = material.data.get("mechanical_properties", {}).get("strength_category", [])
         cat_names = [c.get("value_strength_category", "Без названия") for c in cats]
@@ -2349,51 +2365,153 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.db_data_rows = []
         self._render_table()
 
+    def _get_value_with_mode(self, material, prop_key, temp, cat_idx=None, allow_extrapolation=False):
+        """
+        Возвращает кортеж (value, mode) для заданного свойства:
+        - value: float или None;
+        - mode: "exact" (точное совпадение точки),
+                "interp" (линейная интерполяция внутри диапазона),
+                "approx" (линейная экстраполяция по двум ближайшим точкам),
+                либо None, если значение не может быть определено.
+        """
+        data_container = None
+
+        # Определяем, откуда брать пары температур для свойства
+        if prop_key in PHYSICAL_PROPERTIES_MAP:
+            data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+        elif prop_key in MECHANICAL_PROPERTIES_MAP:
+            cats = material.get_strength_categories()
+            if cat_idx is not None and 0 <= cat_idx < len(cats):
+                data_container = cats[cat_idx].get(prop_key)
+        else:
+            return None, None
+
+        if not data_container:
+            return None, None
+
+        pairs = data_container.get(Schema.TEMP_PAIRS, [])
+        if not pairs:
+            return None, None
+
+        points = []
+        for t_raw, v_raw in pairs:
+            t_val = safe_float(t_raw)
+            v_val = safe_float(v_raw)
+            if t_val is not None and v_val is not None:
+                points.append((t_val, v_val))
+
+        if not points:
+            return None, None
+
+        points.sort(key=lambda p: p[0])
+        xs = [p[0] for p in points]
+        min_x, max_x = xs[0], xs[-1]
+
+        # 1. Точное совпадение
+        for x, y in points:
+            if x == temp:
+                return y, "exact"
+
+        # 2. Внутри диапазона — интерполяция
+        if min_x < temp < max_x:
+            for i in range(len(points) - 1):
+                x1, y1 = points[i]
+                x2, y2 = points[i + 1]
+                if x1 <= temp <= x2:
+                    if x2 == x1:
+                        return y1, "interp"
+                    val = y1 + (temp - x1) * (y2 - y1) / (x2 - x1)
+                    return val, "interp"
+            return None, None
+
+        # 3. Вне диапазона
+        if not allow_extrapolation:
+            return None, None
+
+        # 3.1. Если всего одна точка — повторяем её как экстраполяцию
+        if len(points) == 1:
+            return points[0][1], "approx"
+
+        # 3.2. Две ближайшие точки для экстраполяции
+        if temp < min_x:
+            p1, p2 = points[0], points[1]
+        else:
+            p1, p2 = points[-2], points[-1]
+
+        x1, y1 = p1
+        x2, y2 = p2
+        if x2 == x1:
+            return y1, "approx"
+
+        val = y1 + (temp - x1) * (y2 - y1) / (x2 - x1)
+        return val, "approx"
+
     def _calculate_db_rows(self):
-        """Сбор данных из БД."""
+        """Сбор данных из БД (без экстраполяции, только точные точки и интерполяция)."""
         mat_name = self.material_combo.get()
         material = next((m for m in self.app_data.materials if m.get_display_name() == mat_name), None)
-        if not material: return
+        if not material:
+            return
+
         cat_idx = self.category_combo.current()
 
         # Собираем все температуры
         all_temps = set()
+
         # Из физ свойств
         for pk in PHYSICAL_PROPERTIES_MAP:
             data = material.data.get(Schema.PHYSICAL, {}).get(pk, {})
-            for t, v in data.get(Schema.TEMP_PAIRS, []): all_temps.add(t)
+            for t, v in data.get(Schema.TEMP_PAIRS, []):
+                all_temps.add(t)
 
-        # Из мех свойств
+        # Из мех свойств (для выбранной категории)
         cats = material.get_strength_categories()
         if cat_idx != -1 and cats:
             for pk in MECHANICAL_PROPERTIES_MAP:
                 data = cats[cat_idx].get(pk, {})
-                for t, v in data.get(Schema.TEMP_PAIRS, []): all_temps.add(t)
+                for t, v in data.get(Schema.TEMP_PAIRS, []):
+                    all_temps.add(t)
 
         sorted_temps = sorted(list(all_temps))
         self.db_data_rows = []
         for t in sorted_temps:
             row = {"temp": t}
             for prop_key in self.ALL_KEYS:
-                # Используем нашу универсальную функцию, но здесь нам нужны ТОЧНЫЕ значения,
-                # а не интерполяция, поэтому логику лучше оставить "сырой" или добавить флаг exact в метод Material
-                # Для простоты используем интерполяцию, так как если точка есть, она вернется точно.
-                val = material.get_interpolated_property(prop_key, t, category_idx=cat_idx if cat_idx != -1 else None)
-                row[prop_key] = val
+                value, mode = self._get_value_with_mode(
+                    material,
+                    prop_key,
+                    t,
+                    cat_idx=cat_idx if cat_idx != -1 else None,
+                    allow_extrapolation=False
+                )
+                row[prop_key] = {"value": value, "mode": mode}
             self.db_data_rows.append(row)
+
         self._render_table()
 
     def _calculate_custom_row(self, temp):
+        """
+        Расчет пользовательской строки (с экстраполяцией).
+        Возвращает словарь с "temp" и для каждого свойства:
+        {"value": float|None, "mode": "exact"/"interp"/"approx"|None}.
+        """
         mat_name = self.material_combo.get()
         material = next((m for m in self.app_data.materials if m.get_display_name() == mat_name), None)
-        if not material: return {"temp": temp}
+        if not material:
+            return {"temp": temp}
+
         cat_idx = self.category_combo.current()
 
         row = {"temp": temp}
         for prop_key in self.ALL_KEYS:
-             # ! ВЫЗОВ НОВОГО МЕТОДА !
-            val = material.get_interpolated_property(prop_key, temp, category_idx=cat_idx if cat_idx != -1 else None)
-            row[prop_key] = val
+            value, mode = self._get_value_with_mode(
+                material,
+                prop_key,
+                temp,
+                cat_idx=cat_idx if cat_idx != -1 else None,
+                allow_extrapolation=True
+            )
+            row[prop_key] = {"value": value, "mode": mode}
         return row
 
     def _render_table(self):
@@ -2406,6 +2524,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.tree.heading("temp", text="T, °C")
         self.tree.column("temp", width=70, anchor="center", stretch=False)
 
+        # Заголовки свойств
         for prop_key in visible_keys:
             if prop_key in PHYSICAL_PROPERTIES_MAP:
                 info = PHYSICAL_PROPERTIES_MAP[prop_key]
@@ -2430,8 +2549,19 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
         def insert_row(row_dict, tag=""):
             values = [row_dict["temp"]]
+            is_custom = (tag == "custom_calc")
+
             for prop_key in visible_keys:
-                raw_val = row_dict.get(prop_key)
+                cell = row_dict.get(prop_key)
+
+                # Поддержка старого формата (на всякий случай)
+                if isinstance(cell, dict):
+                    raw_val = cell.get("value")
+                    mode = cell.get("mode")
+                else:
+                    raw_val = cell
+                    mode = None
+
                 if raw_val is None:
                     values.append("-")
                     continue
@@ -2441,19 +2571,37 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                 base_unit = info.get("unit")
                 target_unit = self.column_units.get(prop_key)
 
+                # Конвертация единиц и форматирование с точностью 0.1
                 if unit_type and base_unit and target_unit:
                     try:
                         sys_val = UnitManager.to_system(raw_val, base_unit, unit_type)
                         final_val = UnitManager.from_system(sys_val, target_unit, unit_type)
-                        formatted = f"{final_val:.2f}".rstrip('0').rstrip(
-                            '.') if final_val % 1 != 0 else f"{int(final_val)}"
-                        values.append(formatted)
-                    except:
-                        values.append(str(raw_val))
+                        base_str = f"{final_val:.1f}"
+                    except Exception:
+                        base_str = str(raw_val)
                 else:
-                    values.append(str(raw_val))
+                    try:
+                        base_str = f"{float(raw_val):.1f}"
+                    except Exception:
+                        base_str = str(raw_val)
 
-            self.tree.insert("", "end", values=values, tags=(tag,))
+                # Обозначения для пользовательских строк:
+                # exact  -> 330.0
+                # interp -> (330.0)
+                # approx -> [330.0]
+                if is_custom:
+                    if mode == "interp":
+                        display_str = f"({base_str})"
+                    elif mode == "approx":
+                        display_str = f"[{base_str}]"
+                    else:
+                        display_str = base_str
+                else:
+                    display_str = base_str
+
+                values.append(display_str)
+
+            self.tree.insert("", "end", values=values, tags=(tag,) if tag else ())
 
         # 1. Данные из БД
         for row in self.db_data_rows:
@@ -2486,7 +2634,8 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
     def _remove_selected_custom_row(self):
         """Удаляет только выделенную строку, если это расчет."""
         selected_item = self.tree.selection()
-        if not selected_item: return
+        if not selected_item:
+            return
 
         item = self.tree.item(selected_item[0])
         tags = item.get("tags", [])
@@ -2519,7 +2668,8 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
             if 0 <= col_index < len(current_cols):
                 prop_key = current_cols[col_index]
-                if prop_key == "temp": return
+                if prop_key == "temp":
+                    return
                 self._show_unit_menu(event, prop_key)
 
     def _show_unit_menu(self, event, prop_key):
@@ -2528,9 +2678,11 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         else:
             info = MECHANICAL_PROPERTIES_MAP.get(prop_key)
 
-        if not info: return
+        if not info:
+            return
         unit_type = info.get("unit_type")
-        if not unit_type: return
+        if not unit_type:
+            return
 
         available = UnitManager.get_units(unit_type)
         current = self.column_units.get(prop_key)
@@ -4919,7 +5071,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.4)")
+        self.title("Material_Lib (2.1.5)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
