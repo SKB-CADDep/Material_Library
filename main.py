@@ -1471,64 +1471,133 @@ class SourceManager:
     def __init__(self):
         self.app_dir = get_app_directory()
         self.filepath = os.path.join(self.app_dir, self.FILENAME)
-        self.sources = []
+        # Структура: три группы источников
+        self.sources = {
+            "property_sources": [],
+            "strength_sources": [],
+            "chemical_sources": []
+        }
         self.load()
 
     def load(self):
+        """Загрузка source.json с поддержкой старого формата (список)."""
         if not os.path.exists(self.filepath):
-            self.sources = []
+            # Файл отсутствует — сохраняем пустую структуру нового формата
             self.save()
             return
         try:
             with open(self.filepath, 'r', encoding='utf-8') as f:
-                self.sources = json.load(f)
+                data = json.load(f)
         except Exception as e:
             print(f"Ошибка загрузки source.json: {e}")
-            self.sources = []
+            return
+
+        # Старый формат: просто список источников
+        if isinstance(data, list):
+            self.sources = {
+                "property_sources": data,
+                "strength_sources": [],
+                "chemical_sources": []
+            }
+        # Новый формат: словарь с группами
+        elif isinstance(data, dict):
+            self.sources = {
+                "property_sources": data.get("property_sources", []),
+                "strength_sources": data.get("strength_sources", []),
+                "chemical_sources": data.get("chemical_sources", [])
+            }
+        else:
+            # Некорректный формат — сбрасываем в пустую структуру
+            self.sources = {
+                "property_sources": [],
+                "strength_sources": [],
+                "chemical_sources": []
+            }
 
     def save(self):
+        """Сохранение в новом формате (3 группы в одном JSON)."""
         try:
             with open(self.filepath, 'w', encoding='utf-8') as f:
                 json.dump(self.sources, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Ошибка сохранения source.json: {e}")
 
-    def get_all(self):
-        return self.sources
+    def get_all(self, group=None):
+        """
+        Возвращает список источников:
+        - group == None: все источники всех групп (плоский список);
+        - group in {"property_sources","strength_sources","chemical_sources"}: только указанную группу.
+        """
+        if group is not None:
+            return self.sources.get(group, [])
+        # Плоский список по всем группам
+        result = []
+        for lst in self.sources.values():
+            result.extend(lst)
+        return result
 
     def get_source_by_id(self, source_id):
-        for src in self.sources:
-            if src.get("id_source") == source_id: return src
+        """Ищет источник по ID во всех группах."""
+        for lst in self.sources.values():
+            for src in lst:
+                if src.get("id_source") == source_id:
+                    return src
         return None
 
     def get_name_by_id(self, source_id):
         src = self.get_source_by_id(source_id)
         return src.get("name_source", "Без названия") if src else "Неизвестный источник"
 
-    def add_source(self, name, description="", hyperlink=""):
+    def add_source(self, name, description="", hyperlink="", group=None):
+        """
+        Добавляет источник в указанную группу.
+        Если group не задана или некорректна — используется "property_sources"
+        (для обратной совместимости с существующими вызовами).
+        """
+        if group not in ("property_sources", "strength_sources", "chemical_sources"):
+            group = "property_sources"
+
         new_id = str(uuid.uuid4())
         new_source = {
-            "id_source": new_id, "name_source": name, "description": description, "hyperlink": hyperlink,
-            "user_name_found": get_username(), "data_found": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "user_name_change": "", "data_change": ""
+            "id_source": new_id,
+            "name_source": name,
+            "description": description,
+            "hyperlink": hyperlink,
+            "user_name_found": get_username(),
+            "data_found": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "user_name_change": "",
+            "data_change": ""
         }
-        self.sources.append(new_source)
+        self.sources.setdefault(group, []).append(new_source)
         self.save()
         return new_id
 
     def update_source(self, source_id, name, description, hyperlink):
-        src = self.get_source_by_id(source_id)
-        if src:
-            src.update({"name_source": name, "description": description, "hyperlink": hyperlink,
+        """Обновляет источник по ID (ищет во всех группах)."""
+        for lst in self.sources.values():
+            for src in lst:
+                if src.get("id_source") == source_id:
+                    src.update({
+                        "name_source": name,
+                        "description": description,
+                        "hyperlink": hyperlink,
                         "user_name_change": get_username(),
-                        "data_change": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-            self.save()
-            return True
+                        "data_change": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    self.save()
+                    return True
         return False
 
     def delete_source(self, source_id):
-        self.sources = [s for s in self.sources if s.get("id_source") != source_id]
-        self.save()
+        """Удаляет источник по ID (из любой группы)."""
+        removed = False
+        for group, lst in self.sources.items():
+            new_lst = [s for s in lst if s.get("id_source") != source_id]
+            if len(new_lst) != len(lst):
+                self.sources[group] = new_lst
+                removed = True
+        if removed:
+            self.save()
 
 
 class Material:
@@ -3741,7 +3810,7 @@ class AshbyDiagramTab(ttk.Frame):
 class SinglePropertyEditor(ttk.Frame):
     """
     Переиспользуемый компонент для редактирования одного свойства.
-    Содержит: Поля (Unit, Subsource, Comment), Таблицу точек и График.
+    Содержит: Поля (Ед. изм, Источник свойств, Комментарий), Таблицу точек и График.
     """
 
     def __init__(self, parent, prop_key, prop_info):
@@ -3749,12 +3818,49 @@ class SinglePropertyEditor(ttk.Frame):
         self.prop_key = prop_key
         self.prop_info = prop_info
 
+        # Менеджер источников и кэш отображения
+        self.source_manager = None
+        self._source_name_to_id = {}
+        self._source_id_to_name = {}
+
         # Данные графика
         self.fig = None
         self.ax = None
         self.canvas = None
 
         self._setup_layout()
+
+    def set_source_manager(self, source_manager):
+        """Устанавливает менеджер источников и обновляет список источников свойств."""
+        self.source_manager = source_manager
+        self._refresh_source_list()
+
+    def _refresh_source_list(self):
+        """Обновляет список источников свойств для выпадающего списка."""
+        self._source_name_to_id = {}
+        self._source_id_to_name = {}
+
+        if not self.source_manager:
+            self.source_combo.config(values=[])
+            return
+
+        try:
+            sources = self.source_manager.get_all("property_sources")
+        except TypeError:
+            # На случай старого интерфейса SourceManager без групп
+            sources = self.source_manager.get_all()
+
+        names = []
+        for src in sources:
+            sid = src.get("id_source")
+            name = src.get("name_source", "Без названия")
+            if not sid:
+                continue
+            self._source_name_to_id[name] = sid
+            self._source_id_to_name[sid] = name
+            names.append(name)
+
+        self.source_combo.config(values=sorted(names))
 
     def _setup_layout(self):
         # Разделение на левую (поля) и правую (график) части
@@ -3784,10 +3890,10 @@ class SinglePropertyEditor(ttk.Frame):
         # При смене единицы обновляем график
         self.unit_combo.bind("<<ComboboxSelected>>", lambda e: self.update_graph())
 
-        # 2. Под-источник
-        ttk.Label(left_panel, text="Под-источник:").grid(row=1, column=0, sticky="w", pady=2)
-        self.subsource_entry = ttk.Entry(left_panel)
-        self.subsource_entry.grid(row=1, column=1, sticky="we", pady=2)
+        # 2. Источник свойств (вместо Под-источника)
+        ttk.Label(left_panel, text="Источник свойств:").grid(row=1, column=0, sticky="w", pady=2)
+        self.source_combo = ttk.Combobox(left_panel, state="readonly")
+        self.source_combo.grid(row=1, column=1, sticky="we", pady=2)
 
         # 3. Комментарий
         ttk.Label(left_panel, text="Комментарий:").grid(row=2, column=0, sticky="w", pady=2)
@@ -3831,7 +3937,6 @@ class SinglePropertyEditor(ttk.Frame):
         points = []
         for item in self.tree.get_children():
             v = self.tree.set(item)
-            # Safe float для защиты от запятых
             t_val = safe_float(v["temp"])
             v_val = safe_float(v["value"])
             if t_val is not None and v_val is not None:
@@ -3853,26 +3958,50 @@ class SinglePropertyEditor(ttk.Frame):
         self.canvas.draw()
 
     def set_data(self, prop_data):
-        """Заполняет поля данными из словаря."""
+        """Заполняет поля данными из словаря (учитывает старый и новый формат источников)."""
+        if prop_data is None:
+            prop_data = {}
+
+        # Обновляем список источников (на случай, если менеджер добавил новые)
+        self._refresh_source_list()
+
+        # Единицы
         unit = prop_data.get("value_unit") or prop_data.get("property_unit")
         if unit and unit in self.unit_combo['values']:
             self.unit_combo.set(unit)
         else:
             self.unit_combo.set(self.prop_info["unit"])
 
-        self.subsource_entry.delete(0, tk.END)
-        self.subsource_entry.insert(0, prop_data.get("property_subsource", ""))
+        # Источник: сначала пытаемся по source_ref_id, потом по legacy полю property_subsource
+        source_to_show = ""
+        source_id = prop_data.get("source_ref_id")
+        if source_id and self.source_manager:
+            try:
+                src = self.source_manager.get_source_by_id(source_id)
+            except TypeError:
+                src = None
+            if src:
+                source_to_show = src.get("name_source", "")
+
+        if not source_to_show:
+            source_to_show = prop_data.get("property_subsource", "") or ""
+
+        self.source_combo.set(source_to_show)
+
+        # Комментарий
         self.comment_entry.delete(0, tk.END)
         self.comment_entry.insert(0, prop_data.get("comment", ""))
 
-        for i in self.tree.get_children(): self.tree.delete(i)
+        # Таблица точек
+        for i in self.tree.get_children():
+            self.tree.delete(i)
         for t, v in prop_data.get("temperature_value_pairs", []):
             self.tree.insert("", "end", values=[t, v])
 
         self.update_graph()
 
     def get_data(self):
-        """Собирает данные из полей."""
+        """Собирает данные из полей (поддержка нового и старого формата источников)."""
         pairs = []
         for item in self.tree.get_children():
             v = self.tree.set(item)
@@ -3881,16 +4010,37 @@ class SinglePropertyEditor(ttk.Frame):
             if t_val is not None and v_val is not None:
                 pairs.append([t_val, v_val])
 
-        has_meta = self.subsource_entry.get() or self.comment_entry.get()
+        source_name = self.source_combo.get().strip()
+        comment = self.comment_entry.get().strip()
 
-        if pairs or has_meta:
-            return {
-                "temperature_value_pairs": pairs,
-                "value_unit": self.unit_combo.get(),
-                "property_subsource": self.subsource_entry.get(),
-                "comment": self.comment_entry.get()
-            }
-        return None
+        has_meta = bool(source_name or comment)
+
+        if not pairs and not has_meta:
+            return None
+
+        result = {
+            "temperature_value_pairs": pairs,
+            "value_unit": self.unit_combo.get(),
+            "comment": comment
+        }
+
+        # Источник:
+        # если имя сопоставимо с id из SourceManager -> записываем source_ref_id + дублируем имя
+        # иначе просто legacy property_subsource.
+        if source_name:
+            if self.source_manager:
+                if not self._source_name_to_id:
+                    self._refresh_source_list()
+                src_id = self._source_name_to_id.get(source_name)
+                if src_id:
+                    result["source_ref_id"] = src_id
+                    result["property_subsource"] = source_name
+                else:
+                    result["property_subsource"] = source_name
+            else:
+                result["property_subsource"] = source_name
+
+        return result
 
 
 class GeneralDataTab(ttk.Frame, ScrollableMixin):
@@ -4065,29 +4215,19 @@ class PropertyEditorTab(ttk.Frame, ScrollableMixin):
         self.prop_map = prop_map
         self.editors = {}  # prop_key -> SinglePropertyEditor instance
         self.app_data = None
-        self.source_map = {}
 
         self._setup_widgets()
 
     def set_app_data(self, app_data):
+        """Устанавливает app_data и передаёт SourceManager во все редакторы свойств."""
         self.app_data = app_data
-        self._update_source_list()
-
-    def _update_source_list(self):
-        if not self.app_data or not self.app_data.source_manager: return
-        sources = self.app_data.source_manager.get_all()
-        self.source_map = {s["name_source"]: s["id_source"] for s in sources}
-        self.source_combo['values'] = sorted(self.source_map.keys())
+        if not self.app_data or not self.app_data.source_manager:
+            return
+        for editor in self.editors.values():
+            editor.set_source_manager(self.app_data.source_manager)
 
     def _setup_widgets(self):
-        # 1. Верхняя панель
-        top_frame = ttk.Frame(self)
-        top_frame.pack(fill="x", padx=10, pady=10)
-        ttk.Label(top_frame, text="Источник физ. свойств:").pack(side="left", padx=(0, 5))
-        self.source_combo = ttk.Combobox(top_frame, state="readonly", width=50)
-        self.source_combo.pack(side="left", fill="x", expand=True)
-
-        # 2. Скролл область
+        # Скролл-область без глобального "Источник физ. свойств"
         canvas = tk.Canvas(self)
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -4106,7 +4246,7 @@ class PropertyEditorTab(ttk.Frame, ScrollableMixin):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # 3. Создаем редакторы
+        # Создаем редакторы по свойствам
         for prop_key, prop_info in self.prop_map.items():
             frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']})", padding=10)
             frame.pack(fill="x", expand=True, padx=10, pady=5)
@@ -4115,22 +4255,16 @@ class PropertyEditorTab(ttk.Frame, ScrollableMixin):
             editor.pack(fill="both", expand=True)
             self.editors[prop_key] = editor
 
-        # --- МАГИЯ: ПРИВЯЗЫВАЕМ ВСЕХ ДЕТЕЙ К СКРОЛЛУ ---
-        # Делаем это в конце, когда все виджеты созданы
-        # Используем after_idle, чтобы убедиться, что всё отрисовалось
+        # --- ПРИВЯЗКА ВСЕХ ДЕТЕЙ К СКРОЛЛУ ---
         self.after_idle(lambda: self.bind_all_children(scrollable_frame, canvas))
 
     def populate_form(self, material):
-        self._update_source_list()
-        prop_group = material.data.get(self.prop_group_key, {})
+        """Заполняет форму данными конкретного материала."""
+        if self.app_data and self.app_data.source_manager:
+            for editor in self.editors.values():
+                editor.set_source_manager(self.app_data.source_manager)
 
-        # Источник
-        ref_id = prop_group.get("source_ref_id")
-        if ref_id and self.app_data:
-            name = self.app_data.source_manager.get_name_by_id(ref_id)
-            self.source_combo.set(name)
-        else:
-            self.source_combo.set("")
+        prop_group = material.data.get(self.prop_group_key, {})
 
         # Свойства
         for prop_key, editor in self.editors.items():
@@ -4138,21 +4272,17 @@ class PropertyEditorTab(ttk.Frame, ScrollableMixin):
             editor.set_data(p_data)
 
     def collect_data(self, material):
+        """Собирает данные из всех редакторов в структуру материала."""
         if self.prop_group_key not in material.data:
             material.data[self.prop_group_key] = {}
         prop_group = material.data[self.prop_group_key]
-
-        # Источник
-        src_name = self.source_combo.get()
-        if src_name and self.app_data:
-            sid = self.source_map.get(src_name)
-            if sid: prop_group["source_ref_id"] = sid
 
         # Свойства
         for prop_key, editor in self.editors.items():
             data = editor.get_data()
             if data:
                 prop_group[prop_key] = data
+                # старое поле property_source очищаем, если оно ещё есть
                 if "property_source" in prop_group[prop_key]:
                     del prop_group[prop_key]["property_source"]
             elif prop_key in prop_group:
@@ -4172,13 +4302,30 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         self._setup_widgets()
 
     def set_app_data(self, app_data):
+        """
+        Устанавливает app_data:
+        - заполняет список источников КП (группа strength_sources),
+        - передаёт SourceManager во все редакторы свойств,
+          чтобы их поле 'Источник свойств' было связано с группой property_sources.
+        """
         self.app_data = app_data
         self._update_source_list()
 
+        if self.app_data and self.app_data.source_manager:
+            for editor in self.editors.values():
+                editor.set_source_manager(self.app_data.source_manager)
+
     def _update_source_list(self):
-        if not self.app_data or not self.app_data.source_manager: return
-        sources = self.app_data.source_manager.get_all()
-        self.source_map = {s["name_source"]: s["id_source"] for s in sources}
+        """
+        Обновляет список источников для 'Источник КП'.
+        Использует только группу 'strength_sources' в source.json.
+        """
+        if not self.app_data or not self.app_data.source_manager:
+            return
+
+        # Берём только источники категории прочности
+        sources = self.app_data.source_manager.get_all("strength_sources")
+        self.source_map = {s.get("name_source", ""): s.get("id_source") for s in sources if s.get("id_source")}
         self.category_source_combo['values'] = sorted(self.source_map.keys())
 
     def _setup_widgets(self):
@@ -4257,19 +4404,20 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         t_frame.pack(fill="both", expand=True)
         tree = create_editable_treeview(t_frame)
         tree.configure(show="headings")
-        tree["columns"] = ("subsource", "min", "max")
-        tree.heading("subsource", text="Под-источник");
-        tree.column("subsource", width=300)
-        tree.heading("min", text="Min");
-        tree.column("min", width=60, anchor="center")
-        tree.heading("max", text="Max");
-        tree.column("max", width=60, anchor="center")
+        # Удалили столбец "Под-источник", оставляем только Min/Max
+        tree["columns"] = ("min", "max")
+        tree.heading("min", text="Min")
+        tree.column("min", width=80, anchor="center")
+        tree.heading("max", text="Max")
+        tree.column("max", width=80, anchor="center")
         tree.pack(side="left", fill="both", expand=True)
 
         b_frame = ttk.Frame(t_frame)
         b_frame.pack(side="left", fill="y", padx=5)
-        ttk.Button(b_frame, text="+", width=2, command=lambda: tree.insert("", "end", values=["", "", ""])).pack(pady=2)
-        ttk.Button(b_frame, text="-", width=2, command=lambda: tree.delete(tree.selection())).pack(pady=2)
+        ttk.Button(b_frame, text="+", width=2,
+                   command=lambda: tree.insert("", "end", values=["", ""])).pack(pady=2)
+        ttk.Button(b_frame, text="-", width=2,
+                   command=lambda: tree.delete(tree.selection())).pack(pady=2)
         return tree
 
     def populate_form(self, material):
@@ -4317,7 +4465,8 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         h_unit = cat_data.get("hardness_unit")
         if not h_unit:
             hardness_list = cat_data.get("hardness", [])
-            if hardness_list: h_unit = hardness_list[0].get("unit_value")
+            if hardness_list:
+                h_unit = hardness_list[0].get("unit_value")
 
         if h_unit and h_unit in self.hardness_unit_combo['values']:
             self.hardness_unit_combo.set(h_unit)
@@ -4325,10 +4474,18 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
             self.hardness_unit_combo.set("HB")
 
         tree = self.hardness_tree
-        for i in tree.get_children(): tree.delete(i)
+        for i in tree.get_children():
+            tree.delete(i)
+        # При чтении старых JSON игнорируем property_subsource,
+        # выводим только Min/Max
         for h in cat_data.get("hardness", []):
-            tree.insert("", "end",
-                        values=[h.get("property_subsource", ""), h.get("min_value", ""), h.get("max_value", "")])
+            tree.insert(
+                "", "end",
+                values=[
+                    h.get("min_value", ""),
+                    h.get("max_value", "")
+                ]
+            )
 
     def _add_category(self):
         if not self.material: return
@@ -4355,44 +4512,55 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
             self.populate_form(self.material)
 
     def _save_current_category(self):
-        if not self.material or self.current_category_idx == -1: return
+        if not self.material or self.current_category_idx == -1:
+            return
         try:
             cat_data = self.material.data["mechanical_properties"]["strength_category"][self.current_category_idx]
-        except:
+        except Exception:
             return
 
         cat_data["value_strength_category"] = self.category_name_entry.get()
         src_name = self.category_source_combo.get()
         if src_name and self.app_data:
             sid = self.source_map.get(src_name)
-            if sid: cat_data["source_ref_id"] = sid
+            if sid:
+                cat_data["source_ref_id"] = sid
 
         for prop_key, editor in self.editors.items():
             data = editor.get_data()
             if data:
                 cat_data[prop_key] = data
-                if "property_source" in cat_data[prop_key]: del cat_data[prop_key]["property_source"]
+                if "property_source" in cat_data[prop_key]:
+                    del cat_data[prop_key]["property_source"]
             elif prop_key in cat_data:
                 del cat_data[prop_key]
 
         current_h_unit = self.hardness_unit_combo.get()
         cat_data["hardness_unit"] = current_h_unit
 
+        # Сохраняем hardness без столбца "под-источник".
+        # Для совместимости пытаемся сохранить старый property_subsource по индексу строки,
+        # если он был в исходных данных.
+        old_hardness = cat_data.get("hardness", [])
         h_list = []
-        for item in self.hardness_tree.get_children():
+        for idx, item in enumerate(self.hardness_tree.get_children()):
             v = self.hardness_tree.set(item)
             h = {
-                "property_subsource": v["subsource"],
                 "unit_value": current_h_unit,
-                "min_value": None,
-                "max_value": None
+                "min_value": safe_float(v.get("min")),
+                "max_value": safe_float(v.get("max"))
             }
-            # SAFE FLOAT
-            h["min_value"] = safe_float(v["min"])
-            h["max_value"] = safe_float(v["max"])
 
-            if h["property_subsource"] or h["min_value"] is not None:
+            # Если в старых данных был property_subsource, сохраняем его, но не редактируем в UI
+            if idx < len(old_hardness):
+                old_sub = old_hardness[idx].get("property_subsource")
+                if old_sub:
+                    h["property_subsource"] = old_sub
+
+            # Добавляем строку, если есть хоть какое-то содержимое
+            if h.get("property_subsource") or h["min_value"] is not None or h["max_value"] is not None:
                 h_list.append(h)
+
         cat_data["hardness"] = h_list
 
         vals = list(self.category_combo['values'])
@@ -4469,6 +4637,10 @@ class ChemicalCompositionTab(ttk.Frame):
         self.material = None
         self.current_source_idx = -1
         self.app_data = None
+        # Менеджер источников и кэш отображения для источников хим. состава
+        self.source_manager = None
+        self._source_name_to_id = {}
+        self._source_id_to_name = {}
 
         # Переменные для чекбоксов графика
         self.var_min = tk.BooleanVar(value=False)
@@ -4485,6 +4657,40 @@ class ChemicalCompositionTab(ttk.Frame):
 
     def set_app_data(self, app_data):
         self.app_data = app_data
+        # Привязываем SourceManager и обновляем список источников хим. свойств
+        if self.app_data and hasattr(self.app_data, "source_manager"):
+            self.source_manager = self.app_data.source_manager
+            self._refresh_source_list()
+
+    def _refresh_source_list(self):
+        """Обновляет список источников хим. состава (группа chemical_sources)."""
+        self._source_name_to_id = {}
+        self._source_id_to_name = {}
+
+        # Если SourceManager не задан — очищаем выпадающий список
+        if not self.source_manager:
+            if hasattr(self, "source_entry"):
+                self.source_entry.config(values=[])
+            return
+
+        try:
+            sources = self.source_manager.get_all("chemical_sources")
+        except TypeError:
+            # На случай старого SourceManager без групп
+            sources = self.source_manager.get_all()
+
+        names = []
+        for src in sources:
+            sid = src.get("id_source")
+            name = src.get("name_source", "Без названия")
+            if not sid:
+                continue
+            self._source_name_to_id[name] = sid
+            self._source_id_to_name[sid] = name
+            names.append(name)
+
+        if hasattr(self, "source_entry"):
+            self.source_entry.config(values=sorted(names))
 
     def _setup_widgets(self):
         # --- Верхняя панель ---
@@ -4508,27 +4714,26 @@ class ChemicalCompositionTab(ttk.Frame):
         meta_frame.columnconfigure(1, weight=1)
 
         ttk.Label(meta_frame, text="Источник:").grid(row=0, column=0, sticky="w")
-        self.source_entry = ttk.Entry(meta_frame)
+        # Выпадающий список, связанный с группой "Источник хим. свойств"
+        self.source_entry = ttk.Combobox(meta_frame, state="readonly")
         self.source_entry.grid(row=0, column=1, sticky="we", padx=5, pady=2)
 
-        ttk.Label(meta_frame, text="Под-источник:").grid(row=1, column=0, sticky="w")
-        self.subsource_entry = ttk.Entry(meta_frame)
-        self.subsource_entry.grid(row=1, column=1, sticky="we", padx=5, pady=2)
+        # Поле "Под-источник" удалено из UI
 
-        ttk.Label(meta_frame, text="Комментарий:").grid(row=2, column=0, sticky="w")
+        ttk.Label(meta_frame, text="Комментарий:").grid(row=1, column=0, sticky="w")
         self.comment_entry = ttk.Entry(meta_frame)
-        self.comment_entry.grid(row=2, column=1, sticky="we", padx=5, pady=2)
+        self.comment_entry.grid(row=1, column=1, sticky="we", padx=5, pady=2)
 
-        ttk.Label(meta_frame, text="Основной элемент:").grid(row=3, column=0, sticky="w")
+        ttk.Label(meta_frame, text="Основной элемент:").grid(row=2, column=0, sticky="w")
         self.base_element_entry = ttk.Combobox(meta_frame, values=["Fe", "Ti"], width=10)
-        self.base_element_entry.grid(row=3, column=1, sticky="w", padx=5, pady=2)
+        self.base_element_entry.grid(row=2, column=1, sticky="w", padx=5, pady=2)
         self.base_element_entry.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
         self.base_element_entry.bind("<KeyRelease>", lambda e: self._update_chart())
 
-        ttk.Label(meta_frame, text="Ед. изм.:").grid(row=4, column=0, sticky="w")
+        ttk.Label(meta_frame, text="Ед. изм.:").grid(row=3, column=0, sticky="w")
         units = UnitManager.get_units("Безразмерный")
         self.unit_combo = ttk.Combobox(meta_frame, values=units, state="readonly", width=10)
-        self.unit_combo.grid(row=4, column=1, sticky="w", padx=5, pady=2)
+        self.unit_combo.grid(row=3, column=1, sticky="w", padx=5, pady=2)
         self.unit_combo.set("%")
 
         # 2. Разделенный контейнер
@@ -4830,10 +5035,36 @@ class ChemicalCompositionTab(ttk.Frame):
         self.editor_content_frame.pack(fill="both", expand=True)
 
     def _populate_source_fields(self, comp_data):
-        self.source_entry.delete(0, tk.END)
-        self.source_entry.insert(0, comp_data.get("composition_source", ""))
-        self.subsource_entry.delete(0, tk.END)
-        self.subsource_entry.insert(0, comp_data.get("composition_subsource", ""))
+        # Обновляем список источников хим. свойств
+        self._refresh_source_list()
+
+        # Определяем отображаемое имя источника (новый и старый формат)
+        source_to_show = ""
+        ref_id = comp_data.get("source_ref_id")
+        if ref_id and self.source_manager:
+            try:
+                src = self.source_manager.get_source_by_id(ref_id)
+            except TypeError:
+                src = None
+            if src:
+                source_to_show = src.get("name_source", "")
+
+        if not source_to_show:
+            # Старый формат: берем строку из composition_source
+            source_to_show = comp_data.get("composition_source", "") or ""
+
+        # Если имя источника не входит в текущий список значений — добавляем
+        if source_to_show:
+            current_values = list(self.source_entry['values'])
+            if source_to_show not in current_values:
+                current_values.append(source_to_show)
+                self.source_entry['values'] = current_values
+            self.source_entry.set(source_to_show)
+        else:
+            self.source_entry.set("")
+
+        # Поле под-источника больше не редактируется, но существующий composition_subsource
+        # сохраняется в JSON как есть (прозрачно для UI).
         self.comment_entry.delete(0, tk.END)
         self.comment_entry.insert(0, comp_data.get("comment", ""))
 
@@ -4843,20 +5074,24 @@ class ChemicalCompositionTab(ttk.Frame):
         unit = first_elem.get("unit_value", "%")
         self.unit_combo.set(unit)
 
-        for i in self.elements_tree.get_children(): self.elements_tree.delete(i)
+        for i in self.elements_tree.get_children():
+            self.elements_tree.delete(i)
 
         for elem in comp_data.get("other_elements", []):
             symbol = elem.get("element", "")
             name = self.ELEMENTS_MAP.get(symbol, {}).get("name", "")
 
-            self.elements_tree.insert("", "end", values=[
-                name,
-                symbol,
-                elem.get("min_value", ""),
-                elem.get("max_value", ""),
-                elem.get("min_value_tolerance", ""),
-                elem.get("max_value_tolerance", "")
-            ])
+            self.elements_tree.insert(
+                "", "end",
+                values=[
+                    name,
+                    symbol,
+                    elem.get("min_value", ""),
+                    elem.get("max_value", ""),
+                    elem.get("min_value_tolerance", ""),
+                    elem.get("max_value_tolerance", "")
+                ]
+            )
 
         self._update_chart()
 
@@ -4879,23 +5114,50 @@ class ChemicalCompositionTab(ttk.Frame):
             self.populate_form(self.material)
 
     def _save_current_source(self):
-        if not self.material or self.current_source_idx == -1: return
+        if not self.material or self.current_source_idx == -1:
+            return
         try:
             comp_data = self.material.data["chemical_properties"]["composition"][self.current_source_idx]
         except IndexError:
             return
 
-        comp_data["composition_source"] = self.source_entry.get()
-        comp_data["composition_subsource"] = self.subsource_entry.get()
+        # Обновляем кэш источников (на случай изменений во вкладке 'Работа с источниками')
+        self._refresh_source_list()
+
+        source_name = (self.source_entry.get() or "").strip()
         comp_data["comment"] = self.comment_entry.get()
         comp_data["base_element"] = self.base_element_entry.get()
+
+        # Логика источника:
+        # - Новый формат: source_ref_id указывает на SourceManager (группа chemical_sources),
+        #   при этом дублируем имя в composition_source для обратной совместимости.
+        # - Старый формат / неизвестный источник: только composition_source (без source_ref_id).
+        if source_name and self.source_manager:
+            if not self._source_name_to_id:
+                self._refresh_source_list()
+            src_id = self._source_name_to_id.get(source_name)
+            if src_id:
+                comp_data["source_ref_id"] = src_id
+                comp_data["composition_source"] = source_name
+            else:
+                # Имя не найдено среди зарегистрированных источников — ведём себя как в старом формате
+                comp_data.pop("source_ref_id", None)
+                comp_data["composition_source"] = source_name
+        else:
+            # Поле пустое — очищаем привязку к источнику и строковое имя
+            comp_data.pop("source_ref_id", None)
+            comp_data.pop("composition_source", None)
+
+        # ВАЖНО: composition_subsource не трогаем.
+        # Старые JSON-файлы сохранят это поле как есть, но редактировать его в UI больше нельзя.
 
         common_unit = self.unit_combo.get()
 
         elements_list = []
         for item_id in self.elements_tree.get_children():
             values = self.elements_tree.set(item_id)
-            if not values.get("elem"): continue
+            if not values.get("elem"):
+                continue
 
             elem_data = {
                 "element": values["elem"],
@@ -4905,10 +5167,13 @@ class ChemicalCompositionTab(ttk.Frame):
             elem_data["min_value"] = safe_float(values["min"])
             elem_data["max_value"] = safe_float(values["max"])
 
-            if values["min_tol"]: elem_data["min_value_tolerance"] = values["min_tol"]
-            if values["max_tol"]: elem_data["max_value_tolerance"] = values["max_tol"]
+            if values["min_tol"]:
+                elem_data["min_value_tolerance"] = values["min_tol"]
+            if values["max_tol"]:
+                elem_data["max_value_tolerance"] = values["max_tol"]
 
             elements_list.append(elem_data)
+
         comp_data["other_elements"] = elements_list
         self._update_chart()
 
@@ -5136,63 +5401,89 @@ class ViewerFrame(ttk.Frame):
 
 class SourcesManagerTab(ttk.Frame):
     """
-    Вкладка для управления источниками (CRUD).
-    Позволяет создавать, редактировать и удалять источники в source.json.
+    Вкладка для управления источниками (CRUD) с разделением на три группы:
+    - Источник свойств
+    - Источник категорий прочности
+    - Источник хим. свойств
     """
 
     def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
         self.main_app = main_app
-        self.current_source_id = None  # ID редактируемого источника
+
+        self.current_source_id = None     # ID редактируемого источника
+        self.current_group = None         # Текущая группа ("property_sources" / "strength_sources" / "chemical_sources")
+        self.current_tree = None          # Текущее дерево, где выбран источник
+
+        self._context_source_id = None    # ID источника для контекстного меню
+        self._context_tree = None         # Treeview для контекстного меню
 
         self._setup_widgets()
 
     def _setup_widgets(self):
-        # --- 1. ТАБЛИЦА ИСТОЧНИКОВ ---
-        list_frame = ttk.LabelFrame(self, text="Список источников", padding=5)
-        list_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        # --- 1. ВНУТРЕННИЙ NOTEBOOK ДЛЯ ТРЁХ ТИПОВ ИСТОЧНИКОВ ---
+        self.inner_notebook = ttk.Notebook(self)
+        self.inner_notebook.pack(fill="both", expand=True, padx=10, pady=5)
 
-        columns = ("name", "desc", "link", "user_c", "date_c", "user_f", "date_f")
-        self.tree = ttk.Treeview(list_frame, columns=columns, show="headings")
+        self.trees = {}         # group_key -> Treeview
+        self.tab_to_group = {}  # tab_widget -> group_key
 
-        self.tree.heading("name", text="Наименование")
-        self.tree.column("name", width=250)
-        self.tree.heading("desc", text="Описание")
-        self.tree.column("desc", width=300)
-        self.tree.heading("link", text="Ссылка/Файл")
-        self.tree.column("link", width=150)
+        groups_def = [
+            ("property_sources", "Источник свойств"),
+            ("strength_sources", "Источник категории прочности"),
+            ("chemical_sources", "Источник хим. свойств"),
+        ]
 
-        # Служебные поля поуже
-        self.tree.heading("user_c", text="Изм.")
-        self.tree.column("user_c", width=80)
-        self.tree.heading("date_c", text="Дата изм.")
-        self.tree.column("date_c", width=120)
-        self.tree.heading("user_f", text="Созд.")
-        self.tree.column("user_f", width=80)
-        self.tree.heading("date_f", text="Дата созд.")
-        self.tree.column("date_f", width=120)
+        for group_key, tab_title in groups_def:
+            tab = ttk.Frame(self.inner_notebook)
+            self.inner_notebook.add(tab, text=tab_title)
+            self.tab_to_group[tab] = group_key
 
-        vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(list_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+            list_frame = ttk.LabelFrame(tab, text="Список источников", padding=5)
+            list_frame.pack(fill="both", expand=True, padx=0, pady=5)
 
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb.grid(row=1, column=0, sticky="ew")
+            columns = ("name", "desc", "link", "user_c", "date_c", "user_f", "date_f")
+            tree = ttk.Treeview(list_frame, columns=columns, show="headings")
 
-        list_frame.grid_rowconfigure(0, weight=1)
-        list_frame.grid_columnconfigure(0, weight=1)
+            tree.heading("name", text="Наименование")
+            tree.column("name", width=250)
+            tree.heading("desc", text="Описание")
+            tree.column("desc", width=300)
+            tree.heading("link", text="Ссылка/Файл")
+            tree.column("link", width=150)
 
-        self.tree.bind("<<TreeviewSelect>>", self._on_select)
-        # Двойной клик для открытия файла (если есть ссылка)
-        self.tree.bind("<Double-1>", self._open_file_link)
+            # Служебные поля поуже
+            tree.heading("user_c", text="Изм.")
+            tree.column("user_c", width=80)
+            tree.heading("date_c", text="Дата изм.")
+            tree.column("date_c", width=120)
+            tree.heading("user_f", text="Созд.")
+            tree.column("user_f", width=80)
+            tree.heading("date_f", text="Дата созд.")
+            tree.column("date_f", width=120)
 
-        # --- 2. ПАНЕЛЬ РЕДАКТИРОВАНИЯ ---
+            vsb = ttk.Scrollbar(list_frame, orient="vertical", command=tree.yview)
+            hsb = ttk.Scrollbar(list_frame, orient="horizontal", command=tree.xview)
+            tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+            tree.grid(row=0, column=0, sticky="nsew")
+            vsb.grid(row=0, column=1, sticky="ns")
+            hsb.grid(row=1, column=0, sticky="ew")
+
+            list_frame.grid_rowconfigure(0, weight=1)
+            list_frame.grid_columnconfigure(0, weight=1)
+
+            # Привязываем обработчики
+            tree.bind("<<TreeviewSelect>>", self._on_select)
+            tree.bind("<Button-3>", self._on_tree_right_click)  # только контекстное меню для открытия ссылки
+
+            self.trees[group_key] = tree
+
+        # --- 2. ПАНЕЛЬ РЕДАКТИРОВАНИЯ (ОБЩАЯ ДЛЯ ВСЕХ ВКЛАДОК) ---
         edit_frame = ttk.LabelFrame(self, text="Редактирование источника", padding=10)
         edit_frame.pack(fill="x", padx=10, pady=10, side="bottom")
 
-        # Grid layout for editing fields
         ttk.Label(edit_frame, text="Наименование:").grid(row=0, column=0, sticky="w", pady=2)
         self.name_entry = ttk.Entry(edit_frame, width=80)
         self.name_entry.grid(row=0, column=1, sticky="w", pady=2)
@@ -5212,49 +5503,76 @@ class SourcesManagerTab(ttk.Frame):
         self.btn_new = ttk.Button(btn_frame, text="Новый источник", command=self._create_new)
         self.btn_new.pack(side="left", padx=5)
 
-        self.btn_save = ttk.Button(btn_frame, text="Сохранить изменения", command=self._save_changes, state="disabled")
+        self.btn_save = ttk.Button(btn_frame, text="Сохранить изменения",
+                                   command=self._save_changes, state="disabled")
         self.btn_save.pack(side="left", padx=5)
 
-        self.btn_del = ttk.Button(btn_frame, text="Удалить источник", command=self._delete_source, state="disabled")
+        self.btn_del = ttk.Button(btn_frame, text="Удалить источник",
+                                  command=self._delete_source, state="disabled")
         self.btn_del.pack(side="left", padx=5)
 
         self.btn_clear = ttk.Button(btn_frame, text="Очистить поля", command=self._clear_form)
         self.btn_clear.pack(side="left", padx=5)
 
+        # --- 3. КОНТЕКСТНОЕ МЕНЮ ДЛЯ ССЫЛОК ---
+        self.context_menu = tk.Menu(self, tearoff=0)
+        self.context_menu.add_command(label="Открыть ссылку", command=self._open_link_from_context)
+
+    # === ОБНОВЛЕНИЕ ДАННЫХ ===
+
     def update_view(self):
-        """Обновляет таблицу данными из SourceManager."""
+        """Обновляет таблицы во всех трёх вкладках данными из SourceManager."""
         self._clear_form()
-        self.tree.delete(*self.tree.get_children())
+
+        for tree in self.trees.values():
+            tree.delete(*tree.get_children())
 
         if not self.app_data.source_manager:
             return
 
-        sources = self.app_data.source_manager.get_all()
-        # Сортируем по имени
-        sources.sort(key=lambda s: s.get("name_source", "").lower())
+        for group_key, tree in self.trees.items():
+            sources = self.app_data.source_manager.get_all(group_key)
 
-        for src in sources:
-            values = (
-                src.get("name_source", ""),
-                src.get("description", ""),
-                src.get("hyperlink", ""),
-                src.get("user_name_change", ""),
-                src.get("data_change", ""),
-                src.get("user_name_found", ""),
-                src.get("data_found", "")
-            )
-            # Храним ID в hidden tags или просто во втором параметре insert (iid)
-            self.tree.insert("", "end", iid=src["id_source"], values=values)
+            # Сортируем по имени
+            sources = list(sources)
+            sources.sort(key=lambda s: s.get("name_source", "").lower())
+
+            for src in sources:
+                values = (
+                    src.get("name_source", ""),
+                    src.get("description", ""),
+                    src.get("hyperlink", ""),
+                    src.get("user_name_change", ""),
+                    src.get("data_change", ""),
+                    src.get("user_name_found", ""),
+                    src.get("data_found", "")
+                )
+                tree.insert("", "end", iid=src["id_source"], values=values)
+
+    # === ВЫБОР СТРОКИ И РАБОТА С ФОРМОЙ ===
 
     def _on_select(self, event):
-        selected = self.tree.selection()
-        if not selected: return
+        """Обработчик выбора строки в любом из трёх деревьев."""
+        tree = event.widget
+        selected = tree.selection()
+        if not selected:
+            return
 
         source_id = selected[0]
         self.current_source_id = source_id
+        self.current_tree = tree
+
+        # Определяем группу по дереву
+        group = None
+        for g_key, t in self.trees.items():
+            if t is tree:
+                group = g_key
+                break
+        self.current_group = group
 
         src = self.app_data.source_manager.get_source_by_id(source_id)
-        if not src: return
+        if not src:
+            return
 
         self.name_entry.delete(0, tk.END)
         self.name_entry.insert(0, src.get("name_source", ""))
@@ -5265,20 +5583,32 @@ class SourcesManagerTab(ttk.Frame):
 
         self.btn_save.config(state="normal")
         self.btn_del.config(state="normal")
-        self.btn_new.config(state="disabled")  # Чтобы не создать дубль при редактировании
+        self.btn_new.config(state="disabled")
 
     def _clear_form(self):
+        """Очищает форму и сбрасывает выбор."""
         self.current_source_id = None
+        self.current_group = None
+        self.current_tree = None
+        self._context_source_id = None
+        self._context_tree = None
+
         self.name_entry.delete(0, tk.END)
         self.desc_entry.delete(0, tk.END)
         self.link_entry.delete(0, tk.END)
-        self.tree.selection_remove(self.tree.selection())
+
+        # Снимаем выделение во всех деревьях
+        for tree in self.trees.values():
+            tree.selection_remove(tree.selection())
 
         self.btn_save.config(state="disabled")
         self.btn_del.config(state="disabled")
         self.btn_new.config(state="normal")
 
+    # === СОЗДАНИЕ / СОХРАНЕНИЕ / УДАЛЕНИЕ ===
+
     def _create_new(self):
+        """Создаёт новый источник в текущей активной группе."""
         name = self.name_entry.get().strip()
         if not name:
             messagebox.showwarning("Внимание", "Введите наименование источника.")
@@ -5287,12 +5617,24 @@ class SourcesManagerTab(ttk.Frame):
         desc = self.desc_entry.get().strip()
         link = self.link_entry.get().strip()
 
-        self.app_data.source_manager.add_source(name, desc, link)
+        # Определяем группу: либо по текущему выбору, либо по активной вкладке
+        group = self.current_group
+        if not group:
+            tab_id = self.inner_notebook.select()
+            tab_widget = self.nametowidget(tab_id)
+            group = self.tab_to_group.get(tab_widget, "property_sources")
+        self.current_group = group
+
+        # Добавляем источник в выбранную группу
+        self.app_data.source_manager.add_source(name, desc, link, group=group)
+
         self.update_view()
         messagebox.showinfo("Успех", "Источник создан.")
 
     def _save_changes(self):
-        if not self.current_source_id: return
+        """Сохраняет изменения в выделенном источнике."""
+        if not self.current_source_id:
+            return
 
         name = self.name_entry.get().strip()
         if not name:
@@ -5302,7 +5644,9 @@ class SourcesManagerTab(ttk.Frame):
         desc = self.desc_entry.get().strip()
         link = self.link_entry.get().strip()
 
-        success = self.app_data.source_manager.update_source(self.current_source_id, name, desc, link)
+        success = self.app_data.source_manager.update_source(
+            self.current_source_id, name, desc, link
+        )
         if success:
             self.update_view()
             messagebox.showinfo("Успех", "Изменения сохранены.")
@@ -5310,29 +5654,34 @@ class SourcesManagerTab(ttk.Frame):
             messagebox.showerror("Ошибка", "Не удалось найти источник для обновления.")
 
     def _delete_source(self, event=None):
-        if not self.current_source_id: return
+        """Удаляет источник, если он не используется ни в одном материале."""
+        if not self.current_source_id:
+            return
 
         # 1. ПРОВЕРКА ИСПОЛЬЗОВАНИЯ В МАТЕРИАЛАХ
-        # Нужно пробежаться по всем материалам и проверить, не используется ли этот ID
         usage_count = 0
         used_in = []
 
         for mat in self.app_data.materials:
-            # Проверка физ
+            # Проверка физ. свойств
             if mat.data.get("physical_properties", {}).get("source_ref_id") == self.current_source_id:
                 usage_count += 1
                 used_in.append(mat.get_display_name())
                 continue
 
-            # Проверка мех (по категориям)
+            # Проверка мех. свойств (по категориям)
             cats = mat.data.get("mechanical_properties", {}).get("strength_category", [])
+            found_in_mech = False
             for cat in cats:
                 if cat.get("source_ref_id") == self.current_source_id:
                     usage_count += 1
                     used_in.append(mat.get_display_name())
-                    break  # Одного совпадения в материале достаточно для блокировки
+                    found_in_mech = True
+                    break
+            if found_in_mech:
+                continue
 
-            # Проверка хим (по составам)
+            # Проверка хим. состава (по источникам)
             comps = mat.data.get("chemical_properties", {}).get("composition", [])
             for comp in comps:
                 if comp.get("source_ref_id") == self.current_source_id:
@@ -5341,9 +5690,13 @@ class SourcesManagerTab(ttk.Frame):
                     break
 
         if usage_count > 0:
-            msg = f"Нельзя удалить источник!\nОн используется в {usage_count} материалах, например:\n" + "\n".join(
-                used_in[:3])
-            if len(used_in) > 3: msg += "\n..."
+            msg = (
+                f"Нельзя удалить источник!\n"
+                f"Он используется в {usage_count} материалах, например:\n"
+                + "\n".join(used_in[:3])
+            )
+            if len(used_in) > 3:
+                msg += "\n..."
             messagebox.showerror("Ошибка удаления", msg)
             return
 
@@ -5351,19 +5704,45 @@ class SourcesManagerTab(ttk.Frame):
             self.app_data.source_manager.delete_source(self.current_source_id)
             self.update_view()
 
-    def _open_file_link(self, event):
-        """Открывает файл или ссылку из выделенного источника."""
-        selected = self.tree.selection()
-        if not selected: return
-        src_id = selected[0]
-        src = self.app_data.source_manager.get_source_by_id(src_id)
+    # === РАБОТА СО ССЫЛКАМИ ===
+
+    def _on_tree_right_click(self, event):
+        """
+        ПКМ по строке открывает контекстное меню с пунктом 'Открыть ссылку'.
+        """
+        tree = event.widget
+        item = tree.identify_row(event.y)
+        if item:
+            tree.selection_set(item)
+            self._context_tree = tree
+            self._context_source_id = item
+
+            src = self.app_data.source_manager.get_source_by_id(item)
+            link = (src.get("hyperlink", "").strip() if src else "")
+            # Включаем/выключаем пункт меню в зависимости от наличия ссылки
+            state = "normal" if link else "disabled"
+            self.context_menu.entryconfig(0, state=state)
+
+            self.context_menu.post(event.x_root, event.y_root)
+
+    def _open_link_from_context(self):
+        """Открывает ссылку для источника, выбранного через контекстное меню."""
+        if not self._context_source_id:
+            return
+        self._open_file_link_by_id(self._context_source_id)
+
+    def _open_file_link_by_id(self, source_id):
+        """Открывает файл или ссылку по ID источника."""
+        src = self.app_data.source_manager.get_source_by_id(source_id)
+        if not src:
+            return
 
         link = src.get("hyperlink", "").strip()
-        if not link: return
+        if not link:
+            return
 
         # Если это локальный путь и он относительный, пробуем найти в папке Источники
-        if not os.path.isabs(link) and not link.startswith("http"):
-            # Проверяем в папке Источники
+        if not os.path.isabs(link) and not link.lower().startswith(("http://", "https://")):
             sources_dir = os.path.join(get_app_directory(), "Источники")
             potential_path = os.path.join(sources_dir, link)
             if os.path.exists(potential_path):
@@ -5384,7 +5763,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.8)")
+        self.title("Material_Lib (2.1.12)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
