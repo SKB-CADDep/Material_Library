@@ -3082,9 +3082,17 @@ class PropertyComparisonTab(ttk.Frame):
 
 
 class ChemComparisonTab(ttk.Frame, ScrollableMixin):
+    """
+    Вкладка "Сравнение материалов (хим. состав)" с разделением на два сценария:
+    1) Сравнение хим. состава одного материала по разным источникам (ГОСТ/ТУ).
+    2) Подбор материала по целевому химическому составу.
+    """
+
     def __init__(self, parent, app_data):
         super().__init__(parent)
         self.app_data = app_data
+
+        # Подсказки по влиянию элементов (можно переиспользовать при необходимости)
         self.element_tooltips = {
             "C": "Углерод.\nПовышает: Твердость, прочность, упругость.\nСнижает: Пластичность, вязкость.",
             "Si": "Кремний.\nПовышает: Прочность, упругость, электросопротивление, жаростойкость, твердость.\nСнижает: -.",
@@ -3110,154 +3118,275 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
             "La": "Лантан.\nПовышает: Качество поверхности. \nСнижает: Пористость.",
             "Sb": "Сурьма.\nПовышает: Отпускную хрупкость. \nСнижает: Качество поверхности литья."
         }
-        self.filter_entries = {}
-        self.all_composition_data = []
-        self.sorted_elements = []
+
+        # --- СЦЕНАРИЙ 1: Сравнение ГОСТов/источников для одного материала ---
+        self.s1_current_material = None
+        self.s1_compositions = []      # список dict по источникам для выбранного материала
+        self.s1_elements = []          # отсортированный список всех элементов для pivot-таблицы
+
+        # Виджеты сценария 1
+        self.s1_area_combo = None
+        self.s1_search_entry = None
+        self.s1_mat_listbox = None
+        self.s1_pivot_tree = None
+        self.s1_sources_tree = None
+
+        # --- СЦЕНАРИЙ 2: Подбор по целевому составу ---
+        self.s2_target_tree = None
+        self.s2_results_tree = None
+        self.s2_details_tree = None
+        self.s2_area_combo = None
+        self.s2_influence_frame = None     # блок "Влияние элементов..."
+        self._s2_popup_window = None       # всплывающий список элементов
+
+        # Кэш всех комбинаций (материал + источник состава)
+        self.s2_all_compositions = []       # список dict
+        self.s2_candidate_by_item = {}      # item_id (Treeview) -> dict с данными кандидата
+
         self._setup_widgets()
 
+    # =========================================================================
+    # ОБЩЕЕ: инициализация вкладок
+    # =========================================================================
+
     def _setup_widgets(self):
-        main_frame = ttk.Frame(self)
-        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Создаёт внутренний Notebook с двумя сценариями."""
+        main_notebook = ttk.Notebook(self)
+        main_notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
-        controls_frame = ttk.Frame(main_frame, width=250)
-        controls_frame.pack(side="left", fill="y", padx=(0, 10))
-        controls_frame.pack_propagate(False)
+        tab_compare = ttk.Frame(main_notebook)   # сценарий 1
+        tab_select = ttk.Frame(main_notebook)    # сценарий 2
 
-        ttk.Label(controls_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
-        self.area_combo = ttk.Combobox(controls_frame, state="readonly")
-        self.area_combo.pack(fill="x", pady=(0, 10))
-        self.area_combo.bind("<<ComboboxSelected>>", self._update_material_listbox)
+        main_notebook.add(tab_compare, text="По стандартам для материала")
+        main_notebook.add(tab_select, text="Подбор по целевому составу")
 
-        ttk.Label(controls_frame, text="Поиск материала:").pack(fill="x", pady=(0, 2))
-        self.search_entry = ttk.Entry(controls_frame)
-        self.search_entry.pack(fill="x", pady=(0, 10))
-        self.search_entry.bind("<KeyRelease>", self._update_material_listbox)
+        self._setup_scenario1(tab_compare)
+        self._setup_scenario2(tab_select)
 
-        ttk.Label(controls_frame, text="Выберите материалы:").pack(fill="x", pady=(0, 2))
-        list_frame = ttk.Frame(controls_frame)
-        list_frame.pack(fill="both", expand=True, pady=(0, 10))
-        self.mat_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE, exportselection=False)
-        list_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.mat_listbox.yview)
-        self.mat_listbox.config(yscrollcommand=list_scrollbar.set)
-        list_scrollbar.pack(side="right", fill="y")
-        self.mat_listbox.pack(side="left", fill="both", expand=True)
-        self.mat_listbox.bind("<<ListboxSelect>>", self._setup_comparison_view)
+    # =========================================================================
+    # СЦЕНАРИЙ 1: ОДИН МАТЕРИАЛ, РАЗНЫЕ ИСТОЧНИКИ
+    # =========================================================================
 
-        results_area_frame = ttk.Frame(main_frame)
-        results_area_frame.pack(side="right", fill="both", expand=True)
-        self.filter_frame = ttk.LabelFrame(results_area_frame, text="Фильтры по элементам (%)", padding=10)
-        self.filter_frame.pack(fill="x", pady=(0, 10))
+    def _setup_scenario1(self, parent):
+        """UI для сравнения состава одного материала по разным источникам."""
+        main_frame = ttk.Frame(parent)
+        main_frame.pack(fill="both", expand=True)
 
-        scrollable_container = ttk.Frame(results_area_frame)
-        scrollable_container.pack(fill="both", expand=True)
-        scrollable_container.grid_rowconfigure(0, weight=1)
-        scrollable_container.grid_columnconfigure(0, weight=1)
-        self.canvas = tk.Canvas(scrollable_container)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        vsb = ttk.Scrollbar(scrollable_container, orient="vertical", command=self.canvas.yview)
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb = ttk.Scrollbar(scrollable_container, orient="horizontal", command=self.canvas.xview)
-        hsb.grid(row=1, column=0, sticky="ew")
-        self.canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        self.results_grid_frame = ttk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.results_grid_frame, anchor="nw")
-        self.results_grid_frame.bind("<Configure>",
-                                     lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        # Левая панель (фильтры и выбор материала)
+        left_frame = ttk.Frame(main_frame, width=250)
+        left_frame.pack(side="left", fill="y", padx=(0, 10))
+        left_frame.pack_propagate(False)
 
-        # --- MIXIN SCROLL ---
-        self.bind_mouse_wheel(self.canvas)
-        self.bind_mouse_wheel(self.results_grid_frame, self.canvas)
+        ttk.Label(left_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
+        self.s1_area_combo = ttk.Combobox(left_frame, state="readonly")
+        self.s1_area_combo.pack(fill="x", pady=(0, 8))
+        self.s1_area_combo.bind("<<ComboboxSelected>>", self._s1_update_material_listbox)
 
-    def _reset_element_filters(self):
-        for entry in self.filter_entries.values(): entry.delete(0, tk.END)
-        self._apply_filters_and_resort()
+        ttk.Label(left_frame, text="Поиск материала:").pack(fill="x", pady=(0, 2))
+        self.s1_search_entry = ttk.Entry(left_frame)
+        self.s1_search_entry.pack(fill="x", pady=(0, 8))
+        self.s1_search_entry.bind("<KeyRelease>", self._s1_update_material_listbox)
 
-    def update_lists(self):
-        self.area_combo.config(values=["Все"] + getattr(self.app_data, 'application_areas', []))
-        self.area_combo.set("Все")
-        self.search_entry.delete(0, tk.END)
-        self._update_material_listbox()
+        ttk.Label(left_frame, text="Материалы:").pack(fill="x", pady=(0, 2))
+        list_frame = ttk.Frame(left_frame)
+        list_frame.pack(fill="both", expand=True)
 
-    def _update_material_listbox(self, event=None):
-        self.mat_listbox.delete(0, tk.END)
-        selected_area = self.area_combo.get()
-        search_term = self.search_entry.get().lower()
+        self.s1_mat_listbox = tk.Listbox(list_frame, exportselection=False)
+        s1_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.s1_mat_listbox.yview)
+        self.s1_mat_listbox.configure(yscrollcommand=s1_scroll.set)
+        s1_scroll.pack(side="right", fill="y")
+        self.s1_mat_listbox.pack(side="left", fill="both", expand=True)
+        self.s1_mat_listbox.bind("<<ListboxSelect>>", self._s1_on_material_select)
+
+        # Правая часть – две таблицы: pivot по элементам + список источников
+        right_frame = ttk.Frame(main_frame)
+        right_frame.pack(side="right", fill="both", expand=True)
+
+        # Pivot-таблица: строки = элементы, столбцы = источники
+        pivot_frame = ttk.LabelFrame(right_frame, text="Сравнение хим. состава по элементам", padding=5)
+        pivot_frame.pack(fill="both", expand=True, pady=(0, 5))
+
+        self.s1_pivot_tree = ttk.Treeview(pivot_frame, show="headings")
+        p_vsb = ttk.Scrollbar(pivot_frame, orient="vertical", command=self.s1_pivot_tree.yview)
+        p_hsb = ttk.Scrollbar(pivot_frame, orient="horizontal", command=self.s1_pivot_tree.xview)
+        self.s1_pivot_tree.configure(yscrollcommand=p_vsb.set, xscrollcommand=p_hsb.set)
+        self.s1_pivot_tree.grid(row=0, column=0, sticky="nsew")
+        p_vsb.grid(row=0, column=1, sticky="ns")
+        p_hsb.grid(row=1, column=0, sticky="ew")
+
+        pivot_frame.grid_rowconfigure(0, weight=1)
+        pivot_frame.grid_columnconfigure(0, weight=1)
+
+        # Строки, где источники дают разные значения, подсвечиваем
+        self.s1_pivot_tree.tag_configure("diff", background="#fffacd")  # светло-жёлтый
+
+        # Список источников для выбранного материала
+        sources_frame = ttk.LabelFrame(right_frame, text="Источники состава выбранного материала", padding=5)
+        sources_frame.pack(fill="x", expand=False, pady=(5, 0))
+
+        self.s1_sources_tree = ttk.Treeview(
+            sources_frame,
+            columns=("src", "comment", "base", "unit"),
+            show="headings",
+            height=4
+        )
+        self.s1_sources_tree.heading("src", text="Источник")
+        self.s1_sources_tree.column("src", width=250, anchor="w")
+        self.s1_sources_tree.heading("comment", text="Комментарий")
+        self.s1_sources_tree.column("comment", width=250, anchor="w")
+        self.s1_sources_tree.heading("base", text="Основа")
+        self.s1_sources_tree.column("base", width=80, anchor="center")
+        self.s1_sources_tree.heading("unit", text="Ед. изм.")
+        self.s1_sources_tree.column("unit", width=80, anchor="center")
+
+        s_vsb = ttk.Scrollbar(sources_frame, orient="vertical", command=self.s1_sources_tree.yview)
+        self.s1_sources_tree.configure(yscrollcommand=s_vsb.set)
+        self.s1_sources_tree.grid(row=0, column=0, sticky="nsew")
+        s_vsb.grid(row=0, column=1, sticky="ns")
+
+        sources_frame.grid_rowconfigure(0, weight=1)
+        sources_frame.grid_columnconfigure(0, weight=1)
+
+    def _s1_update_material_listbox(self, event=None):
+        """Обновление списка материалов для сценария 1 (по области и поиску)."""
+        if not self.s1_mat_listbox:
+            return
+
+        self.s1_mat_listbox.delete(0, tk.END)
+
+        selected_area = self.s1_area_combo.get() or "Все"
+        search_term = (self.s1_search_entry.get() or "").lower()
 
         for mat in self.app_data.materials:
-            if not mat.data.get("chemical_properties", {}).get("composition"): continue
-            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}).get("application_area",
-                                                                                                []): continue
+            # учитываем только материалы с хоть одним источником хим. состава
+            if not mat.data.get("chemical_properties", {}).get("composition"):
+                continue
+
+            meta = mat.data.get(Schema.METADATA, {})
+            app_areas = meta.get(Schema.APP_AREA, [])
+
+            if selected_area != "Все" and selected_area not in app_areas:
+                continue
+
             display_name = mat.get_display_name()
-            if search_term and search_term not in display_name.lower(): continue
-            self.mat_listbox.insert(tk.END, display_name)
+            if search_term and search_term not in display_name.lower():
+                continue
 
-        if selected_area != "Все" and not search_term:
-            self.mat_listbox.selection_set(0, tk.END)
-        self._setup_comparison_view()
+            self.s1_mat_listbox.insert(tk.END, display_name)
 
-    def _setup_comparison_view(self, event=None):
-        saved_filter_values = {elem: entry.get() for elem, entry in self.filter_entries.items() if entry.get()}
-        for widget in self.filter_frame.winfo_children(): widget.destroy()
-        for widget in self.results_grid_frame.winfo_children(): widget.destroy()
-        self.filter_entries.clear()
-        self.all_composition_data.clear()
+        # Автовыбор первого материала
+        if self.s1_mat_listbox.size() > 0:
+            self.s1_mat_listbox.selection_clear(0, tk.END)
+            self.s1_mat_listbox.selection_set(0)
+            self.s1_mat_listbox.event_generate("<<ListboxSelect>>")
+        else:
+            self.s1_current_material = None
+            self._s1_clear_tables()
 
-        selected_indices = self.mat_listbox.curselection()
-        selected_names = {self.mat_listbox.get(i) for i in selected_indices}
-        selected_mats = [m for m in self.app_data.materials if m.get_display_name() in selected_names]
+    def _s1_clear_tables(self):
+        """Очищает pivot-таблицу и таблицу источников."""
+        if self.s1_pivot_tree:
+            self.s1_pivot_tree.delete(*self.s1_pivot_tree.get_children())
+            self.s1_pivot_tree["columns"] = ()
+        if self.s1_sources_tree:
+            self.s1_sources_tree.delete(*self.s1_sources_tree.get_children())
+        self.s1_compositions = []
+        self.s1_elements = []
 
-        if not selected_mats: return
+    def _s1_on_material_select(self, event=None):
+        """Обработчик выбора материала в списке (сценарий 1)."""
+        if not self.s1_mat_listbox:
+            return
+        selection = self.s1_mat_listbox.curselection()
+        if not selection:
+            self.s1_current_material = None
+            self._s1_clear_tables()
+            return
+
+        name = self.s1_mat_listbox.get(selection[0])
+        material = next((m for m in self.app_data.materials if m.get_display_name() == name), None)
+        self.s1_current_material = material
+        if not material:
+            self._s1_clear_tables()
+            return
+
+        self._s1_build_material_view(material)
+
+    def _s1_build_material_view(self, material):
+        """
+        Формирует данные по источникам хим. состава выбранного материала
+        и обновляет две таблицы: источники + pivot по элементам.
+        """
+        self.s1_compositions = []
+        self.s1_elements = []
+
+        chem = material.data.get(Schema.CHEMICAL, {}).get(Schema.COMPOSITION, [])
+        source_manager = getattr(self.app_data, "source_manager", None)
 
         all_elements = set()
-        for mat in selected_mats:
-            for comp in mat.data.get("chemical_properties", {}).get("composition", []):
 
-                # --- ГИБРИДНАЯ ЛОГИКА ИСТОЧНИКА ---
-                source_name = "-"
-                ref_id = comp.get("source_ref_id")
-                if ref_id and self.app_data.source_manager:
-                    source_name = self.app_data.source_manager.get_name_by_id(ref_id)
-                else:
-                    source_name = comp.get("composition_source", "")
+        for comp in chem:
+            # Человекочитаемое имя источника (гибрид: новый/старый формат)
+            source_name = "-"
+            ref_id = comp.get("source_ref_id")
+            if ref_id and source_manager:
+                source_name = source_manager.get_name_by_id(ref_id)
+            else:
+                source_name = comp.get("composition_source", "") or "-"
 
-                if comp.get("composition_subsource"):
-                    source_name += f" ({comp.get('composition_subsource')})"
+            if comp.get("composition_subsource"):
+                source_name = f"{source_name} ({comp['composition_subsource']})"
 
-                elements_map = {elem['element']: elem for elem in comp.get("other_elements", [])}
-                self.all_composition_data.append({
-                    "material_name": mat.get_display_name(),
-                    "source": source_name,
-                    "base_element": comp.get("base_element", "-"),
-                    "elements_map": elements_map
-                })
-                all_elements.update(elements_map.keys())
+            comment = comp.get("comment", "")
+            base_element = comp.get("base_element", "-")
+            elements = comp.get("other_elements", [])
+            elements_map = {e.get("element"): e for e in elements if e.get("element")}
+            unit = elements[0].get("unit_value", "%") if elements else "%"
 
-        if not all_elements: return
-        self.sorted_elements = sorted(list(all_elements))
+            all_elements.update(elements_map.keys())
 
-        col = 0
-        for elem in self.sorted_elements:
-            frame = ttk.Frame(self.filter_frame)
-            frame.grid(row=0, column=col, padx=5, pady=2, sticky='w')
-            ttk.Label(frame, text=elem).pack(side="left")
-            entry = ttk.Entry(frame, width=6)
-            entry.pack(side="left", padx=(2, 0))
-            entry.bind("<KeyRelease>", self._apply_filters_and_resort)
-            self.filter_entries[elem] = entry
-            if elem in saved_filter_values: entry.insert(0, saved_filter_values[elem])
-            col += 1
+            self.s1_compositions.append({
+                "source_label": source_name,
+                "comment": comment,
+                "base_element": base_element,
+                "unit": unit,
+                "elements_map": elements_map
+            })
 
-        reset_button = ttk.Button(self.filter_frame, text="Сбросить", command=self._reset_element_filters)
-        reset_button.grid(row=1, column=0, columnspan=col or 1, pady=(10, 0), sticky='w')
-        self._apply_filters_and_resort()
+        self.s1_elements = sorted(all_elements)
+        self._s1_refresh_sources_table()
+        self._s1_refresh_pivot_table()
+
+    def _s1_refresh_sources_table(self):
+        """Заполняет таблицу источников для выбранного материала (сценарий 1)."""
+        self.s1_sources_tree.delete(*self.s1_sources_tree.get_children())
+
+        for comp in self.s1_compositions:
+            values = (
+                comp["source_label"],
+                comp["comment"],
+                comp["base_element"],
+                comp["unit"]
+            )
+            self.s1_sources_tree.insert("", "end", values=values)
 
     def _format_chem_value(self, elem_data):
-        if not elem_data: return "-"
+        """
+        Форматирование значения хим. элемента в диапазон/неравенство.
+        Повторяет старую логику.
+        """
+        if not elem_data:
+            return "-"
+
         min_v, max_v = elem_data.get("min_value"), elem_data.get("max_value")
         min_tol = elem_data.get("min_value_tolerance")
         max_tol = elem_data.get("max_value_tolerance")
-        if min_v == 0: min_v = None
-        if max_v == 0: max_v = None
+
+        if min_v == 0:
+            min_v = None
+        if max_v == 0:
+            max_v = None
+
         if min_v is not None and max_v is not None:
             min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
             max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
@@ -3271,86 +3400,756 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
         else:
             return "-"
 
-    def _apply_filters_and_resort(self, event=None):
-        targets = {}
-        for elem, entry in self.filter_entries.items():
-            val_str = entry.get().strip()
-            if val_str:
-                # safe_float уже обрабатывает ошибки и возвращает None, если не число
-                # но нам нужно None только если строка пустая
-                val = safe_float(val_str)
-                if val is not None:
-                    targets[elem] = val
+    def _s1_refresh_pivot_table(self):
+        """Перестраивает pivot-таблицу по элементам (строки) и источникам (столбцы)."""
+        tree = self.s1_pivot_tree
+        tree.delete(*tree.get_children())
 
-        processed_data = []
-        for comp_data in self.all_composition_data:
-            score, cell_colors, is_fully_matching = 0, {}, True
-            for elem, target_val in targets.items():
-                if target_val is None: continue
-                elem_info = comp_data["elements_map"].get(elem)
-                if not elem_info:
-                    is_fully_matching = False
-                    cell_colors[elem] = "light coral"
-                    continue
-                min_v, max_v = elem_info.get("min_value"), elem_info.get("max_value")
+        if not self.s1_compositions or not self.s1_elements:
+            tree["columns"] = ()
+            return
 
-                lower_bound = float('-inf') if min_v is None else min_v
-                upper_bound = float('inf') if max_v is None else max_v
+        # Базовые колонки: символ + название элемента
+        columns = ["element", "name"]
+        # Для каждого источника – своя колонка
+        for idx, _ in enumerate(self.s1_compositions):
+            columns.append(f"src_{idx}")
 
-                if lower_bound <= target_val <= upper_bound:
-                    score += 1
-                    cell_colors[elem] = "pale green"
+        tree["columns"] = columns
+
+        tree.heading("element", text="Элемент")
+        tree.column("element", width=70, anchor="center", stretch=False)
+
+        tree.heading("name", text="Название")
+        tree.column("name", width=150, anchor="w", stretch=True)
+
+        for idx, comp in enumerate(self.s1_compositions):
+            col_id = f"src_{idx}"
+            header_text = comp["source_label"] or f"Источник {idx + 1}"
+            tree.heading(col_id, text=header_text)
+            tree.column(col_id, width=140, anchor="center", stretch=True)
+
+        # Заполнение строк
+        for elem_sym in self.s1_elements:
+            # Название элемента берём из ELEMENTS_MAP в ChemicalCompositionTab
+            elem_info = getattr(ChemicalCompositionTab, "ELEMENTS_MAP", {}).get(elem_sym, {})
+            elem_name = elem_info.get("name", "")
+            row_values = [elem_sym, elem_name]
+
+            # Определяем, одинаковые ли значения по всем источникам для этого элемента,
+            # сравнивая уже отформатированные строки (как в ячейках)
+            reprs = []
+            for comp in self.s1_compositions:
+                elem_data = comp["elements_map"].get(elem_sym)
+                formatted = self._format_chem_value(elem_data)
+                row_values.append(formatted)
+                reprs.append(formatted)
+
+            unique_reprs = set(reprs)
+            # Если у разных источников отличаются диапазоны/наличие – подсвечиваем строку
+            # (если все строки одинаковые, в т.ч. "-", подсветки нет)
+            tag = "diff" if len(unique_reprs) > 1 else ""
+
+            tree.insert("", "end", values=row_values, tags=(tag,) if tag else ())
+
+    # =========================================================================
+    # СЦЕНАРИЙ 2: ПОДБОР ПО ЦЕЛЕВОМУ СОСТАВУ
+    # =========================================================================
+
+    def _setup_scenario2(self, parent):
+        """UI для подбора материалов по целевому хим. составу."""
+        main_frame = ttk.Frame(parent)
+        main_frame.pack(fill="both", expand=True)
+
+        # Левая панель: область, целевой состав (таблица)
+        left_frame = ttk.Frame(main_frame, width=320)
+        left_frame.pack(side="left", fill="y", padx=(0, 10))
+        left_frame.pack_propagate(False)
+
+        ttk.Label(left_frame, text="Область применения:").pack(fill="x", pady=(0, 2))
+        self.s2_area_combo = ttk.Combobox(left_frame, state="readonly")
+        self.s2_area_combo.pack(fill="x", pady=(0, 8))
+        self.s2_area_combo.bind("<<ComboboxSelected>>", self._s2_recalculate_results)
+
+        target_frame = ttk.LabelFrame(left_frame, text="Целевой химический состав", padding=5)
+        target_frame.pack(fill="both", expand=True)
+
+        # Кнопки добавления/удаления строк — сразу под заголовком блока
+        btn_frame = ttk.Frame(target_frame)
+        btn_frame.pack(fill="x", pady=(0, 5))
+
+        table_frame = ttk.Frame(target_frame)
+        table_frame.pack(fill="both", expand=True)
+
+        self.s2_target_tree = create_editable_treeview(
+            table_frame,
+            on_update_callback=self._s2_recalculate_results
+        )
+        self.s2_target_tree.configure(show="headings")
+        self.s2_target_tree["columns"] = ("elem", "target")
+
+        self.s2_target_tree.heading("elem", text="Элемент")
+        self.s2_target_tree.column("elem", width=80, anchor="center")
+        self.s2_target_tree.heading("target", text="Target, %")
+        self.s2_target_tree.column("target", width=80, anchor="center")
+
+        t_vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.s2_target_tree.yview)
+        self.s2_target_tree.configure(yscrollcommand=t_vsb.set)
+        self.s2_target_tree.pack(side="left", fill="both", expand=True)
+        t_vsb.pack(side="right", fill="y")
+
+        # ПКМ по ячейке элемента — выбор из списка элементов
+        self.s2_target_tree.bind("<Button-3>", self._s2_on_target_right_click)
+
+        def add_target_row():
+            self.s2_target_tree.insert("", "end", values=["", ""])
+            self._s2_recalculate_results()
+
+        def del_target_row():
+            sel = self.s2_target_tree.selection()
+            for item in sel:
+                self.s2_target_tree.delete(item)
+            self._s2_recalculate_results()
+
+        ttk.Button(btn_frame, text="+", width=2, command=add_target_row).pack(side="left", padx=2)
+        ttk.Button(btn_frame, text="-", width=2, command=del_target_row).pack(side="left", padx=2)
+
+        ttk.Label(
+            target_frame,
+            text="Заполните элементы и целевые значения.\nТаблица справа будет обновляться автоматически.",
+            foreground="gray"
+        ).pack(fill="x", pady=(5, 0))
+
+        # Правая часть: верхняя таблица – кандидаты, нижняя – детализация
+        right_frame = ttk.Frame(main_frame)
+        right_frame.pack(side="right", fill="both", expand=True)
+
+        # Верхняя таблица – списки кандидатов
+        results_frame = ttk.LabelFrame(right_frame, text="Результаты подбора материалов", padding=5)
+        results_frame.pack(fill="both", expand=True, pady=(0, 5))
+
+        self.s2_results_tree = ttk.Treeview(
+            results_frame,
+            show="headings",
+            columns=("material", "source", "base", "matched", "total", "status")
+        )
+        self.s2_results_tree.heading("material", text="Материал")
+        self.s2_results_tree.column("material", width=220, anchor="w")
+        self.s2_results_tree.heading("source", text="Источник")
+        self.s2_results_tree.column("source", width=200, anchor="w")
+        self.s2_results_tree.heading("base", text="Основа")
+        self.s2_results_tree.column("base", width=60, anchor="center")
+        self.s2_results_tree.heading("matched", text="Совпавших")
+        self.s2_results_tree.column("matched", width=80, anchor="center")
+        self.s2_results_tree.heading("total", text="Всего")
+        self.s2_results_tree.column("total", width=60, anchor="center")
+        self.s2_results_tree.heading("status", text="Статус")
+        self.s2_results_tree.column("status", width=130, anchor="center")
+
+        r_vsb = ttk.Scrollbar(results_frame, orient="vertical", command=self.s2_results_tree.yview)
+        r_hsb = ttk.Scrollbar(results_frame, orient="horizontal", command=self.s2_results_tree.xview)
+        self.s2_results_tree.configure(yscrollcommand=r_vsb.set, xscrollcommand=r_hsb.set)
+        self.s2_results_tree.grid(row=0, column=0, sticky="nsew")
+        r_vsb.grid(row=0, column=1, sticky="ns")
+        r_hsb.grid(row=1, column=0, sticky="ew")
+
+        results_frame.grid_rowconfigure(0, weight=1)
+        results_frame.grid_columnconfigure(0, weight=1)
+
+        # Раскраска строк в зависимости от статуса
+        self.s2_results_tree.tag_configure("full_match", background="#d0f0c0")     # светло-зелёный
+        self.s2_results_tree.tag_configure("partial_match", background="#fffacd")  # светло-жёлтый
+        self.s2_results_tree.tag_configure("no_match", background="#ffe4e1")       # розоватый
+
+        self.s2_results_tree.bind("<<TreeviewSelect>>", self._s2_on_result_select)
+
+        # Нижняя таблица – детализация по выбранному кандидату
+        details_frame = ttk.LabelFrame(right_frame, text="Детализированное сравнение по выбранному источнику", padding=5)
+        details_frame.pack(fill="both", expand=True, pady=(5, 0))
+
+        self.s2_details_tree = ttk.Treeview(
+            details_frame,
+            show="headings",
+            columns=("elem", "target", "min", "max", "min_tol", "max_tol", "state", "delta")
+        )
+
+        self.s2_details_tree.heading("elem", text="Элемент")
+        self.s2_details_tree.column("elem", width=70, anchor="center")
+        self.s2_details_tree.heading("target", text="Target, %")
+        self.s2_details_tree.column("target", width=80, anchor="center")
+        self.s2_details_tree.heading("min", text="Min, %")
+        self.s2_details_tree.column("min", width=80, anchor="center")
+        self.s2_details_tree.heading("max", text="Max, %")
+        self.s2_details_tree.column("max", width=80, anchor="center")
+        self.s2_details_tree.heading("min_tol", text="Допуск Min, %")
+        self.s2_details_tree.column("min_tol", width=90, anchor="center")
+        self.s2_details_tree.heading("max_tol", text="Допуск Max, %")
+        self.s2_details_tree.column("max_tol", width=90, anchor="center")
+        self.s2_details_tree.heading("state", text="Статус")
+        self.s2_details_tree.column("state", width=120, anchor="center")
+        self.s2_details_tree.heading("delta", text="Δ до границы, %")
+        self.s2_details_tree.column("delta", width=120, anchor="center")
+
+        d_vsb = ttk.Scrollbar(details_frame, orient="vertical", command=self.s2_details_tree.yview)
+        d_hsb = ttk.Scrollbar(details_frame, orient="horizontal", command=self.s2_details_tree.xview)
+        self.s2_details_tree.configure(yscrollcommand=d_vsb.set, xscrollcommand=d_hsb.set)
+        self.s2_details_tree.grid(row=0, column=0, sticky="nsew")
+        d_vsb.grid(row=0, column=1, sticky="ns")
+        d_hsb.grid(row=1, column=0, sticky="ew")
+
+        details_frame.grid_rowconfigure(0, weight=1)
+        details_frame.grid_columnconfigure(0, weight=1)
+
+        # Раскраска по ячейкам (через теги строк)
+        self.s2_details_tree.tag_configure("in_range", background="#d0f0c0")
+        self.s2_details_tree.tag_configure("out_of_range", background="#ffe4e1")
+        self.s2_details_tree.tag_configure("missing", background="#f0f0f0")
+
+        # Блок "Влияние элементов на свойства стали"
+        influence_outer = ttk.LabelFrame(
+            right_frame,
+            text="Влияние элементов на свойства стали",
+            padding=5
+        )
+        # Фиксируем высоту (примерно на 10 строк текста)
+        influence_outer.pack(fill="x", expand=False, pady=(5, 0))
+        influence_outer.configure(height=220)
+        influence_outer.pack_propagate(False)
+
+        # Внутри LabelFrame создаём Canvas + вертикальный скролл + внутренний фрейм
+        influence_canvas = tk.Canvas(influence_outer, borderwidth=0, highlightthickness=0)
+        influence_vsb = ttk.Scrollbar(influence_outer, orient="vertical", command=influence_canvas.yview)
+        influence_inner = ttk.Frame(influence_canvas)
+
+        influence_inner.bind(
+            "<Configure>",
+            lambda e: influence_canvas.configure(scrollregion=influence_canvas.bbox("all"))
+        )
+
+        influence_canvas.create_window((0, 0), window=influence_inner, anchor="nw")
+        influence_canvas.configure(yscrollcommand=influence_vsb.set)
+
+        influence_canvas.pack(side="left", fill="both", expand=True)
+        influence_vsb.pack(side="right", fill="y")
+
+        # Привязка прокрутки колесом мыши
+        self.bind_mouse_wheel(influence_canvas)
+        self.bind_mouse_wheel(influence_inner, influence_canvas)
+
+        # Здесь будем создавать строки с влиянием элементов
+        self.s2_influence_frame = influence_inner
+
+    # =========================================================================
+    # ОБЩИЙ МЕТОД ДЛЯ ViewerFrame
+    # =========================================================================
+
+    def update_lists(self):
+        """
+        Вызывается при загрузке/перезагрузке данных.
+        Обновляет комбобоксы областей и кэширует все источники хим. состава.
+        """
+        areas = ["Все"] + getattr(self.app_data, "application_areas", [])
+
+        # Сценарий 1
+        if self.s1_area_combo:
+            self.s1_area_combo.config(values=areas)
+            if not self.s1_area_combo.get():
+                self.s1_area_combo.set("Все")
+
+        # Сценарий 2
+        if self.s2_area_combo:
+            self.s2_area_combo.config(values=areas)
+            if not self.s2_area_combo.get():
+                self.s2_area_combo.set("Все")
+
+        # Перестраиваем кэш всех (материал, источник состава)
+        self._s2_rebuild_all_compositions()
+
+        # Обновляем список материалов для сценария 1
+        self._s1_update_material_listbox()
+
+        # Пересчитываем результаты подбора для сценария 2
+        self._s2_recalculate_results()
+
+    # =========================================================================
+    # СЦЕНАРИЙ 2: ЛОГИКА ПОДБОРА
+    # =========================================================================
+
+    def _s2_rebuild_all_compositions(self):
+        """Строит кэш всех комбинаций (материал + источник состава)."""
+        self.s2_all_compositions = []
+        source_manager = getattr(self.app_data, "source_manager", None)
+
+        for mat in self.app_data.materials:
+            chem = mat.data.get(Schema.CHEMICAL, {}).get(Schema.COMPOSITION, [])
+            if not chem:
+                continue
+
+            mat_name = mat.get_display_name()
+
+            for comp in chem:
+                elements = comp.get("other_elements", [])
+                elements_map = {e.get("element"): e for e in elements if e.get("element")}
+                base_element = comp.get("base_element", "-")
+                unit = elements[0].get("unit_value", "%") if elements else "%"
+
+                # Имя источника (как в сценарии 1)
+                source_label = "-"
+                ref_id = comp.get("source_ref_id")
+                if ref_id and source_manager:
+                    source_label = source_manager.get_name_by_id(ref_id)
                 else:
-                    is_fully_matching = False
-                    cell_colors[elem] = "light coral"
-            comp_data['is_match'], comp_data['score'], comp_data[
-                'cell_colors'] = is_fully_matching, score if is_fully_matching else -1, cell_colors
-            processed_data.append(comp_data)
-        processed_data.sort(key=lambda x: (x.get('is_match', False), x.get('score', 0)), reverse=True)
-        self._populate_results_grid(processed_data)
+                    source_label = comp.get("composition_source", "") or "-"
 
-    def _populate_results_grid(self, data_to_show):
-        for widget in self.results_grid_frame.winfo_children(): widget.destroy()
-        headers = ["Материал", "Источник", "Основа"] + self.sorted_elements
-        header_widths = [150, 200, 60] + [100] * len(self.sorted_elements)
-        for col, text in enumerate(headers):
-            self.results_grid_frame.columnconfigure(col, minsize=header_widths[col])
-            label = ttk.Label(self.results_grid_frame, text=text, font=("TkDefaultFont", 9, "bold"), anchor="center",
-                              relief="groove", padding=5)
-            label.grid(row=0, column=col, sticky="nsew")
-            if text in self.element_tooltips: Tooltip(label, self.element_tooltips[text])
+                if comp.get("composition_subsource"):
+                    source_label = f"{source_label} ({comp['composition_subsource']})"
 
-        for row, comp_data in enumerate(data_to_show, start=1):
-            row_bg_color = "honeydew" if comp_data.get('is_match', True) else "misty rose"
+                self.s2_all_compositions.append({
+                    "material": mat,
+                    "material_name": mat_name,
+                    "composition": comp,
+                    "source_label": source_label,
+                    "base_element": base_element,
+                    "unit": unit,
+                    "elements_map": elements_map
+                })
 
-            def bind_scroll(w):
-                # Используем метод из Mixin
-                self.bind_mouse_wheel(w, self.canvas)
+    def _s2_collect_targets(self):
+        """
+        Собирает целевые значения из таблицы слева.
+        Возвращает dict: { "C": float, "Cr": float, ... }.
+        """
+        targets = {}
+        if not self.s2_target_tree:
+            return targets
 
-            l1 = tk.Label(self.results_grid_frame, text=comp_data["material_name"], relief="groove", padx=5, pady=5,
-                          background=row_bg_color)
-            l1.grid(row=row, column=0, sticky="nsew");
-            bind_scroll(l1)
+        for item_id in self.s2_target_tree.get_children():
+            values = self.s2_target_tree.set(item_id)
+            elem = (values.get("elem") or "").strip()
+            if not elem:
+                continue
+            val_str = (values.get("target") or "").strip()
+            if not val_str:
+                continue
+            t_val = safe_float(val_str)
+            if t_val is None:
+                continue
+            targets[elem] = t_val
 
-            l2 = tk.Label(self.results_grid_frame, text=comp_data["source"], relief="groove", padx=5, pady=5,
-                          background=row_bg_color)
-            l2.grid(row=row, column=1, sticky="nsew");
-            bind_scroll(l2)
+        return targets
 
-            l3 = tk.Label(self.results_grid_frame, text=comp_data["base_element"], anchor="center", relief="groove",
-                          padx=5, pady=5, background=row_bg_color)
-            l3.grid(row=row, column=2, sticky="nsew");
-            bind_scroll(l3)
+    def _s2_recalculate_results(self, event=None):
+        """Пересчитывает результаты подбора материалов по текущему целевому составу."""
+        if not self.s2_results_tree:
+            return
 
-            for col, elem_name in enumerate(self.sorted_elements, start=3):
-                elem_info = comp_data["elements_map"].get(elem_name)
-                text_val = self._format_chem_value(elem_info)
-                cell_bg_color = comp_data.get("cell_colors", {}).get(elem_name, row_bg_color)
-                cell = tk.Label(self.results_grid_frame, text=text_val, background=cell_bg_color, relief="groove",
-                                padx=5, pady=5)
-                cell.grid(row=row, column=col, sticky="nsew");
-                bind_scroll(cell)
+        # Сбрасываем детали и блок влияния элементов
+        self.s2_details_tree.delete(*self.s2_details_tree.get_children())
+        self._s2_clear_influence()
+        self.s2_candidate_by_item.clear()
 
+        targets = self._s2_collect_targets()
+        self.s2_results_tree.delete(*self.s2_results_tree.get_children())
+
+        if not targets:
+            # Нечего подбирать – таблица пустая
+            return
+
+        selected_area = self.s2_area_combo.get() or "Все"
+
+        candidates = []
+
+        for cand in self.s2_all_compositions:
+            mat = cand["material"]
+            meta = mat.data.get(Schema.METADATA, {})
+            app_areas = meta.get(Schema.APP_AREA, [])
+
+            if selected_area != "Все" and selected_area not in app_areas:
+                continue
+
+            evaluated = self._s2_evaluate_candidate(cand, targets)
+            if evaluated:
+                candidates.append(evaluated)
+
+        # Сортировка: сначала полные совпадения, затем частичные, затем без совпадений
+        def sort_key(c):
+            if c["status"] == "Полное совпадение":
+                rank = 0
+            elif c["status"] == "Частичное совпадение":
+                rank = 1
+            else:
+                rank = 2
+            # Чем больше совпавших и меньше max_delta – тем выше
+            return (rank, -c["matched"], c["max_delta"], c["missing"], c["material_name"].lower())
+
+        candidates.sort(key=sort_key)
+
+        for c in candidates:
+            item_values = (
+                c["material_name"],
+                c["source_label"],
+                c["base_element"],
+                str(c["matched"]),
+                str(c["total_targets"]),
+                c["status"]
+            )
+            if c["status"] == "Полное совпадение":
+                tag = "full_match"
+            elif c["status"] == "Частичное совпадение":
+                tag = "partial_match"
+            else:
+                tag = "no_match"
+
+            item_id = self.s2_results_tree.insert("", "end", values=item_values, tags=(tag,))
+            self.s2_candidate_by_item[item_id] = c
+
+        # Автовыбор первого кандидата
+        first = self.s2_results_tree.get_children()
+        if first:
+            self.s2_results_tree.selection_set(first[0])
+            self.s2_results_tree.event_generate("<<TreeviewSelect>>")
+
+    def _s2_evaluate_candidate(self, cand, targets):
+        """
+        Оценивает один источник состава относительно целевого набора элементов.
+        Учитывает допуски Min/Max (min_value_tolerance, max_value_tolerance).
+        Возвращает dict с суммарными метриками и деталями по каждому элементу.
+        """
+        elements_map = cand["elements_map"]
+        details = {}
+        matched = 0
+        missing = 0
+        numeric_deltas = []
+
+        for elem_sym, target_val in targets.items():
+            elem_info = elements_map.get(elem_sym)
+            detail = {
+                "target": target_val,
+                "min": None,
+                "max": None,
+                "min_tol": None,
+                "max_tol": None,
+                "state": "",
+                "delta": None
+            }
+
+            # Элемента вообще нет в составе
+            if not elem_info:
+                detail["state"] = "missing"
+                missing += 1
+                details[elem_sym] = detail
+                continue
+
+            # Базовые границы
+            min_v = safe_float(elem_info.get("min_value"))
+            max_v = safe_float(elem_info.get("max_value"))
+            # Допуски (абсолютные значения)
+            min_tol = safe_float(elem_info.get("min_value_tolerance"))
+            max_tol = safe_float(elem_info.get("max_value_tolerance"))
+
+            detail["min"] = min_v
+            detail["max"] = max_v
+            detail["min_tol"] = min_tol
+            detail["max_tol"] = max_tol
+
+            # Если и Min, и Max отсутствуют — трактуем как отсутствие данных по элементу
+            if min_v is None and max_v is None:
+                detail["state"] = "missing"
+                missing += 1
+                details[elem_sym] = detail
+                continue
+
+            # Эффективные границы с учётом допусков:
+            # Min_eff = Min - ДопускMin (если оба заданы)
+            # Max_eff = Max + ДопускMax (если оба заданы)
+            if min_v is not None:
+                lower = min_v - min_tol if min_tol is not None else min_v
+            else:
+                lower = float("-inf")
+
+            if max_v is not None:
+                upper = max_v + max_tol if max_tol is not None else max_v
+            else:
+                upper = float("inf")
+
+            if lower <= target_val <= upper:
+                detail["state"] = "in"
+                matched += 1
+            else:
+                if target_val < lower:
+                    detail["state"] = "below"
+                    if lower != float("-inf"):
+                        delta = lower - target_val
+                        detail["delta"] = delta
+                        numeric_deltas.append(delta)
+                elif target_val > upper:
+                    detail["state"] = "above"
+                    if upper != float("inf"):
+                        delta = target_val - upper
+                        detail["delta"] = delta
+                        numeric_deltas.append(delta)
+                else:
+                    detail["state"] = "missing"
+
+            details[elem_sym] = detail
+
+        total_targets = len(targets)
+
+        if matched == total_targets and missing == 0 and not numeric_deltas:
+            status = "Полное совпадение"
+        elif matched > 0:
+            status = "Частичное совпадение"
+        else:
+            status = "Нет совпадений"
+
+        max_delta = max(numeric_deltas) if numeric_deltas else 0.0
+
+        return {
+            "material": cand["material"],
+            "material_name": cand["material_name"],
+            "source_label": cand["source_label"],
+            "base_element": cand["base_element"],
+            "unit": cand["unit"],
+            "details": details,
+            "matched": matched,
+            "total_targets": total_targets,
+            "missing": missing,
+            "status": status,
+            "max_delta": max_delta
+        }
+
+    def _s2_on_result_select(self, event=None):
+        """Обновление таблицы деталей при выборе кандидата."""
+        if not self.s2_results_tree or not self.s2_details_tree:
+            return
+
+        sel = self.s2_results_tree.selection()
+        self.s2_details_tree.delete(*self.s2_details_tree.get_children())
+        self._s2_clear_influence()
+
+        if not sel:
+            return
+
+        item_id = sel[0]
+        cand = self.s2_candidate_by_item.get(item_id)
+        if not cand:
+            return
+
+        self._s2_fill_details(cand)
+
+    def _s2_fill_details(self, cand):
+        """Заполняет нижнюю таблицу деталями по выбранному кандидату."""
+        tree = self.s2_details_tree
+        tree.delete(*tree.get_children())
+
+        unit = cand["unit"] or "%"
+
+        # Обновляем заголовки с учётом единиц
+        tree.heading("target", text=f"Target, {unit}")
+        tree.heading("min", text=f"Min, {unit}")
+        tree.heading("max", text=f"Max, {unit}")
+        tree.heading("min_tol", text=f"Допуск Min, {unit}")
+        tree.heading("max_tol", text=f"Допуск Max, {unit}")
+        tree.heading("delta", text=f"Δ до границы, {unit}")
+
+        # Человеко-читаемые статусы
+        state_labels = {
+            "in": "в диапазоне",
+            "below": "ниже диапазона",
+            "above": "выше диапазона",
+            "missing": "нет данных",
+            "": "нет данных"
+        }
+
+        for elem_sym in sorted(cand["details"].keys()):
+            d = cand["details"][elem_sym]
+            target = d["target"]
+            min_v = d["min"]
+            max_v = d["max"]
+            min_tol = d.get("min_tol")
+            max_tol = d.get("max_tol")
+            state = d["state"]
+            delta = d["delta"]
+
+            def fmt(x, prec=4):
+                if x is None:
+                    return "-"
+                s = f"{x:.{prec}f}".rstrip('0').rstrip('.')
+                return s
+
+            target_str = fmt(target, prec=4)
+            min_str = fmt(min_v, prec=4)
+            max_str = fmt(max_v, prec=4)
+            min_tol_str = fmt(min_tol, prec=4)
+            max_tol_str = fmt(max_tol, prec=4)
+            delta_str = fmt(delta, prec=4) if delta is not None and delta > 0 else "-"
+
+            label = state_labels.get(state, "нет данных")
+
+            if state == "in":
+                tag = "in_range"
+            elif state == "missing":
+                tag = "missing"
+            else:
+                tag = "out_of_range"
+
+            # ВСТАВЛЯЕМ СТРОКУ ВСЕГДА, независимо от статуса
+            tree.insert(
+                "",
+                "end",
+                values=(elem_sym, target_str, min_str, max_str, min_tol_str, max_tol_str, label, delta_str),
+                tags=(tag,)
+            )
+
+        # После заполнения таблицы обновляем блок влияния элементов
+        self._s2_update_influence(cand)
+
+    def _s2_clear_influence(self):
+        """Очищает блок 'Влияние элементов на свойства стали'."""
+        if not self.s2_influence_frame:
+            return
+        for w in self.s2_influence_frame.winfo_children():
+            w.destroy()
+
+    def _s2_update_influence(self, cand):
+        """Заполняет блок влияния элементов на свойства стали по выбранному кандидату."""
+        if not self.s2_influence_frame:
+            return
+
+        self._s2_clear_influence()
+
+        elements_map = getattr(ChemicalCompositionTab, "ELEMENTS_MAP", {})
+
+        for elem_sym in sorted(cand["details"].keys()):
+            tip = self.element_tooltips.get(elem_sym)
+            elem_info = elements_map.get(elem_sym, {})
+            elem_name = elem_info.get("name", elem_sym)
+
+            # Строка заголовка: "Углерод: C"
+            header_line = f"{elem_name}: {elem_sym}"
+
+            improves_line = ""
+            reduces_line = ""
+
+            if tip:
+                # Ожидаемый формат:
+                #   1-я строка: "Углерод."
+                #   2-я: "Повышает: ..."
+                #   3-я: "Снижает: ..."
+                raw_lines = [ln.strip() for ln in tip.splitlines() if ln.strip()]
+                for ln in raw_lines:
+                    if ln.startswith("Повышает"):
+                        improves_line = f"    - {ln}"
+                    elif ln.startswith("Снижает"):
+                        reduces_line = f"    - {ln}"
+            # Если подсказки нет — всё равно выводим хотя бы заголовок
+            lines_to_show = [header_line]
+            if improves_line:
+                lines_to_show.append(improves_line)
+            if reduces_line:
+                lines_to_show.append(reduces_line)
+
+            text = "\n".join(lines_to_show)
+
+            lbl = ttk.Label(
+                self.s2_influence_frame,
+                text=text,
+                wraplength=700,
+                justify="left",
+                anchor="w"
+            )
+            lbl.pack(fill="x", anchor="w", pady=1)
+
+    def _s2_on_target_right_click(self, event):
+        """ПКМ по ячейке 'Элемент' в таблице целевого состава — выбор элемента из списка."""
+        if not self.s2_target_tree:
+            return
+
+        region = self.s2_target_tree.identify_region(event.x, event.y)
+        if region != "cell":
+            return
+
+        row_id = self.s2_target_tree.identify_row(event.y)
+        column = self.s2_target_tree.identify_column(event.x)
+
+        # Интересует только первая колонка ('elem')
+        if column != "#1" or not row_id:
+            return
+
+        self.s2_target_tree.selection_set(row_id)
+        self.s2_target_tree.focus(row_id)
+        self._s2_show_element_picker(event, row_id)
+
+    def _s2_show_element_picker(self, event, row_id):
+        """Всплывающий список элементов (как в ChemicalCompositionTab)."""
+        # Закрываем предыдущее окно, если есть
+        if self._s2_popup_window:
+            self._s2_popup_window.destroy()
+            self._s2_popup_window = None
+
+        self._s2_popup_window = tk.Toplevel(self)
+        self._s2_popup_window.wm_overrideredirect(True)
+        self._s2_popup_window.geometry(f"+{event.x_root}+{event.y_root}")
+
+        frame = ttk.Frame(self._s2_popup_window, relief="solid", borderwidth=1)
+        frame.pack(fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+
+        listbox = tk.Listbox(
+            frame,
+            height=10,
+            width=30,
+            yscrollcommand=scrollbar.set,
+            exportselection=False
+        )
+        listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=listbox.yview)
+
+        # Берём справочник элементов из ChemicalCompositionTab
+        elements_map = getattr(ChemicalCompositionTab, "ELEMENTS_MAP", {})
+        sorted_items = sorted(elements_map.items(), key=lambda x: x[1].get("name", ""))
+
+        items_data = []
+        for symbol, data in sorted_items:
+            name = data.get("name", symbol)
+            display_text = f"{name} ({symbol})"
+            listbox.insert(tk.END, display_text)
+            items_data.append((symbol, name))
+
+        def on_select(evt):
+            sel_idx = listbox.curselection()
+            if not sel_idx:
+                return
+            idx = sel_idx[0]
+            symbol, _name = items_data[idx]
+
+            current_values = list(self.s2_target_tree.item(row_id, "values"))
+            # 0-й столбец — символ элемента
+            if len(current_values) < 2:
+                current_values = [symbol, ""]
+            else:
+                current_values[0] = symbol
+            self.s2_target_tree.item(row_id, values=current_values)
+
+            self._s2_recalculate_results()
+
+            if self._s2_popup_window:
+                self._s2_popup_window.destroy()
+                self._s2_popup_window = None
+
+        listbox.bind("<<ListboxSelect>>", on_select)
+        listbox.bind("<Escape>", lambda e: self._s2_popup_window.destroy())
+
+        self._s2_popup_window.bind("<FocusOut>", lambda e: self._s2_popup_window.destroy())
+
+        def _on_mousewheel(evt):
+            listbox.yview_scroll(int(-1 * (evt.delta / 120)), "units")
+            return "break"
+
+        listbox.bind("<MouseWheel>", _on_mousewheel)
+        listbox.focus_set()
 
 class AshbyDiagramTab(ttk.Frame):
     """Вкладка для построения диаграмм Эшби по классам материалов."""
@@ -4725,7 +5524,7 @@ class ChemicalCompositionTab(ttk.Frame):
         self.comment_entry.grid(row=1, column=1, sticky="we", padx=5, pady=2)
 
         ttk.Label(meta_frame, text="Основной элемент:").grid(row=2, column=0, sticky="w")
-        self.base_element_entry = ttk.Combobox(meta_frame, values=["Fe", "Ti"], width=10)
+        self.base_element_entry = ttk.Combobox(meta_frame, values=["Fe", "Ti", "Cu"], width=10)
         self.base_element_entry.grid(row=2, column=1, sticky="w", padx=5, pady=2)
         self.base_element_entry.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
         self.base_element_entry.bind("<KeyRelease>", lambda e: self._update_chart())
@@ -5763,7 +6562,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.12)")
+        self.title("Material_Lib (2.1.14)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
