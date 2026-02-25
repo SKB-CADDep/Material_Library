@@ -1772,7 +1772,9 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         self.HARDNESS_COLUMNS = {
             "min_value": {"name": "Min", "width": self.PROPERTY_COLUMN_WIDTH, "unit_type": "Твердость"},
             "max_value": {"name": "Max", "width": self.PROPERTY_COLUMN_WIDTH, "unit_type": "Твердость"},
-            "unit_value": {"name": "Ед. изм.", "width": self.PROPERTY_COLUMN_WIDTH}
+            # Для заголовка "Ед. изм." тоже задаем тип единиц "Твердость",
+            # чтобы по ПКМ вызывать меню выбора единиц.
+            "unit_value": {"name": "Ед. изм.", "width": self.PROPERTY_COLUMN_WIDTH, "unit_type": "Твердость"}
         }
         self._after_id = None
         style = ttk.Style()
@@ -1942,6 +1944,7 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         elif current_type == "Механические свойства":
             prop_info = MECHANICAL_PROPERTIES_MAP.get(prop_key)
         elif current_type == "Твердость":
+            # Для твердости берем описание из HARDNESS_COLUMNS
             prop_info = self.HARDNESS_COLUMNS.get(prop_key)
 
         if not prop_info: return
@@ -1955,14 +1958,28 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         current_unit = self.column_units.get(prop_key)
 
         for unit in available_units:
-            menu.add_radiobutton(label=unit, value=unit, variable=tk.StringVar(value=current_unit),
-                                 command=lambda u=unit: self._change_column_unit(prop_key, u))
+            menu.add_radiobutton(
+                label=unit,
+                value=unit,
+                variable=tk.StringVar(value=current_unit),
+                command=lambda u=unit: self._change_column_unit(prop_key, u)
+            )
         menu.post(event.x_root, event.y_root)
 
     def _change_column_unit(self, prop_key, new_unit):
-        if self.column_units.get(prop_key) == new_unit: return
-        self.column_units[prop_key] = new_unit
-        self._update_column_header(prop_key)
+        if self.column_units.get(prop_key) == new_unit:
+            return
+
+        # Особая логика для твердости: меняем единицу сразу для всех трех колонок
+        # ("min_value", "max_value", "unit_value"), чтобы они были согласованы.
+        if prop_key in self.HARDNESS_COLUMNS:
+            for h_key in self.HARDNESS_COLUMNS.keys():
+                self.column_units[h_key] = new_unit
+                self._update_column_header(h_key)
+        else:
+            self.column_units[prop_key] = new_unit
+            self._update_column_header(prop_key)
+
         self._populate_treeview()
 
     def _get_value_from_prop_data(self, prop_data, temp):
@@ -2099,7 +2116,13 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
             for col_key in scrollable_cols:
                 raw_val = row.get(col_key)
                 if col_key == "unit_value":
-                    scrollable_values.append(str(raw_val) if raw_val else "-")
+                    # Для твердости показываем выбранную единицу отображения,
+                    # а не исходную из БД.
+                    if self.prop_type_combo.get() == "Твердость":
+                        unit = self.column_units.get(col_key) or UnitManager.get_system_unit("Твердость")
+                        scrollable_values.append(unit)
+                    else:
+                        scrollable_values.append(str(raw_val) if raw_val else "-")
                     continue
                 if raw_val is None:
                     scrollable_values.append("-")
@@ -5071,7 +5094,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.5)")
+        self.title("Material_Lib (2.1.6)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
