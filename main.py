@@ -2728,7 +2728,11 @@ class PropertyComparisonTab(ttk.Frame):
     def __init__(self, parent, app_data):
         super().__init__(parent)
         self.app_data = app_data
+        # listbox_item_map — текущий пул для списка поиска (фильтруется по области и свойству)
         self.listbox_item_map = {}
+        # full_item_map — полный пул "имя -> (material_data, category_data)" для всех материалов/КП,
+        # используется для построения графика, чтобы показывать "нет данных" при смене свойства.
+        self.full_item_map = {}
         self._setup_widgets()
 
     def _setup_widgets(self):
@@ -2751,7 +2755,8 @@ class PropertyComparisonTab(ttk.Frame):
         self.prop_combo.pack(fill="x", pady=(0, 10))
         if prop_names:
             self.prop_combo.current(0)
-        self.prop_combo.bind("<<ComboboxSelected>>", lambda e: self._plot_graph())
+        # При смене свойства пересобираем пул материалов и обновляем график
+        self.prop_combo.bind("<<ComboboxSelected>>", self._on_property_change)
 
         ttk.Label(controls_frame, text="Поиск материала:").pack(fill="x", pady=(5, 2))
         self.search_entry = ttk.Entry(controls_frame)
@@ -2798,27 +2803,88 @@ class PropertyComparisonTab(ttk.Frame):
         areas = ["Все"] + self.app_data.application_areas
         self.area_combo.config(values=areas)
         self.area_combo.set("Все")
-        self._update_search_pool()
 
-    def _update_search_pool(self, event=None):
-        """Обновляет `listbox_item_map`, который является источником для поиска."""
-        self.listbox_item_map.clear()
-        selected_area = self.area_combo.get()
-
+        # Полный пул для всех материалов и всех категорий (независимо от выбранного свойства).
+        # Используется при построении графика, чтобы даже при смене свойства
+        # уже выбранные материалы могли попасть в легенду как "нет данных".
+        self.full_item_map.clear()
         for mat in self.app_data.materials:
-            if selected_area != "Все" and selected_area not in mat.data.get("metadata", {}, ).get("application_area",
-                                                                                                  []):
-                continue
-
             display_name = mat.get_display_name()
-            # Добавляем сам материал (для физ. свойств)
-            self.listbox_item_map[display_name] = (mat.data, None)
+            # Сам материал (для физ. свойств)
+            self.full_item_map[display_name] = (mat.data, None)
 
-            # Добавляем категории прочности
+            # Категории прочности (для мех. свойств)
             for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
                 cat_name = cat.get('value_strength_category', '')
                 display_name_with_cat = f"{display_name} {cat_name}".strip()
-                self.listbox_item_map[display_name_with_cat] = (mat.data, cat.copy())
+                self.full_item_map[display_name_with_cat] = (mat.data, cat)
+
+        self._update_search_pool()
+
+    def _on_property_change(self, event=None):
+        """
+        Обработчик смены свойства:
+        - пересобирает пул материалов с учетом выбранного свойства;
+        - обновляет график на основе текущего списка выбранных материалов.
+        """
+        self._update_search_pool()
+        self._plot_graph()
+
+    def _update_search_pool(self, event=None):
+        """
+        Обновляет `listbox_item_map`, который является источником для поиска.
+        Учитывает:
+        - выбранную область применения;
+        - выбранное свойство: в пул попадают только те материалы/категории,
+          у которых для этого свойства есть непустые temperature_value_pairs.
+        """
+        self.listbox_item_map.clear()
+        selected_area = self.area_combo.get()
+
+        # Текущее выбранное свойство
+        prop_idx = self.prop_combo.current()
+        if prop_idx == -1:
+            # Свойство не выбрано — ничего не показываем
+            self._filter_search_results()
+            return
+
+        prop_key = self.prop_keys[prop_idx]
+        is_mechanical = prop_key in MECHANICAL_PROPERTIES_MAP
+
+        for mat in self.app_data.materials:
+            meta = mat.data.get("metadata", {})
+            app_areas = meta.get("application_area", [])
+            if selected_area != "Все" and selected_area not in app_areas:
+                continue
+
+            display_name = mat.get_display_name()
+
+            if is_mechanical:
+                # Для механического свойства показываем только те категории прочности,
+                # в которых это свойство реально заполнено (есть точки).
+                cats = mat.data.get("mechanical_properties", {}).get("strength_category", [])
+                for cat in cats:
+                    prop_data = cat.get(prop_key)
+                    if not prop_data:
+                        continue
+                    pairs = prop_data.get("temperature_value_pairs", [])
+                    if not pairs:
+                        continue
+
+                    cat_name = cat.get('value_strength_category', '')
+                    display_name_with_cat = f"{display_name} {cat_name}".strip()
+                    self.listbox_item_map[display_name_with_cat] = (mat.data, cat)
+            else:
+                # Физическое свойство: используем только физические свойства материала.
+                prop_data = mat.data.get("physical_properties", {}).get(prop_key)
+                if not prop_data:
+                    continue
+                pairs = prop_data.get("temperature_value_pairs", [])
+                if not pairs:
+                    continue
+
+                # Добавляем сам материал (без разбиения по категориям)
+                self.listbox_item_map[display_name] = (mat.data, None)
 
         self._filter_search_results()
 
@@ -2880,23 +2946,29 @@ class PropertyComparisonTab(ttk.Frame):
 
         prop_key = self.prop_keys[prop_idx]
         prop_info = ALL_PROPERTIES_MAP.get(prop_key)
-        if not prop_info: return
+        if not prop_info:
+            return
 
         self.ax.clear()
 
         selected_names = self.selected_listbox.get(0, tk.END)
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
-                  '#17becf']
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+                  '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
         for i, display_name in enumerate(selected_names):
             color = colors[i % len(colors)]
-            material_data, category_data = self.listbox_item_map.get(display_name, (None, None))
 
-            if not material_data: continue
+            # Для построения графика используем ПОЛНЫЙ пул (full_item_map),
+            # чтобы уже выбранные материалы/КП оставались в легенде даже если
+            # для текущего свойства у них нет данных.
+            material_data, category_data = self.full_item_map.get(display_name, (None, None))
+
+            if not material_data:
+                # Вообще не нашли такой материал/категорию — пропускаем
+                continue
 
             prop_data = None
 
-            # --- НАЧАЛО ИСПРАВЛЕННОЙ ЛОГИКИ ---
             is_mechanical = prop_key in MECHANICAL_PROPERTIES_MAP
 
             if is_mechanical:
@@ -2907,7 +2979,6 @@ class PropertyComparisonTab(ttk.Frame):
                 # Если свойство физическое, ищем его в ОБЩИХ данных материала
                 if prop_key in material_data.get("physical_properties", {}):
                     prop_data = material_data["physical_properties"][prop_key]
-            # --- КОНЕЦ ИСПРАВЛЕННОЙ ЛОГИКИ ---
 
             if prop_data and "temperature_value_pairs" in prop_data and prop_data["temperature_value_pairs"]:
                 pairs = sorted(prop_data["temperature_value_pairs"], key=lambda p: p[0])
@@ -2916,9 +2987,16 @@ class PropertyComparisonTab(ttk.Frame):
                 self.ax.plot(temps, values, marker='o', linestyle='-', label=display_name, color=color)
                 for t, v in zip(temps, values):
                     text_label = f"{v:.0f}" if v == int(v) else f"{v:.1f}"
-                    self.ax.annotate(text_label, xy=(t, v), xytext=(5, 5), textcoords='offset points', fontsize=8,
-                                     color='dimgray')
+                    self.ax.annotate(
+                        text_label,
+                        xy=(t, v),
+                        xytext=(5, 5),
+                        textcoords='offset points',
+                        fontsize=8,
+                        color='dimgray'
+                    )
             else:
+                # Нет данных по выбранному свойству — выводим "нет данн��х" в легенде
                 self.ax.plot([], [], marker='o', linestyle='-', label=f"{display_name} (нет данных)", color=color)
 
         self.ax.set_xlabel("Температура [°С]")
@@ -5094,7 +5172,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.6)")
+        self.title("Material_Lib (2.1.7)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
