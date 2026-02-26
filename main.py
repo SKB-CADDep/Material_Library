@@ -3842,14 +3842,24 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
         btn_frame = ttk.Frame(target_frame)
         btn_frame.pack(fill="x", pady=(0, 5))
 
-        table_frame = ttk.Frame(target_frame)
+        # Внешний фрейм с рамкой вокруг таблицы — визуально отделяет область ввода
+        outer_table_frame = ttk.Frame(target_frame, borderwidth=1, relief="solid")
+        outer_table_frame.pack(fill="both", expand=True)
+
+        table_frame = ttk.Frame(outer_table_frame)
         table_frame.pack(fill="both", expand=True)
 
         self.s2_target_tree = create_editable_treeview(
             table_frame,
             on_update_callback=self._s2_recalculate_results
         )
-        self.s2_target_tree.configure(show="headings")
+
+        # Стиль для таблицы целевого состава:
+        # увеличиваем высоту строки и заставляем фон быть однородным,
+        # чтобы строки и области ввода были лучше различимы.
+        style = ttk.Style()
+        style.configure("Target.Treeview", rowheight=22, borderwidth=0)
+        self.s2_target_tree.configure(show="headings", style="Target.Treeview")
         self.s2_target_tree["columns"] = ("elem", "target")
 
         self.s2_target_tree.heading("elem", text="Элемент")
@@ -3866,7 +3876,12 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
         self.s2_target_tree.bind("<Button-3>", self._s2_on_target_right_click)
 
         def add_target_row():
-            self.s2_target_tree.insert("", "end", values=["", ""])
+            # Добавляем строку с placeholder'ом в колонке "Элемент",
+            # сразу выделяем и прокручиваем к ней, чтобы пользователь явно видел новую ячейку.
+            item_id = self.s2_target_tree.insert("", "end", values=["-", ""])
+            self.s2_target_tree.selection_set(item_id)
+            self.s2_target_tree.focus(item_id)
+            self.s2_target_tree.see(item_id)
             self._s2_recalculate_results()
 
         def del_target_row():
@@ -4223,16 +4238,29 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
                 details[elem_sym] = detail
                 continue
 
-            # Эффективные границы с учётом допусков:
-            # Min_eff = Min - ДопускMin (если оба заданы)
-            # Max_eff = Max + ДопускMax (если оба заданы)
-            if min_v is not None:
-                lower = min_v - min_tol if min_tol is not None else min_v
+            # Эффективные границы с учётом допусков (НОВАЯ ЛОГИКА):
+            # - если заданы и min, и min_tol -> нижняя граница = min_tol (абсолютный предел);
+            # - если задан только один из них -> нижняя граница = это значение;
+            # - если нет ни min, ни min_tol -> нижняя граница = -inf.
+            if min_v is not None and min_tol is not None:
+                lower = min_tol
+            elif min_v is not None:
+                lower = min_v
+            elif min_tol is not None:
+                lower = min_tol
             else:
                 lower = float("-inf")
 
-            if max_v is not None:
-                upper = max_v + max_tol if max_tol is not None else max_v
+            # Аналогично для верхней границы:
+            # - если заданы и max, и max_tol -> верхняя граница = max_tol (абсолютный предел);
+            # - если задан только один из них -> верхняя граница = это значение;
+            # - если нет ни max, ни max_tol -> верхняя граница = +inf.
+            if max_v is not None and max_tol is not None:
+                upper = max_tol
+            elif max_v is not None:
+                upper = max_v
+            elif max_tol is not None:
+                upper = max_tol
             else:
                 upper = float("inf")
 
@@ -6949,7 +6977,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.16)")
+        self.title("Material_Lib (2.1.17)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
