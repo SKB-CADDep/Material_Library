@@ -6409,6 +6409,16 @@ class EditorFrame(ttk.Frame):
         self.save_as_button.config(state=state)
         self.revert_button.config(state=state)
 
+    def refresh_sources_in_tabs(self):
+        """Обновляет списки источников во вкладках редактора материалов."""
+        if not self.app_data or not getattr(self.app_data, "source_manager", None):
+            return
+        # Переиспользуем существующий механизм set_app_data,
+        # чтобы во всех редакторах обновились combobox'ы с источниками.
+        self.phys_tab.set_app_data(self.app_data)
+        self.mech_tab.set_app_data(self.app_data)
+        self.chem_tab.set_app_data(self.app_data)
+
     def update_view(self):
         mat_names = [m.get_display_name() for m in self.app_data.materials]
         self.mat_combo.config(values=mat_names)
@@ -6793,6 +6803,10 @@ class SourcesManagerTab(ttk.Frame):
         self.app_data.source_manager.add_source(name, desc, link, group=group)
 
         self.update_view()
+        # Обновляем списки источников во вкладках редактора,
+        # чтобы новый источник сразу был доступен для выбора
+        if hasattr(self.main_app, "editor_frame"):
+            self.main_app.editor_frame.refresh_sources_in_tabs()
         messagebox.showinfo("Успех", "Источник создан.")
 
     def _save_changes(self):
@@ -6813,6 +6827,10 @@ class SourcesManagerTab(ttk.Frame):
         )
         if success:
             self.update_view()
+            # Обновляем списки источников во вкладках редактора,
+            # чтобы переименованный источник сразу был виден
+            if hasattr(self.main_app, "editor_frame"):
+                self.main_app.editor_frame.refresh_sources_in_tabs()
             messagebox.showinfo("Успех", "Изменения сохранены.")
         else:
             messagebox.showerror("Ошибка", "Не удалось найти источник для обновления.")
@@ -6867,6 +6885,10 @@ class SourcesManagerTab(ttk.Frame):
         if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить этот источник?"):
             self.app_data.source_manager.delete_source(self.current_source_id)
             self.update_view()
+            # Обновляем списки источников во вкладках редактора,
+            # чтобы удалённый источник не оставался в выпадающих списках
+            if hasattr(self.main_app, "editor_frame"):
+                self.main_app.editor_frame.refresh_sources_in_tabs()
 
     # === РАБОТА СО ССЫЛКАМИ ===
 
@@ -6927,7 +6949,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.15)")
+        self.title("Material_Lib (2.1.16)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
