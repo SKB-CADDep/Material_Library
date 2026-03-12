@@ -1126,7 +1126,7 @@ class UnitManager:
             }
         },
         "Предел ползучести": {
-            "system_unit": "%",
+            "system_unit": "МПа",
             "factors": {
                 "МПа": 1.0,
                 "Па": 1e-6,
@@ -2713,6 +2713,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.tree.tag_configure("separator", background="#555555", foreground="white")
 
         self.tree.bind("<Button-3>", self._on_header_right_click)
+        self.tree.bind("<ButtonRelease-1>", lambda e: self._enforce_column_minwidths())
         self.bind_mouse_wheel(self.tree)
 
         # --- 3. ЛЕГЕНДА ПОД БЛОКОМ РАСЧЕТА ---
@@ -2744,6 +2745,9 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         # Кнопка удаления выделенного
         del_btn = ttk.Button(calc_frame, text="- Исключить строку", command=self._remove_selected_custom_row)
         del_btn.pack(side="left", padx=5)
+
+        sort_btn = ttk.Button(calc_frame, text="Сортировать", command=self._sort_custom_rows)
+        sort_btn.pack(side="left", padx=5)
 
         # Кнопка очистки всего
         clear_btn = ttk.Button(calc_frame, text="Очистить все", command=self._clear_custom_rows)
@@ -2985,7 +2989,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.tree["columns"] = cols
 
         self.tree.heading("temp", text="T, °C")
-        self.tree.column("temp", width=70, anchor="center", stretch=False)
+        self.tree.column("temp", width=90, minwidth=90, anchor="center", stretch=False)
 
         # Заголовки свойств
         for prop_key in visible_keys:
@@ -3008,7 +3012,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
             header_text = f"{info.get('symbol', prop_key)}\n{current_unit}"
             self.tree.heading(prop_key, text=header_text)
-            self.tree.column(prop_key, width=90, anchor="center")
+            self.tree.column(prop_key, width=90, minwidth=90, anchor="center", stretch=False)
 
         def insert_row(row_dict, tag=""):
             values = [row_dict["temp"]]
@@ -3052,6 +3056,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                 # exact  -> 330.0
                 # interp -> (330.0)
                 # approx -> [330.0]
+                # Для строк из БД интерполированные значения тоже в скобках (330.0)
                 if is_custom:
                     if mode == "interp":
                         display_str = f"({base_str})"
@@ -3060,7 +3065,10 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                     else:
                         display_str = base_str
                 else:
-                    display_str = base_str
+                    if mode == "interp":
+                        display_str = f"({base_str})"
+                    else:
+                        display_str = base_str
 
                 values.append(display_str)
 
@@ -3080,6 +3088,21 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                 calc_row = self._calculate_custom_row(t)
                 insert_row(calc_row, tag="custom_calc")
 
+        self._enforce_column_minwidths()
+
+    def _enforce_column_minwidths(self):
+        """Принудительно выставляет ширину колонок не меньше minwidth (соблюдается всегда)."""
+        MIN_COLUMN_WIDTH = 90
+        try:
+            for col in self.tree["columns"]:
+                current = self.tree.column(col, "width")
+                min_w = self.tree.column(col, "minwidth")
+                min_w = max(min_w, MIN_COLUMN_WIDTH)
+                if current < min_w:
+                    self.tree.column(col, width=min_w)
+        except (tk.TclError, TypeError):
+            pass
+
     # --- КАЛЬКУЛЯТОР ---
 
     def _add_custom_calculation(self):
@@ -3089,36 +3112,45 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
             return
 
         self.custom_temps.append(temp)
-        self.custom_temps.sort()
         self._render_table()
         self.tree.yview_moveto(1)
         self.calc_temp_entry.delete(0, tk.END)
 
     def _remove_selected_custom_row(self):
-        """Удаляет только выделенную строку, если это расчет."""
+        """Удаляет только выделенную строку, если это расчет (по позиции в списке)."""
         selected_item = self.tree.selection()
         if not selected_item:
             return
 
-        item = self.tree.item(selected_item[0])
+        item_id = selected_item[0]
+        item = self.tree.item(item_id)
         tags = item.get("tags", [])
 
-        if "custom_calc" in tags:
-            try:
-                # Первое значение в values - это температура (строка)
-                temp_val = float(item["values"][0])
-
-                # Удаляем первое вхождение этой температуры из списка
-                if temp_val in self.custom_temps:
-                    self.custom_temps.remove(temp_val)
-                    self._render_table()
-            except (ValueError, IndexError):
-                pass
-        else:
+        if "custom_calc" not in tags:
             messagebox.showinfo("Инфо", "Можно удалять только строки из раздела расчетов.")
+            return
+
+        children = self.tree.get_children()
+        try:
+            idx = list(children).index(item_id)
+        except ValueError:
+            return
+
+        n_db = len(self.db_data_rows)
+        # После строк БД идёт разделитель (если есть custom_temps), затем строки расчёта
+        if self.custom_temps and idx > n_db:
+            custom_index = idx - n_db - 1  # -1 из-за строки-разделителя "РАСЧЕТ"
+            if 0 <= custom_index < len(self.custom_temps):
+                self.custom_temps.pop(custom_index)
+                self._render_table()
 
     def _clear_custom_rows(self):
         self.custom_temps = []
+        self._render_table()
+
+    def _sort_custom_rows(self):
+        """Сортирует список произвольных температур по возрастанию и перерисовывает таблицу."""
+        self.custom_temps.sort()
         self._render_table()
 
     # --- КОНТЕКСТНОЕ МЕНЮ (ПКМ) ---
@@ -6983,7 +7015,7 @@ class MainApplication(tk.Tk):
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.18)")
+        self.title("Material_Lib (2.1.19)")
         self.geometry("1200x800")
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
