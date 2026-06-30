@@ -1,3 +1,5 @@
+# main.py
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import json
@@ -39,6 +41,41 @@ class Schema:
 
 # Константа для логов
 LOG_FILENAME = "material_changelog.txt"
+
+# ======================================================================================
+# АУДИТ: единый словарь нормализованных event_name
+# ======================================================================================
+# Важно: аналитика использует event.name + event.category + event.action.
+# Поэтому event.name делаем стабильным, а старт/финиш/ошибки различаем через event.action/result/metrics.
+AUDIT_EVENT_NAMES = {
+    # Материалы
+    "MATERIAL_SELECTED": "Материал: выбран",
+    "MATERIAL_CREATE_DRAFT": "Материал: создан новый (черновик)",
+    "MATERIAL_SAVE": "Материал: сохранение",
+    "MATERIAL_SAVE_TAB": "Материал: изменения по вкладке",
+    "MATERIAL_SAVE_AS": "Материал: сохранить как",
+    "MATERIAL_RESET_CREATE": "Материал: создание сброшено",
+    "MATERIAL_CANCEL_CHANGES": "Материал: изменения отменены",
+
+    # Источники
+    "SOURCE_SELECTED": "Источник: выбран",
+    "SOURCE_CREATE": "Источник: создание",
+    "SOURCE_UPDATE": "Источник: изменение",
+    "SOURCE_DELETE": "Источник: удаление",
+    "SOURCE_OPEN_LINK": "Источник: открыть ссылку",
+
+    # Навигация
+    "NAV_TAB_SELECTED": "Навигация: вкладка выбрана",
+
+    # Импорт
+    "IMPORT_OPEN_DIR": "Импорт: открыть директорию",
+    "IMPORT_OPEN_DIR_ERROR": "Импорт: ошибка открытия директории",
+
+    # Справка
+    "HELP_ABOUT_OPEN": "Справка: о приложении открыто",
+    "HELP_INSTRUCTIONS_OPEN": "Справка: инструкция открыта",
+    "HELP_CHANGELOG_OPEN": "Справка: список изменений открыт",
+}
 
 # Маппинги свойств
 PHYSICAL_PROPERTIES_MAP = {
@@ -751,6 +788,161 @@ def find_changes(old_data, new_data):
         return changes
 
     return find_changes_recursive(copy.deepcopy(old_data), copy.deepcopy(new_data), [])
+
+
+# Порядок вкладок редактора для аудита (отдельная строка JSON на каждую с изменениями)
+EDITOR_AUDIT_TAB_ORDER = (
+    "Общие данные",
+    "Физические свойства",
+    "Механические свойства",
+    "Химический состав",
+    "Прочее",
+)
+
+
+def _audit_editor_tab_for_path(path):
+    """Определяет вкладку редактора по пути diff (первый сегмент корня JSON)."""
+    if not path:
+        return None
+    root = str(path[0])
+    if root == Schema.METADATA:
+        return "Общие данные"
+    if root == Schema.PHYSICAL:
+        return "Физические свойства"
+    if root == Schema.MECHANICAL:
+        return "Механические свойства"
+    if root == Schema.CHEMICAL:
+        return "Химический состав"
+    return "Прочее"
+
+
+def _audit_metadata_human_label(segments):
+    """Человекочитаемая подпись поля для вкладки «Общие данные»."""
+    if not segments:
+        return "Общие данные (metadata)"
+    k0 = str(segments[0])
+    if k0 == Schema.NAME_STD:
+        return "Наименование (стандарт)"
+    if k0 == Schema.NAME_ALT:
+        return "Альтернативные названия"
+    if k0 == "comment":
+        return "Общий комментарий"
+    if k0 == Schema.APP_AREA:
+        return "Области применения"
+    if k0 == "classification" and len(segments) >= 2:
+        sub = str(segments[1])
+        sub_map = {
+            "classification_category": "Классификация: категория",
+            "classification_class": "Классификация: структурный класс",
+            "classification_subclass": "Классификация: подкласс",
+        }
+        return sub_map.get(sub, f"Классификация: {sub}")
+    if k0 == "classification":
+        return "Классификация"
+    if k0 == "temperature_application":
+        if len(segments) >= 2:
+            sub = str(segments[1])
+            if sub == "value":
+                return "Температура применения ДО (значение)"
+            if sub == "comment":
+                return "Комментарий к температуре применения"
+        return "Параметры применения (температура)"
+    return f"Общие данные: {k0}"
+
+
+def _audit_physical_human_label(segments):
+    for seg in segments:
+        sk = str(seg)
+        if sk in PHYSICAL_PROPERTIES_MAP:
+            return PHYSICAL_PROPERTIES_MAP[sk]["name"]
+    return "Физическое свойство"
+
+
+_MECH_CAT_FIELD_LABELS = {
+    "hardness_unit": "Единица твердости (КП)",
+    Schema.VAL_STR_CAT: "Наименование категории прочности",
+}
+
+
+def _audit_mechanical_human_label(segments):
+    kp = None
+    for seg in segments:
+        s = str(seg)
+        if s.startswith(f"{Schema.STRENGTH_CAT}[") and s.endswith("]"):
+            kp = s[len(f"{Schema.STRENGTH_CAT}["):-1]
+    for seg in segments:
+        s = str(seg)
+        if s in MECHANICAL_PROPERTIES_MAP:
+            prop_key = s
+            name = MECHANICAL_PROPERTIES_MAP[prop_key]["name"]
+            if kp is not None and str(kp).strip() not in ("", "-1", "-"):
+                return f"КП «{kp}»: {name}"
+            return name
+    for seg in segments:
+        s = str(seg)
+        if s in _MECH_CAT_FIELD_LABELS:
+            base = _MECH_CAT_FIELD_LABELS[s]
+            if kp is not None and str(kp).strip() not in ("", "-1", "-"):
+                return f"КП «{kp}»: {base}"
+            return base
+    return "Механическое свойство (КП)"
+
+
+def _audit_chemical_human_label(segments):
+    str_segs = [str(x) for x in segments]
+    elem = None
+    for x in str_segs:
+        if x.startswith("other_elements[") and x.endswith("]"):
+            elem = x[len("other_elements["):-1]
+    for seg in str_segs:
+        if seg.startswith(f"{Schema.COMPOSITION}[") and seg.endswith("]"):
+            src = seg[len(f"{Schema.COMPOSITION}["):-1]
+            if "other_elements" in str_segs:
+                if elem:
+                    return f"Состав ({src}): элемент {elem}"
+                return f"Состав ({src}): прочие элементы"
+            return f"Состав ({src})"
+    if Schema.COMPOSITION in str_segs:
+        return "Состав (структура)"
+    return "Химический состав"
+
+
+def _audit_human_field_label(path):
+    """Краткая подпись изменённого поля без значений."""
+    if not path:
+        return "неизвестно"
+    p0 = str(path[0])
+    if p0 == Schema.METADATA:
+        return _audit_metadata_human_label(path[1:])
+    if p0 == Schema.PHYSICAL:
+        return _audit_physical_human_label(path[1:])
+    if p0 == Schema.MECHANICAL:
+        return _audit_mechanical_human_label(path[1:])
+    if p0 == Schema.CHEMICAL:
+        return _audit_chemical_human_label(path[1:])
+    return str(path[-1])
+
+
+def group_editor_changes_by_tab(changes):
+    """
+    Группирует find_changes() по вкладкам редактора.
+    Возвращает dict: вкладка -> отсортированный список уникальных подписей полей.
+    """
+    buckets = {tab: set() for tab in EDITOR_AUDIT_TAB_ORDER}
+    if not changes:
+        return {}
+    for ch in changes:
+        if not isinstance(ch, dict):
+            continue
+        path = ch.get("path")
+        if not isinstance(path, list) or not path:
+            continue
+        tab = _audit_editor_tab_for_path(path)
+        if tab not in buckets:
+            tab = "Прочее"
+        label = _audit_human_field_label(path)
+        buckets[tab].add(label)
+    return {tab: sorted(buckets[tab]) for tab in EDITOR_AUDIT_TAB_ORDER if buckets[tab]}
 
 
 def log_changes(material_name, changes_list):
@@ -2202,9 +2394,10 @@ def create_editable_treeview(parent_frame, on_update_callback=None):
 class TempSelectionTab(ttk.Frame, ScrollableMixin):
     """Вкладка 'Подбор по температуре' с фиксированными колонками и синхронным скроллом."""
 
-    def __init__(self, parent, app_data):
+    def __init__(self, parent, app_data, main_app=None):
         super().__init__(parent)
         self.app_data = app_data
+        self.main_app = main_app
         self.treeview_data = []
         self.column_units = {}
         self.PROP_TYPES = ["Физические свойства", "Механические свойства", "Твердость"]
@@ -2641,9 +2834,10 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
     - Автопересчет при смене материала.
     """
 
-    def __init__(self, parent, app_data):
+    def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
+        self.main_app = main_app
         self.column_units = {}
         self.column_visibility = {
             k: True for k in list(PHYSICAL_PROPERTIES_MAP.keys()) + list(MECHANICAL_PROPERTIES_MAP.keys())
@@ -3197,9 +3391,10 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 class PropertyComparisonTab(ttk.Frame):
     """Вкладка 'Сравнение материалов (свойства)' с новым интерфейсом выбора."""
 
-    def __init__(self, parent, app_data):
+    def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
+        self.main_app = main_app
         # listbox_item_map — текущий пул для списка поиска (фильтруется по области и свойству)
         self.listbox_item_map = {}
         # full_item_map — полный пул "имя -> (material_data, category_data)" для всех материалов/КП,
@@ -3490,9 +3685,10 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
     2) Подбор материала по целевому химическому составу.
     """
 
-    def __init__(self, parent, app_data):
+    def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
+        self.main_app = main_app
 
         # Подсказки по влиянию элементов (можно переиспользовать при необходимости)
         self.element_tooltips = {
@@ -4585,9 +4781,10 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
 class AshbyDiagramTab(ttk.Frame):
     """Вкладка для построения диаграмм Эшби по классам материалов."""
 
-    def __init__(self, parent, app_data):
+    def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
+        self.main_app = main_app
 
         # Карта доступных свойств для осей (включая температуру)
         self.ashby_properties_map = {
@@ -6475,6 +6672,86 @@ class EditorFrame(ttk.Frame):
         self.save_as_button.config(state=state)
         self.revert_button.config(state=state)
 
+    # --- AUDIT (тихо) ---
+
+    def _audit_log(
+        self,
+        *,
+        event_name,
+        event_category,
+        event_action,
+        operation_id=None,
+        parent_operation_id=None,
+        result_ok=None,
+        result_status=None,
+        result_error_kind=None,
+        duration_ms=None,
+        counters=None,
+        entity=None,
+        changes_fields=None,
+        data=None,
+    ):
+        """Пишет аудит-событие (если audit_logger доступен). Никогда не мешает работе UI."""
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if not logger:
+                return
+            logger.log(
+                event_name=event_name,
+                event_category=event_category,
+                event_action=event_action,
+                operation_id=operation_id,
+                parent_operation_id=parent_operation_id,
+                result_ok=result_ok,
+                result_status=result_status,
+                result_error_kind=result_error_kind,
+                duration_ms=duration_ms,
+                counters=counters,
+                entity=entity,
+                changes_fields=changes_fields,
+                data=data,
+            )
+        except Exception:
+            return
+
+    def _audit_changes_fields_from_diff(self, changes):
+        """Преобразует find_changes() -> список строк-путей полей (без значений)."""
+        try:
+            if not changes:
+                return []
+            fields = set()
+            for ch in changes:
+                if not isinstance(ch, dict):
+                    continue
+                path = ch.get("path")
+                if isinstance(path, list) and path:
+                    fields.add(".".join(str(p) for p in path if str(p)))
+            return sorted(fields)
+        except Exception:
+            return []
+
+    def _audit_log_material_save_by_tabs(self, operation_id, material_name, changes, *, data_extra):
+        """Отдельная строка аудита на каждую вкладку редактора с ненулевым числом изменений."""
+        grouped = group_editor_changes_by_tab(changes)
+        if not grouped:
+            return grouped
+        entity = {"type": "Материал", "name": material_name}
+        for tab in EDITOR_AUDIT_TAB_ORDER:
+            labels = grouped.get(tab)
+            if not labels:
+                continue
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_TAB"],
+                event_category="Данные",
+                event_action="Изменено",
+                operation_id=operation_id,
+                entity=entity,
+                changes_fields=labels,
+                counters={"полей": len(labels)},
+                data={**data_extra, "вкладка": tab},
+            )
+        return grouped
+
     def refresh_sources_in_tabs(self):
         """Обновляет списки источников во вкладках редактора материалов."""
         if not self.app_data or not getattr(self.app_data, "source_manager", None):
@@ -6508,7 +6785,14 @@ class EditorFrame(ttk.Frame):
             self._set_tabs_state("normal")
             self._update_button_states(True)  # Включаем кнопки
             # --- НОВОЕ ИЗМЕНЕНИЕ ---
-            self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
+            self.notebook.select(0)  # Выбираем первую вкладку ("Общие данные")
+
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["MATERIAL_SELECTED"],
+                event_category="Данные",
+                event_action="Выбрано",
+                entity={"type": "Материал", "name": material.get_display_name()},
+            )
 
     def create_new_material(self):
         self.editing_copy = Material()
@@ -6518,36 +6802,115 @@ class EditorFrame(ttk.Frame):
         self._set_tabs_state("normal")
         self._update_button_states(True)  # Включаем кнопки
         # --- НОВОЕ ИЗМЕНЕНИЕ ---
-        self.notebook.select(0) # Выбираем первую вкладку ("Общие данные")
+        self.notebook.select(0)  # Выбираем первую вкладку ("Общие данные")
+
+        self._audit_log(
+            event_name=AUDIT_EVENT_NAMES["MATERIAL_CREATE_DRAFT"],
+            event_category="Данные",
+            event_action="Создано",
+            entity={"type": "Материал", "name": self.editing_copy.get_display_name()},
+        )
 
     # --- ПЕРЕМЕЩЕННЫЕ И АДАПТИРОВАННЫЕ МЕТОДЫ ---
     def save_material(self):
-        if not self.editing_copy: return
+        if not self.editing_copy:
+            return
+        op_id = None
+        t0 = None
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if logger:
+                op_id = logger.new_operation_id()
+                t0 = time.monotonic()
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE"],
+                    event_category="Операция",
+                    event_action="Старт",
+                    operation_id=op_id,
+                    data={"операция": "save"},
+                )
+        except Exception:
+            op_id = None
+            t0 = None
         self.collect_data()
         material_to_save = self.editing_copy
 
         original_material = self.app_data.current_material
+        changes = None
         if original_material:
             changes = find_changes(original_material.data, material_to_save.data)
             log_changes(material_to_save.get_display_name(), changes)
+
+        changed_fields = self._audit_changes_fields_from_diff(changes)
 
         if not material_to_save.filepath:
             self.save_material_as()
         else:
             try:
                 material_to_save.save()
+                tab_groups = self._audit_log_material_save_by_tabs(
+                    op_id, material_to_save.get_display_name(), changes,
+                    data_extra={"операция": "save"},
+                ) or {}
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE"],
+                    event_category="Операция",
+                    event_action="Финиш",
+                    operation_id=op_id,
+                    result_ok=True,
+                    result_status="Успех",
+                    duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                    entity={"type": "Материал", "name": material_to_save.get_display_name()},
+                    changes_fields=None,
+                    counters={"изменений": len(changed_fields)} if changed_fields else None,
+                    data={
+                        "операция": "save",
+                        "вкладки_с_изменениями": list(tab_groups.keys()),
+                    },
+                )
                 messagebox.showinfo("Успех", f"Материал '{material_to_save.get_display_name()}' сохранен.")
                 # Вызываем перезагрузку данных через главный класс
                 self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
-            except Exception as e:
-                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+            except Exception:
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE"],
+                    event_category="Операция",
+                    event_action="Финиш",
+                    operation_id=op_id,
+                    result_ok=False,
+                    result_status="Ошибка",
+                    result_error_kind="io_error",
+                    duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                    entity={"type": "Материал", "name": material_to_save.get_display_name()},
+                    data={"операция": "save"},
+                )
+                messagebox.showerror("Ошибка сохранения", "Не удалось сохранить файл.")
 
     def save_material_as(self):
-        if not self.editing_copy: return
+        if not self.editing_copy:
+            return
+        op_id = None
+        t0 = None
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if logger:
+                op_id = logger.new_operation_id()
+                t0 = time.monotonic()
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],
+                    event_category="Операция",
+                    event_action="Старт",
+                    operation_id=op_id,
+                    data={"операция": "save_as"},
+                )
+        except Exception:
+            op_id = None
+            t0 = None
         self.collect_data()
         material_to_save = self.editing_copy
 
         original_material = self.app_data.current_material
+        changes = None
         if original_material:
             changes = find_changes(original_material.data, material_to_save.data)
             log_changes(f"{material_to_save.get_display_name()} (сохранен из {original_material.get_display_name()})",
@@ -6556,6 +6919,8 @@ class EditorFrame(ttk.Frame):
             empty_material_data = Material.get_empty_structure()
             changes = find_changes(empty_material_data, material_to_save.data)
             log_changes(material_to_save.get_display_name(), ["Создан новый материал со следующими данными:"] + changes)
+
+        changed_fields = self._audit_changes_fields_from_diff(changes)
 
         initial_name = material_to_save.get_name().replace(" ", "_") + ".json"
         new_filepath = filedialog.asksaveasfilename(
@@ -6567,33 +6932,93 @@ class EditorFrame(ttk.Frame):
                 # Обновляем рабочую директорию в app_data через main_app
                 self.main_app.app_data.work_dir = os.path.dirname(new_filepath)
                 material_to_save.save(filepath=new_filepath)
+                tab_groups = self._audit_log_material_save_by_tabs(
+                    op_id, material_to_save.get_display_name(), changes,
+                    data_extra={"операция": "save_as"},
+                ) or {}
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],
+                    event_category="Операция",
+                    event_action="Финиш",
+                    operation_id=op_id,
+                    result_ok=True,
+                    result_status="Успех",
+                    duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                    entity={"type": "Материал", "name": material_to_save.get_display_name()},
+                    changes_fields=None,
+                    counters={"изменений": len(changed_fields)} if changed_fields else None,
+                    data={
+                        "операция": "save_as",
+                        "вкладки_с_изменениями": list(tab_groups.keys()),
+                    },
+                )
                 messagebox.showinfo("Успех", f"Материал сохранен как '{os.path.basename(new_filepath)}'.")
                 # Вызываем перезагрузку данных через главный класс
                 self.main_app.open_directory(self.app_data.work_dir, show_success_message=False)
-            except Exception as e:
-                messagebox.showerror("Ошибка сохранения", f"Не удалось сохранить файл: {e}")
+            except Exception:
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],
+                    event_category="Операция",
+                    event_action="Финиш",
+                    operation_id=op_id,
+                    result_ok=False,
+                    result_status="Ошибка",
+                    result_error_kind="io_error",
+                    duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                    entity={"type": "Материал", "name": material_to_save.get_display_name()},
+                    data={"операция": "save_as"},
+                )
+                messagebox.showerror("Ошибка сохранения", "Не удалось сохранить файл.")
+        else:
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],
+                event_category="Операция",
+                event_action="Закрыто",
+                operation_id=op_id,
+                result_ok=False,
+                result_status="Отмена",
+                result_error_kind="cancelled",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity={"type": "Материал", "name": material_to_save.get_display_name()},
+                data={"операция": "save_as"},
+            )
 
     def revert_changes(self):
-        if not self.editing_copy: return
+        if not self.editing_copy:
+            return
 
         if not self.app_data.current_material:
             # Если это новый материал (оригинала нет), то просто сбрасываем редактор
             if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите сбросить создание нового материала?"):
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["MATERIAL_RESET_CREATE"],
+                    event_category="Данные",
+                    event_action="Закрыто",
+                    entity={"type": "Материал", "name": self.editing_copy.get_display_name()},
+                )
                 self.create_new_material()
             return
 
         if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите отменить все несохраненные изменения?"):
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["MATERIAL_CANCEL_CHANGES"],
+                event_category="Данные",
+                event_action="Закрыто",
+                entity={"type": "Материал", "name": self.editing_copy.get_display_name()},
+            )
             self.load_material()
 
     def _populate_all_tabs(self):
-        if not self.editing_copy: return
+        if not self.editing_copy:
+            return
         self.general_tab.populate_form(self.editing_copy)
         self.phys_tab.populate_form(self.editing_copy)
         self.mech_tab.populate_form(self.editing_copy)
         self.chem_tab.populate_form(self.editing_copy)
 
     def collect_data(self):
-        if not self.editing_copy: return
+        if not self.editing_copy:
+            return
         self.general_tab.collect_data(self.editing_copy)
         self.phys_tab.collect_data(self.editing_copy)
         self.mech_tab.collect_data(self.editing_copy)
@@ -6612,18 +7037,19 @@ class EditorFrame(ttk.Frame):
 class ViewerFrame(ttk.Frame):
     """Контейнер для вкладки 'Подбор материала'."""
 
-    def __init__(self, parent, app_data):
+    def __init__(self, parent, app_data, main_app):
         super().__init__(parent)
         self.app_data = app_data
+        self.main_app = main_app
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(expand=True, fill="both")
 
         # Вкладки создаются здесь, импортируемые из Блока 5
-        self.temp_tab = TempSelectionTab(self.notebook, self.app_data)
-        self.calc_tab = SingleCalculationTab(self.notebook, self.app_data)
-        self.prop_tab = PropertyComparisonTab(self.notebook, self.app_data)
-        self.chem_tab = ChemComparisonTab(self.notebook, self.app_data)
-        self.ashby_tab = AshbyDiagramTab(self.notebook, self.app_data)
+        self.temp_tab = TempSelectionTab(self.notebook, self.app_data, self.main_app)
+        self.calc_tab = SingleCalculationTab(self.notebook, self.app_data, self.main_app)
+        self.prop_tab = PropertyComparisonTab(self.notebook, self.app_data, self.main_app)
+        self.chem_tab = ChemComparisonTab(self.notebook, self.app_data, self.main_app)
+        self.ashby_tab = AshbyDiagramTab(self.notebook, self.app_data, self.main_app)
 
         self.notebook.add(self.temp_tab, text="Подбор по температуре")
         self.notebook.add(self.calc_tab, text="Расчет отдельно")
@@ -6660,6 +7086,93 @@ class SourcesManagerTab(ttk.Frame):
         self._context_tree = None         # Treeview для контекстного меню
 
         self._setup_widgets()
+
+    # --- AUDIT (тихо) ---
+
+    def _audit_log(
+        self,
+        *,
+        event_name,
+        event_category,
+        event_action,
+        operation_id=None,
+        parent_operation_id=None,
+        result_ok=None,
+        result_status=None,
+        result_error_kind=None,
+        duration_ms=None,
+        counters=None,
+        entity=None,
+        changes_fields=None,
+        data=None,
+    ):
+        """Пишет аудит-событие (если audit_logger доступен). Никогда не мешает UI."""
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if not logger:
+                return
+            logger.log(
+                event_name=event_name,
+                event_category=event_category,
+                event_action=event_action,
+                operation_id=operation_id,
+                parent_operation_id=parent_operation_id,
+                result_ok=result_ok,
+                result_status=result_status,
+                result_error_kind=result_error_kind,
+                duration_ms=duration_ms,
+                counters=counters,
+                entity=entity,
+                changes_fields=changes_fields,
+                data=data,
+            )
+        except Exception:
+            return
+
+    def _audit_group_label(self, group_key: str) -> str:
+        if group_key == "property_sources":
+            return "Источник свойств"
+        if group_key == "strength_sources":
+            return "Источник категории прочности"
+        if group_key == "chemical_sources":
+            return "Источник хим. свойств"
+        return group_key or ""
+
+    def _audit_entity_for_source(self, src: dict | None, fallback_name: str = "", fallback_id: str = "") -> dict:
+        try:
+            name = ""
+            sid = ""
+            if isinstance(src, dict):
+                name = str(src.get("name_source", "") or "").strip()
+                sid = str(src.get("id_source", "") or "").strip()
+            if not name:
+                name = str(fallback_name or "").strip()
+            if not sid:
+                sid = str(fallback_id or "").strip()
+            ent = {"type": "Источник", "name": name or "Без названия"}
+            if sid:
+                ent["id"] = sid
+            return ent
+        except Exception:
+            return {"type": "Источник", "name": "Без названия"}
+
+    def _audit_changed_fields_source(self, old_src: dict | None, new_name: str, new_desc: str, new_link: str) -> list[str]:
+        """Сравнение только по трём полям, чтобы получить changes.fields без значений."""
+        try:
+            fields = []
+            old_name = (old_src.get("name_source") if isinstance(old_src, dict) else None)
+            old_desc = (old_src.get("description") if isinstance(old_src, dict) else None)
+            old_link = (old_src.get("hyperlink") if isinstance(old_src, dict) else None)
+
+            if (old_name or "") != (new_name or ""):
+                fields.append("name_source")
+            if (old_desc or "") != (new_desc or ""):
+                fields.append("description")
+            if (old_link or "") != (new_link or ""):
+                fields.append("hyperlink")
+            return fields
+        except Exception:
+            return []
 
     def _setup_widgets(self):
         # --- 1. ВНУТРЕННИЙ NOTEBOOK ДЛЯ ТРЁХ ТИПОВ ИСТОЧНИКОВ ---
@@ -6825,6 +7338,14 @@ class SourcesManagerTab(ttk.Frame):
         self.btn_del.config(state="normal")
         self.btn_new.config(state="disabled")
 
+        self._audit_log(
+            event_name=AUDIT_EVENT_NAMES["SOURCE_SELECTED"],
+            event_category="База",
+            event_action="Выбрано",
+            entity=self._audit_entity_for_source(src, fallback_id=source_id),
+            data={"группа": self.current_group or ""},
+        )
+
     def _clear_form(self):
         """Очищает форму и сбрасывает выбор."""
         self.current_source_id = None
@@ -6853,6 +7374,22 @@ class SourcesManagerTab(ttk.Frame):
         if not name:
             messagebox.showwarning("Внимание", "Введите наименование источника.")
             return
+        op_id = None
+        t0 = None
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if logger:
+                op_id = logger.new_operation_id()
+                t0 = time.monotonic()
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["SOURCE_CREATE"],
+                    event_category="Операция",
+                    event_action="Старт",
+                    operation_id=op_id,
+                )
+        except Exception:
+            op_id = None
+            t0 = None
 
         desc = self.desc_entry.get().strip()
         link = self.link_entry.get().strip()
@@ -6866,7 +7403,7 @@ class SourcesManagerTab(ttk.Frame):
         self.current_group = group
 
         # Добавляем источник в выбранную группу
-        self.app_data.source_manager.add_source(name, desc, link, group=group)
+        new_id = self.app_data.source_manager.add_source(name, desc, link, group=group)
 
         self.update_view()
         # Обновляем списки источников во вкладках редактора,
@@ -6875,10 +7412,40 @@ class SourcesManagerTab(ttk.Frame):
             self.main_app.editor_frame.refresh_sources_in_tabs()
         messagebox.showinfo("Успех", "Источник создан.")
 
+        self._audit_log(
+            event_name=AUDIT_EVENT_NAMES["SOURCE_CREATE"],
+            event_category="Операция",
+            event_action="Финиш",
+            operation_id=op_id,
+            result_ok=True,
+            result_status="Успех",
+            duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+            entity={"type": "Источник", "name": name, "id": new_id},
+            changes_fields=["name_source", "description", "hyperlink"],
+            data={"группа": group, "группа_название": self._audit_group_label(group)},
+        )
+
     def _save_changes(self):
         """Сохраняет изменения в выделенном источнике."""
         if not self.current_source_id:
             return
+        op_id = None
+        t0 = None
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if logger:
+                op_id = logger.new_operation_id()
+                t0 = time.monotonic()
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["SOURCE_UPDATE"],
+                    event_category="Операция",
+                    event_action="Старт",
+                    operation_id=op_id,
+                    entity={"type": "Источник", "id": self.current_source_id},
+                )
+        except Exception:
+            op_id = None
+            t0 = None
 
         name = self.name_entry.get().strip()
         if not name:
@@ -6887,6 +7454,14 @@ class SourcesManagerTab(ttk.Frame):
 
         desc = self.desc_entry.get().strip()
         link = self.link_entry.get().strip()
+
+        old_src = None
+        try:
+            old_src = self.app_data.source_manager.get_source_by_id(self.current_source_id)
+        except Exception:
+            old_src = None
+
+        changes_fields = self._audit_changed_fields_source(old_src, name, desc, link)
 
         success = self.app_data.source_manager.update_source(
             self.current_source_id, name, desc, link
@@ -6898,13 +7473,57 @@ class SourcesManagerTab(ttk.Frame):
             if hasattr(self.main_app, "editor_frame"):
                 self.main_app.editor_frame.refresh_sources_in_tabs()
             messagebox.showinfo("Успех", "Изменения сохранены.")
+
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_UPDATE"],
+                event_category="Операция",
+                event_action="Финиш",
+                operation_id=op_id,
+                result_ok=True,
+                result_status="Успех",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity={"type": "Источник", "name": name, "id": self.current_source_id},
+                changes_fields=changes_fields if changes_fields else None,
+                counters={"изменений": len(changes_fields)} if changes_fields else None,
+                data={"группа": self.current_group or "", "группа_название": self._audit_group_label(self.current_group or "")},
+            )
         else:
             messagebox.showerror("Ошибка", "Не удалось найти источник для обновления.")
+
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_UPDATE"],
+                event_category="Операция",
+                event_action="Финиш",
+                operation_id=op_id,
+                result_ok=False,
+                result_status="Ошибка",
+                result_error_kind="not_found",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity={"type": "Источник", "name": name, "id": self.current_source_id},
+                data={"группа": self.current_group or ""},
+            )
 
     def _delete_source(self, event=None):
         """Удаляет источник, если он не используется ни в одном материале."""
         if not self.current_source_id:
             return
+        op_id = None
+        t0 = None
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if logger:
+                op_id = logger.new_operation_id()
+                t0 = time.monotonic()
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["SOURCE_DELETE"],
+                    event_category="Операция",
+                    event_action="Старт",
+                    operation_id=op_id,
+                    entity={"type": "Источник", "id": self.current_source_id},
+                )
+        except Exception:
+            op_id = None
+            t0 = None
 
         # 1. ПРОВЕРКА ИСПОЛЬЗОВАНИЯ В МАТЕРИАЛАХ
         usage_count = 0
@@ -6937,6 +7556,12 @@ class SourcesManagerTab(ttk.Frame):
                     used_in.append(mat.get_display_name())
                     break
 
+        src = None
+        try:
+            src = self.app_data.source_manager.get_source_by_id(self.current_source_id)
+        except Exception:
+            src = None
+
         if usage_count > 0:
             msg = (
                 f"Нельзя удалить источник!\n"
@@ -6946,6 +7571,20 @@ class SourcesManagerTab(ttk.Frame):
             if len(used_in) > 3:
                 msg += "\n..."
             messagebox.showerror("Ошибка удаления", msg)
+
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_DELETE"],
+                event_category="Операция",
+                event_action="Финиш",
+                operation_id=op_id,
+                result_ok=False,
+                result_status="Ошибка",
+                result_error_kind="in_use",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                counters={"материалов": int(usage_count)},
+                entity=self._audit_entity_for_source(src, fallback_id=self.current_source_id),
+                data={"группа": self.current_group or ""},
+            )
             return
 
         if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить этот источник?"):
@@ -6955,6 +7594,31 @@ class SourcesManagerTab(ttk.Frame):
             # чтобы удалённый источник не оставался в выпадающих списках
             if hasattr(self.main_app, "editor_frame"):
                 self.main_app.editor_frame.refresh_sources_in_tabs()
+
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_DELETE"],
+                event_category="Операция",
+                event_action="Финиш",
+                operation_id=op_id,
+                result_ok=True,
+                result_status="Успех",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity=self._audit_entity_for_source(src, fallback_id=self.current_source_id),
+                data={"группа": self.current_group or "", "группа_название": self._audit_group_label(self.current_group or "")},
+            )
+        else:
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_DELETE"],
+                event_category="Операция",
+                event_action="Закрыто",
+                operation_id=op_id,
+                result_ok=False,
+                result_status="Отмена",
+                result_error_kind="cancelled",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity=self._audit_entity_for_source(src, fallback_id=self.current_source_id),
+                data={"группа": self.current_group or ""},
+            )
 
     # === РАБОТА СО ССЫЛКАМИ ===
 
@@ -6993,6 +7657,33 @@ class SourcesManagerTab(ttk.Frame):
         if not link:
             return
 
+        op_id = None
+        t0 = None
+        try:
+            logger = getattr(self.main_app, "audit_logger", None)
+            if logger:
+                op_id = logger.new_operation_id()
+                t0 = time.monotonic()
+                self._audit_log(
+                    event_name=AUDIT_EVENT_NAMES["SOURCE_OPEN_LINK"],
+                    event_category="Операция",
+                    event_action="Старт",
+                    operation_id=op_id,
+                    entity=self._audit_entity_for_source(src, fallback_id=source_id),
+                    data={"группа": self.current_group or ""},
+                )
+        except Exception:
+            op_id = None
+            t0 = None
+
+        self._audit_log(
+            event_name=AUDIT_EVENT_NAMES["SOURCE_OPEN_LINK"],
+            event_category="База",
+            event_action="Открыто",
+            entity=self._audit_entity_for_source(src, fallback_id=source_id),
+            data={"группа": self.current_group or ""},
+        )
+
         # Если это локальный путь и он относительный, пробуем найти в папке Источники
         if not os.path.isabs(link) and not link.lower().startswith(("http://", "https://")):
             sources_dir = os.path.join(get_app_directory(), "Источники")
@@ -7007,16 +7698,46 @@ class SourcesManagerTab(ttk.Frame):
                 subprocess.call(["open", link])
             else:
                 subprocess.call(["xdg-open", link])
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_OPEN_LINK"],
+                event_category="Операция",
+                event_action="Финиш",
+                operation_id=op_id,
+                result_ok=True,
+                result_status="Успех",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity=self._audit_entity_for_source(src, fallback_id=source_id),
+                data={"группа": self.current_group or ""},
+            )
         except Exception as e:
+            self._audit_log(
+                event_name=AUDIT_EVENT_NAMES["SOURCE_OPEN_LINK"],
+                event_category="Операция",
+                event_action="Финиш",
+                operation_id=op_id,
+                result_ok=False,
+                result_status="Ошибка",
+                result_error_kind="io_error",
+                duration_ms=((time.monotonic() - t0) * 1000.0 if t0 is not None else None),
+                entity=self._audit_entity_for_source(src, fallback_id=source_id),
+                data={"группа": self.current_group or ""},
+            )
             messagebox.showerror("Ошибка", f"Не удалось открыть: {e}")
 
 
 class MainApplication(tk.Tk):
+    APP_VERSION = "2.1.20"
+
     def __init__(self):
         super().__init__()
         self.app_data = AppData()
-        self.title("Material_Lib (2.1.19)")
+        self.title(f"Material_Lib ({self.APP_VERSION})")
         self.geometry("1200x800")
+
+        # --- AUDIT (тихо, для аналитики) ---
+        self.audit_logger = None
+        self._audit_session_t0 = None
+        self._audit_session_finished = False
 
         # Этот код для горячих клавиш можно оставить или убрать, если он не работает
         self.bind_class("Entry", "<KeyPress>", self._handle_russian_hotkeys)
@@ -7026,6 +7747,9 @@ class MainApplication(tk.Tk):
         self.create_menu()
         self.create_widgets()
 
+        # Инициализация аудита после создания виджетов (чтобы можно было навесить хуки на Notebook)
+        self._init_audit_logger()
+
         # Автозагрузка
         try:
             default_dir = os.path.join(get_app_directory(), "БД Материалов")
@@ -7033,6 +7757,154 @@ class MainApplication(tk.Tk):
                 self.open_directory(directory=default_dir, show_success_message=False)
         except Exception as e:
             print(f"Ошибка автозагрузки: {e}")
+
+    # --- AUDIT: инициализация/завершение/навигация ---
+
+    def _init_audit_logger(self):
+        """Инициализирует AuditLogger. Ошибки не показываем пользователю."""
+        try:
+            from audit_logger import AuditLogger
+            import atexit
+            import time
+        except Exception:
+            return
+
+        try:
+            # app_id/app_version должны быть стабильными для дашборда
+            self.audit_logger = AuditLogger(app_id="material_lib", app_version=self.APP_VERSION)
+            self._audit_session_t0 = time.monotonic()
+            self.audit_logger.log_session_start()
+        except Exception:
+            self.audit_logger = None
+            self._audit_session_t0 = None
+            return
+
+        # Закрытие окна: фиксируем завершение сессии и корректно останавливаем writer
+        try:
+            self.protocol("WM_DELETE_WINDOW", self._on_app_close)
+        except Exception:
+            pass
+
+        # Подстраховка: если закрытие прошло нештатно
+        try:
+            atexit.register(self._on_app_exit_atexit)
+        except Exception:
+            pass
+
+        # Навигация по вкладкам (верхние уровни)
+        try:
+            self.after(0, self._bind_audit_navigation_hooks)
+        except Exception:
+            pass
+
+    def _bind_audit_navigation_hooks(self):
+        """Навешивает аудит на смену вкладок (NotebookTabChanged)."""
+        if not self.audit_logger:
+            return
+
+        def bind_notebook(nb, container_name: str):
+            try:
+                nb.bind(
+                    "<<NotebookTabChanged>>",
+                    lambda e, n=nb, c=container_name: self._audit_on_notebook_tab_changed(c, n)
+                )
+            except Exception:
+                pass
+
+        # Главные вкладки приложения
+        if hasattr(self, "main_notebook"):
+            bind_notebook(self.main_notebook, "Main")
+
+        # Вкладки подбора материала
+        try:
+            if getattr(self, "viewer_frame", None) and hasattr(self.viewer_frame, "notebook"):
+                bind_notebook(self.viewer_frame.notebook, "Viewer")
+        except Exception:
+            pass
+
+        # Вкладки редактора материала
+        try:
+            if getattr(self, "editor_frame", None) and hasattr(self.editor_frame, "notebook"):
+                bind_notebook(self.editor_frame.notebook, "Editor")
+        except Exception:
+            pass
+
+        # Вкладки источников (внутренний notebook)
+        try:
+            if getattr(self, "sources_frame", None) and hasattr(self.sources_frame, "inner_notebook"):
+                bind_notebook(self.sources_frame.inner_notebook, "Sources")
+        except Exception:
+            pass
+
+    def _audit_on_notebook_tab_changed(self, container_name: str, nb):
+        """Логирует смену вкладки (тихо)."""
+        if not self.audit_logger:
+            return
+        try:
+            tab_id = nb.select()
+            tab_text = nb.tab(tab_id, "text") if tab_id else ""
+        except Exception:
+            tab_text = ""
+
+        try:
+            self.audit_logger.log(
+                event_name=AUDIT_EVENT_NAMES["NAV_TAB_SELECTED"],
+                event_category="Навигация",
+                event_action="Выбрано",
+                data={
+                    "контейнер": container_name,
+                    "вкладка": tab_text or "",
+                }
+            )
+        except Exception:
+            pass
+
+    def _audit_finish_session(self, ok: bool = True):
+        """Пишет 'Сессия: завершение' один раз."""
+        if self._audit_session_finished:
+            return
+        self._audit_session_finished = True
+
+        if not self.audit_logger:
+            return
+
+        duration_ms = None
+        try:
+            import time
+            if self._audit_session_t0 is not None:
+                duration_ms = (time.monotonic() - self._audit_session_t0) * 1000.0
+        except Exception:
+            duration_ms = None
+
+        try:
+            self.audit_logger.log_session_end(duration_ms=duration_ms, ok=ok)
+        except Exception:
+            pass
+
+        try:
+            self.audit_logger.shutdown(timeout_sec=1.5)
+        except Exception:
+            pass
+
+    def _on_app_close(self):
+        """Закрытие окна пользователем (WM_DELETE_WINDOW)."""
+        self._audit_finish_session(ok=True)
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
+    def _on_app_exit_atexit(self):
+        """Фолбэк на случай нештатного завершения."""
+        self._audit_finish_session(ok=True)
+
+    def quit(self):
+        """Перехватываем quit, чтобы гарантированно записать завершение сессии."""
+        self._audit_finish_session(ok=True)
+        try:
+            super().quit()
+        except Exception:
+            pass
 
     def _handle_russian_hotkeys(self, event):
         is_ctrl_pressed = (event.state & 4) != 0
@@ -7074,7 +7946,7 @@ class MainApplication(tk.Tk):
         self.main_notebook = ttk.Notebook(self)
         self.main_notebook.pack(expand=True, fill="both", padx=10, pady=10)
 
-        self.viewer_frame = ViewerFrame(self.main_notebook, self.app_data)
+        self.viewer_frame = ViewerFrame(self.main_notebook, self.app_data, self)
         self.editor_frame = EditorFrame(self.main_notebook, self.app_data, self)
         self.sources_frame = SourcesManagerTab(self.main_notebook, self.app_data, self)
 
@@ -7083,21 +7955,99 @@ class MainApplication(tk.Tk):
         self.main_notebook.add(self.sources_frame, text="Работа с источниками")
 
     def open_directory(self, directory=None, show_success_message=True):
+        # AUDIT: операция импорта (без путей)
+        op_id = None
+        t0 = None
+        manual_choice = False
+        if self.audit_logger:
+            try:
+                import time
+                op_id = self.audit_logger.new_operation_id()
+                t0 = time.monotonic()
+                manual_choice = (directory is None)
+                self.audit_logger.log(
+                            event_name=AUDIT_EVENT_NAMES["IMPORT_OPEN_DIR"],
+                    event_category="Импорт",
+                    event_action="Старт",
+                    operation_id=op_id,
+                    data={"выбор_пользователя": bool(manual_choice)},
+                )
+            except Exception:
+                op_id = None
+                t0 = None
+
         if not directory:
             filepath = filedialog.askopenfilename(title="Выберите любой .json", filetypes=[("JSON files", "*.json")])
             if filepath:
                 directory = os.path.dirname(filepath)
             else:
+                # AUDIT: отмена выбора
+                if self.audit_logger and op_id:
+                    try:
+                        import time
+                        duration_ms = (time.monotonic() - t0) * 1000.0 if t0 is not None else None
+                        self.audit_logger.log(
+                            event_name=AUDIT_EVENT_NAMES["IMPORT_OPEN_DIR"],
+                            event_category="Импорт",
+                            event_action="Закрыто",
+                            operation_id=op_id,
+                            result_ok=False,
+                            result_status="Отмена",
+                            result_error_kind="cancelled",
+                            duration_ms=duration_ms,
+                            data={"выбор_пользователя": True},
+                        )
+                    except Exception:
+                        pass
                 return
 
         if directory:
             try:
                 self.app_data.load_materials_from_dir(directory)
-                if show_success_message: messagebox.showinfo("Успех",
-                                                             f"Загружено {len(self.app_data.materials)} материалов.")
+                if show_success_message:
+                    messagebox.showinfo("Успех", f"Загружено {len(self.app_data.materials)} материалов.")
                 self.on_data_load()
+
+                # AUDIT: финиш импорта
+                if self.audit_logger and op_id:
+                    try:
+                        import time
+                        duration_ms = (time.monotonic() - t0) * 1000.0 if t0 is not None else None
+                        self.audit_logger.log(
+                            event_name=AUDIT_EVENT_NAMES["IMPORT_OPEN_DIR"],
+                            event_category="Импорт",
+                            event_action="Финиш",
+                            operation_id=op_id,
+                            result_ok=True,
+                            result_status="Успех",
+                            duration_ms=duration_ms,
+                            counters={"материалов": int(len(self.app_data.materials))},
+                            data={"выбор_пользователя": bool(manual_choice)},
+                        )
+                    except Exception:
+                        pass
+
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Сбой загрузки: {e}")
+
+                # AUDIT: ошибка импорта
+                if self.audit_logger and op_id:
+                    try:
+                        import time
+                        duration_ms = (time.monotonic() - t0) * 1000.0 if t0 is not None else None
+                        self.audit_logger.log(
+                            event_name=AUDIT_EVENT_NAMES["IMPORT_OPEN_DIR_ERROR"],
+                            event_category="Импорт",
+                            event_action="Ошибка",
+                            operation_id=op_id,
+                            result_ok=False,
+                            result_status="Ошибка",
+                            result_error_kind="io_error",
+                            duration_ms=duration_ms,
+                            data={"выбор_пользователя": bool(manual_choice)},
+                        )
+                    except Exception:
+                        pass
 
     def on_data_load(self):
         self.editor_frame.editing_copy = None
@@ -7106,13 +8056,32 @@ class MainApplication(tk.Tk):
         self.editor_frame.update_view()
         self.sources_frame.update_view()
 
-
     def show_about_info(self):
+        if self.audit_logger:
+            try:
+                self.audit_logger.log(
+                    event_name=AUDIT_EVENT_NAMES["HELP_ABOUT_OPEN"],
+                    event_category="Навигация",
+                    event_action="Открыто",
+                )
+            except Exception:
+                pass
+
         title = "О приложении"
         message = read_text_from_file("app_list.txt")
         messagebox.showinfo(title, message, parent=self)
 
     def show_instructions(self):
+        if self.audit_logger:
+            try:
+                self.audit_logger.log(
+                    event_name=AUDIT_EVENT_NAMES["HELP_INSTRUCTIONS_OPEN"],
+                    event_category="Навигация",
+                    event_action="Открыто",
+                )
+            except Exception:
+                pass
+
         instr_window = tk.Toplevel(self)
         instr_window.title("Инструкция по использованию")
         instr_window.geometry("750x600")
@@ -7132,6 +8101,16 @@ class MainApplication(tk.Tk):
         ok_button.pack(pady=(0, 10))
 
     def show_change(self):
+        if self.audit_logger:
+            try:
+                self.audit_logger.log(
+                    event_name=AUDIT_EVENT_NAMES["HELP_CHANGELOG_OPEN"],
+                    event_category="Навигация",
+                    event_action="Открыто",
+                )
+            except Exception:
+                pass
+
         instr_window = tk.Toplevel(self)
         instr_window.title("Список изменений")
         instr_window.geometry("750x600")
