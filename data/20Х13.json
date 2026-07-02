@@ -1,0 +1,1221 @@
+{
+  "material_id": "8ac32b92-abcc-4889-bdbe-5eb600257771",
+  "metadata": {
+    "name_material_standard": "20Х13",
+    "name_material_alternative": [
+      "2Х13",
+      "Ж2",
+      "ЭЖ2"
+    ],
+    "application_area": [
+      "Крепежные материалы",
+      "Материалы лопаток"
+    ],
+    "comment": "",
+    "classification": {
+      "classification_category": "Коррозионно-стойкая, жаропрочная",
+      "classification_class": "Мартенситная",
+      "classification_subclass": "Хромистая"
+    },
+    "temperature_application": {
+      "value": 500.0,
+      "comment": ""
+    }
+  },
+  "physical_properties": {
+    "modulus_elasticity": {
+      "temperature_value_pairs": [
+        [
+          20.0,
+          218000.0
+        ],
+        [
+          100.0,
+          214000.0
+        ],
+        [
+          200.0,
+          208000.0
+        ],
+        [
+          300.0,
+          200000.0
+        ],
+        [
+          400.0,
+          189000.0
+        ],
+        [
+          500.0,
+          181000.0
+        ],
+        [
+          600.0,
+          169000.0
+        ]
+      ],
+      "value_unit": "МПа",
+      "comment": "",
+      "property_subsource": "[1]"
+    },
+    "coefficient_linear_expansion": {
+      "temperature_value_pairs": [
+        [
+          100.0,
+          10.2
+        ],
+        [
+          200.0,
+          11.2
+        ],
+        [
+          300.0,
+          11.5
+        ],
+        [
+          400.0,
+          11.9
+        ],
+        [
+          500.0,
+          12.2
+        ],
+        [
+          600.0,
+          12.8
+        ],
+        [
+          700.0,
+          12.8
+        ],
+        [
+          800.0,
+          13.0
+        ]
+      ],
+      "value_unit": "1/С",
+      "comment": "",
+      "property_subsource": "[1]"
+    },
+    "coefficient_thermal_conductivity": {
+      "temperature_value_pairs": [
+        [
+          100.0,
+          26.0
+        ],
+        [
+          200.0,
+          26.0
+        ],
+        [
+          300.0,
+          26.0
+        ],
+        [
+          400.0,
+          26.0
+        ],
+        [
+          500.0,
+          27.0
+        ],
+        [
+          600.0,
+          26.0
+        ],
+        [
+          700.0,
+          26.0
+        ],
+        [
+          800.0,
+          27.0
+        ],
+        [
+          900.0,
+          28.0
+        ]
+      ],
+      "value_unit": "Вт/(м*С)",
+      "comment": "",
+      "property_subsource": "[1]"
+    },
+    "density": {
+      "temperature_value_pairs": [
+        [
+          20.0,
+          7670.0
+        ],
+        [
+          100.0,
+          7650.0
+        ],
+        [
+          200.0,
+          7620.0
+        ],
+        [
+          300.0,
+          7600.0
+        ],
+        [
+          400.0,
+          7570.0
+        ],
+        [
+          500.0,
+          7540.0
+        ],
+        [
+          600.0,
+          7510.0
+        ],
+        [
+          700.0,
+          7480.0
+        ],
+        [
+          800.0,
+          7450.0
+        ],
+        [
+          900.0,
+          7460.0
+        ]
+      ],
+      "value_unit": "кг/м3",
+      "comment": "",
+      "property_subsource": "[1]"
+    },
+    "specific_heat": {
+      "temperature_value_pairs": [
+        [
+          20.0,
+          440.0
+        ],
+        [
+          100.0,
+          461.0
+        ],
+        [
+          200.0,
+          523.0
+        ],
+        [
+          300.0,
+          565.0
+        ],
+        [
+          400.0,
+          628.0
+        ],
+        [
+          500.0,
+          691.0
+        ],
+        [
+          600.0,
+          775.0
+        ],
+        [
+          700.0,
+          963.0
+        ]
+      ],
+      "value_unit": "Дж/(кг*С)",
+      "comment": "",
+      "property_subsource": "[1]"
+    }
+  },
+  "mechanical_properties": {
+    "strength_category": [
+      {
+        "value_strength_category": "КП60",
+        "hardness": [
+          {
+            "unit_value": "HB",
+            "min_value": 229.0,
+            "max_value": 269.0
+          }
+        ],
+        "yield_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              568.4
+            ],
+            [
+              100.0,
+              568.4
+            ],
+            [
+              200.0,
+              548.8
+            ],
+            [
+              300.0,
+              450.4
+            ],
+            [
+              400.0,
+              450.4
+            ],
+            [
+              450.0,
+              430.4
+            ],
+            [
+              475.0,
+              470.4
+            ],
+            [
+              500.0,
+              411.4
+            ],
+            [
+              550.0,
+              332.4
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "*Предел текучести записан с разницей в 58,4 МПа = 568,4 (кп60) - 510 (максимальное значение по [1, стр.1079])",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "tensile_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              755.0
+            ],
+            [
+              100.0,
+              744.8
+            ],
+            [
+              200.0,
+              735.0
+            ],
+            [
+              300.0,
+              579.0
+            ],
+            [
+              400.0,
+              559.0
+            ],
+            [
+              450.0,
+              520.0
+            ],
+            [
+              475.0,
+              520.0
+            ],
+            [
+              500.0,
+              471.0
+            ],
+            [
+              550.0,
+              383.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "*Предел прочности записан с разницей в 40 МПа = 755 (кп60) - 715 (максимальное значение по [1, стр.1079])",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "impact_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              58.8
+            ],
+            [
+              100.0,
+              156.8
+            ],
+            [
+              200.0,
+              176.4
+            ],
+            [
+              300.0,
+              196.0
+            ],
+            [
+              400.0,
+              196.0
+            ],
+            [
+              450.0,
+              235.2
+            ],
+            [
+              500.0,
+              245.0
+            ],
+            [
+              550.0,
+              215.6
+            ]
+          ],
+          "value_unit": "Дж/см2",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "tensile_strength_limit_10_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              300.0
+            ],
+            [
+              470.0,
+              258.0
+            ],
+            [
+              500.0,
+              195.0
+            ],
+            [
+              530.0,
+              105.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "tensile_strength_limit_100_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              260.0
+            ],
+            [
+              470.0,
+              220.0
+            ],
+            [
+              500.0,
+              160.0
+            ],
+            [
+              530.0,
+              76.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "tensile_strength_limit_200_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              249.0
+            ],
+            [
+              470.0,
+              209.0
+            ],
+            [
+              500.0,
+              144.0
+            ],
+            [
+              530.0,
+              60.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+        },
+        "tensile_strength_limit_250_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              245.0
+            ],
+            [
+              470.0,
+              205.0
+            ],
+            [
+              500.0,
+              139.0
+            ],
+            [
+              530.0,
+              55.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+        },
+        "fatigue_limit_for_notched_specimen": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              235.0
+            ],
+            [
+              200.0,
+              216.0
+            ],
+            [
+              300.0,
+              196.0
+            ],
+            [
+              400.0,
+              167.0
+            ],
+            [
+              500.0,
+              127.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "сreep_strain_rate_1_100_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              128.0
+            ],
+            [
+              470.0,
+              76.0
+            ],
+            [
+              500.0,
+              48.0
+            ],
+            [
+              530.0,
+              30.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "decrement_oscillations_at_800": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              310.0
+            ],
+            [
+              300.0,
+              314.0
+            ],
+            [
+              400.0,
+              275.0
+            ],
+            [
+              500.0,
+              205.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "decrement_oscillations_at_1200": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              330.0
+            ],
+            [
+              300.0,
+              325.0
+            ],
+            [
+              400.0,
+              295.0
+            ],
+            [
+              500.0,
+              210.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "decrement_oscillations_at_1600": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              315.0
+            ],
+            [
+              300.0,
+              280.0
+            ],
+            [
+              400.0,
+              245.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "fatigue_limit_for_smooth_specimen": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              368.0
+            ],
+            [
+              200.0,
+              343.0
+            ],
+            [
+              300.0,
+              319.0
+            ],
+            [
+              400.0,
+              304.0
+            ],
+            [
+              500.0,
+              235.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "hardness_unit": "HB",
+        "source_ref_id": "48340089-76ea-4387-a3b3-e0e06dff364a"
+      },
+      {
+        "value_strength_category": "КП70",
+        "hardness": [
+          {
+            "unit_value": "HB",
+            "min_value": 262.0,
+            "max_value": 295.0
+          }
+        ],
+        "fatigue_limit_for_notched_specimen": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              235.0
+            ],
+            [
+              200.0,
+              216.0
+            ],
+            [
+              300.0,
+              196.0
+            ],
+            [
+              400.0,
+              167.0
+            ],
+            [
+              500.0,
+              127.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "decrement_oscillations_at_800": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              310.0
+            ],
+            [
+              300.0,
+              314.0
+            ],
+            [
+              400.0,
+              275.0
+            ],
+            [
+              500.0,
+              205.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "decrement_oscillations_at_1200": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              330.0
+            ],
+            [
+              300.0,
+              325.0
+            ],
+            [
+              400.0,
+              295.0
+            ],
+            [
+              500.0,
+              210.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "decrement_oscillations_at_1600": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              315.0
+            ],
+            [
+              300.0,
+              280.0
+            ],
+            [
+              400.0,
+              245.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "fatigue_limit_for_smooth_specimen": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              368.0
+            ],
+            [
+              200.0,
+              343.0
+            ],
+            [
+              300.0,
+              319.0
+            ],
+            [
+              400.0,
+              304.0
+            ],
+            [
+              500.0,
+              235.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "yield_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              686.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": ""
+        },
+        "tensile_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              833.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": ""
+        },
+        "impact_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              49.0
+            ]
+          ],
+          "value_unit": "Дж/см2",
+          "comment": ""
+        },
+        "source_ref_id": "e629e582-736c-43e1-8d9e-2e1faefaaf3f",
+        "hardness_unit": "HB"
+      },
+      {
+        "value_strength_category": "КП50",
+        "hardness": [
+          {
+            "unit_value": "HB",
+            "min_value": 207.0,
+            "max_value": 241.0
+          }
+        ],
+        "yield_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              510.0
+            ],
+            [
+              100.0,
+              490.0
+            ],
+            [
+              200.0,
+              461.0
+            ],
+            [
+              300.0,
+              392.0
+            ],
+            [
+              400.0,
+              392.0
+            ],
+            [
+              450.0,
+              372.0
+            ],
+            [
+              475.0,
+              412.0
+            ],
+            [
+              500.0,
+              353.0
+            ],
+            [
+              550.0,
+              274.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "tensile_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              715.0
+            ],
+            [
+              100.0,
+              657.0
+            ],
+            [
+              200.0,
+              598.0
+            ],
+            [
+              300.0,
+              539.0
+            ],
+            [
+              400.0,
+              519.0
+            ],
+            [
+              450.0,
+              480.0
+            ],
+            [
+              475.0,
+              480.0
+            ],
+            [
+              500.0,
+              431.0
+            ],
+            [
+              550.0,
+              343.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "impact_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              68.6
+            ],
+            [
+              100.0,
+              166.6
+            ],
+            [
+              200.0,
+              166.6
+            ],
+            [
+              300.0,
+              206.0
+            ],
+            [
+              400.0,
+              206.0
+            ],
+            [
+              450.0,
+              245.2
+            ],
+            [
+              500.0,
+              255.0
+            ],
+            [
+              550.0,
+              255.6
+            ]
+          ],
+          "value_unit": "Дж/см2",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "tensile_strength_limit_10_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              289.0
+            ],
+            [
+              470.0,
+              211.0
+            ],
+            [
+              500.0,
+              191.0
+            ],
+            [
+              530.0,
+              135.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "tensile_strength_limit_100_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              255.0
+            ],
+            [
+              470.0,
+              176.0
+            ],
+            [
+              500.0,
+              157.0
+            ],
+            [
+              530.0,
+              100.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "Значение для температуры 530 взято не из источника",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "tensile_strength_limit_200_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              234.0
+            ],
+            [
+              470.0,
+              173.0
+            ],
+            [
+              500.0,
+              153.5
+            ],
+            [
+              530.0,
+              95.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+        },
+        "tensile_strength_limit_250_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              222.0
+            ],
+            [
+              470.0,
+              170.0
+            ],
+            [
+              500.0,
+              140.0
+            ],
+            [
+              530.0,
+              85.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+        },
+        "сreep_strain_rate_1_100_thousands_hours": {
+          "temperature_value_pairs": [
+            [
+              450.0,
+              125.0
+            ],
+            [
+              470.0,
+              75.0
+            ],
+            [
+              500.0,
+              47.0
+            ],
+            [
+              550.0,
+              29.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "decrement_oscillations_at_800": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              310.0
+            ],
+            [
+              300.0,
+              314.0
+            ],
+            [
+              400.0,
+              275.0
+            ],
+            [
+              500.0,
+              205.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "decrement_oscillations_at_1200": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              330.0
+            ],
+            [
+              300.0,
+              325.0
+            ],
+            [
+              400.0,
+              295.0
+            ],
+            [
+              500.0,
+              210.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "decrement_oscillations_at_1600": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              315.0
+            ],
+            [
+              300.0,
+              280.0
+            ],
+            [
+              400.0,
+              245.0
+            ]
+          ],
+          "value_unit": "-",
+          "comment": "",
+          "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
+          "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+        },
+        "fatigue_limit_for_smooth_specimen": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              368.0
+            ],
+            [
+              200.0,
+              343.0
+            ],
+            [
+              300.0,
+              319.0
+            ],
+            [
+              400.0,
+              304.0
+            ],
+            [
+              500.0,
+              235.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "fatigue_limit_for_notched_specimen": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              235.0
+            ],
+            [
+              200.0,
+              216.0
+            ],
+            [
+              300.0,
+              196.0
+            ],
+            [
+              400.0,
+              167.0
+            ],
+            [
+              500.0,
+              127.0
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+          "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+        },
+        "source_ref_id": "48340089-76ea-4387-a3b3-e0e06dff364a",
+        "hardness_unit": "HB"
+      }
+    ]
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 5632-2014",
+        "composition_subsource": "",
+        "comment": "",
+        "base_element": "Fe",
+        "other_elements": [
+          {
+            "element": "C",
+            "unit_value": "%",
+            "min_value": 0.16,
+            "max_value": 0.25,
+            "min_value_tolerance": "0.15",
+            "max_value_tolerance": "0.27"
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.8,
+            "max_value_tolerance": "0.85"
+          },
+          {
+            "element": "Mn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.8,
+            "max_value_tolerance": "0.84"
+          },
+          {
+            "element": "S",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.025,
+            "max_value_tolerance": "0.03"
+          },
+          {
+            "element": "P",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.03,
+            "max_value_tolerance": "0.035"
+          },
+          {
+            "element": "Cr",
+            "unit_value": "%",
+            "min_value": 12.0,
+            "max_value": 14.0,
+            "min_value_tolerance": "11.85",
+            "max_value_tolerance": "14.15"
+          }
+        ],
+        "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"
+      }
+    ]
+  }
+}

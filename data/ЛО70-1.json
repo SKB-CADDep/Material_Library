@@ -1,0 +1,168 @@
+{
+  "material_id": "b283d138-d24f-4dfd-9751-c173edffe99f",
+  "metadata": {
+    "name_material_standard": "ЛО70-1",
+    "name_material_alternative": [],
+    "application_area": [
+      "Трубки конденсатора"
+    ],
+    "comment": "состояние - твердое\nЛитейные материалы",
+    "classification": {
+      "classification_category": "",
+      "classification_class": "",
+      "classification_subclass": ""
+    }
+  },
+  "physical_properties": {
+    "modulus_elasticity": {
+      "temperature_value_pairs": [
+        [
+          20.0,
+          10600.0
+        ]
+      ],
+      "value_unit": "кгс/мм2",
+      "comment": "",
+      "source_ref_id": "a4ac04a4-6511-450e-9ee8-333a8ed37141",
+      "property_subsource": "Смирнягин А.П. Промышленные цветные металлы и сплавы. М: Металлургиздат, 1956. 559 с."
+    },
+    "coefficient_linear_expansion": {
+      "temperature_value_pairs": [
+        [
+          20.0,
+          19.7
+        ]
+      ],
+      "value_unit": "1/С",
+      "comment": "",
+      "source_ref_id": "a4ac04a4-6511-450e-9ee8-333a8ed37141",
+      "property_subsource": "Смирнягин А.П. Промышленные цветные металлы и сплавы. М: Металлургиздат, 1956. 559 с."
+    },
+    "coefficient_thermal_conductivity": {
+      "temperature_value_pairs": [
+        [
+          100.0,
+          78.48
+        ]
+      ],
+      "value_unit": "ккал/(ч*м*С)",
+      "comment": "",
+      "source_ref_id": "a4ac04a4-6511-450e-9ee8-333a8ed37141",
+      "property_subsource": "Смирнягин А.П. Промышленные цветные металлы и сплавы. М: Металлургиздат, 1956. 559 с."
+    },
+    "density": {
+      "temperature_value_pairs": [
+        [
+          20.0,
+          8540.0
+        ]
+      ],
+      "value_unit": "кг/м3",
+      "comment": "Литая в кокиль",
+      "source_ref_id": "a4ac04a4-6511-450e-9ee8-333a8ed37141",
+      "property_subsource": "Смирнягин А.П. Промышленные цветные металлы и сплавы. М: Металлургиздат, 1956. 559 с."
+    }
+  },
+  "mechanical_properties": {
+    "strength_category": [
+      {
+        "value_strength_category": "-",
+        "hardness": [],
+        "yield_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              180.5
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "property_subsource": "19"
+        },
+        "tensile_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              686.7
+            ]
+          ],
+          "value_unit": "МПа",
+          "comment": "",
+          "property_subsource": "2"
+        },
+        "impact_strength": {
+          "temperature_value_pairs": [
+            [
+              20.0,
+              61.0
+            ]
+          ],
+          "value_unit": "Дж/см2",
+          "comment": "",
+          "property_subsource": "19"
+        },
+        "hardness_unit": "HB"
+      }
+    ]
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 15527-2004",
+        "other_elements": [
+          {
+            "element": "Cu",
+            "unit_value": "%",
+            "min_value": 69.0,
+            "max_value": 71.0
+          },
+          {
+            "element": "Sn",
+            "unit_value": "%",
+            "min_value": 1.0,
+            "max_value": 1.5
+          },
+          {
+            "element": "Pb",
+            "unit_value": "%",
+            "min_value": null,
+            "max_value": 0.07
+          },
+          {
+            "element": "Fe",
+            "unit_value": "%",
+            "min_value": null,
+            "max_value": 0.07
+          },
+          {
+            "element": "Sb",
+            "unit_value": "%",
+            "min_value": null,
+            "max_value": 0.005
+          },
+          {
+            "element": "Bi",
+            "unit_value": "%",
+            "min_value": null,
+            "max_value": 0.002
+          },
+          {
+            "element": "P",
+            "unit_value": "%",
+            "min_value": null,
+            "max_value": 0.01
+          },
+          {
+            "element": "Zn",
+            "unit_value": "%",
+            "min_value": 30.0,
+            "max_value": null
+          }
+        ],
+        "composition_subsource": "1",
+        "comment": "",
+        "base_element": "Cu"
+      }
+    ]
+  }
+}
