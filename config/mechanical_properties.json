@@ -3,78 +3,112 @@
         "name": "Предел текучести",
         "symbol": "σ_0,2",
         "unit": "МПа",
-        "unit_type": "Предел текучести"
+        "unit_type": "Предел текучести",
+        "temperature_dependent": true
     },
     "tensile_strength": {
         "name": "Предел прочности",
         "symbol": "σ_в",
         "unit": "МПа",
-        "unit_type": "Предел прочности"
+        "unit_type": "Предел прочности",
+        "temperature_dependent": true
     },
     "impact_strength": {
         "name": "Ударная вязкость",
         "symbol": "KCU",
         "unit": "Дж/см2",
-        "unit_type": "Ударная вязкость"
+        "unit_type": "Ударная вязкость",
+        "temperature_dependent": true
     },
     "tensile_strength_limit_10_thousands_hours": {
         "name": "Предел длит. прочности за 10 тыс.ч",
         "symbol": "σ_дп_10",
         "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
+        "unit_type": "Предел длит. прочности",
+        "temperature_dependent": true
     },
     "tensile_strength_limit_100_thousands_hours": {
         "name": "Предел длит. прочности за 100 тыс.ч",
         "symbol": "σ_дп_100",
         "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
+        "unit_type": "Предел длит. прочности",
+        "temperature_dependent": true
     },
     "tensile_strength_limit_200_thousands_hours": {
         "name": "Предел длит. прочности за 200 тыс.ч",
         "symbol": "σ_дп_200",
         "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
+        "unit_type": "Предел длит. прочности",
+        "temperature_dependent": true
     },
     "tensile_strength_limit_250_thousands_hours": {
         "name": "Предел длит. прочности за 250 тыс.ч",
         "symbol": "σ_дп_250",
         "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
+        "unit_type": "Предел длит. прочности",
+        "temperature_dependent": true
     },
     "сreep_strain_rate_1_100_thousands_hours": {
         "name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
         "symbol": "σ_1_100",
         "unit": "МПа",
-        "unit_type": "Предел ползучести"
+        "unit_type": "Предел ползучести",
+        "temperature_dependent": true
     },
     "decrement_oscillations_at_800": {
         "name": "Декремент колебаний при 800 (·10¯⁴)",
         "symbol": "δψ_800",
         "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
+        "unit_type": "Декремент колебаний",
+        "temperature_dependent": true
     },
     "decrement_oscillations_at_1200": {
         "name": "Декремент колебаний при 1200 (·10¯⁴)",
         "symbol": "δψ_1200",
         "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
+        "unit_type": "Декремент колебаний",
+        "temperature_dependent": true
     },
     "decrement_oscillations_at_1600": {
         "name": "Декремент колебаний при 1600 (·10¯⁴)",
         "symbol": "δψ_1600",
         "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
+        "unit_type": "Декремент колебаний",
+        "temperature_dependent": true
     },
     "fatigue_limit_for_smooth_specimen": {
         "name": "Предел выносливости (гладкий образец, N=10e7)",
         "symbol": "σ_-1_smooth",
         "unit": "МПа",
-        "unit_type": "Предел выносливости"
+        "unit_type": "Предел выносливости",
+        "temperature_dependent": true
     },
     "fatigue_limit_for_notched_specimen": {
         "name": "Предел выносливости (образец с надрезом, N=10e7)",
         "symbol": "σ_-1_notched",
         "unit": "МПа",
-        "unit_type": "Предел выносливости"
+        "unit_type": "Предел выносливости",
+        "temperature_dependent": true
+    },
+    "relative_elongation":{
+        "name": "Относительное удлинение",
+        "symbol": "δ",
+        "unit": "%",
+        "unit_type": "Безразмерный",
+        "temperature_dependent": false
+    },
+    "relative_contraction":{
+        "name": "Относительное сужение",
+        "symbol": "ψ",
+        "unit": "%",
+        "unit_type": "Безразмерный",
+        "temperature_dependent": false
+    },
+    "angle_of_bend":{
+        "name": "Угол изгиба",
+        "symbol": "β",
+        "unit": "°",
+        "unit_type": "Угол",
+        "temperature_dependent": false
     }
 }

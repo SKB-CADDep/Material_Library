@@ -1,4 +1,5 @@
 # main.py
+from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -14,30 +15,15 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.patches import Ellipse, Patch
 import colorsys
 
+from src.services.properties_catalog import PropertiesCatalog
+from src.core.schema_keys import Schema
+from src.core.math.interpolation import MathUtils
+from src.infrastructure.paths import get_app_directory
+from src.services.hardness_table import HardnessTable
 
 # ======================================================================================
 # БЛОК 1: КОНФИГУРАЦИЯ И КОНСТАНТЫ
 # ======================================================================================
-
-class Schema:
-    """Константы для ключей JSON структуры материала."""
-    METADATA = "metadata"
-    PHYSICAL = "physical_properties"
-    MECHANICAL = "mechanical_properties"
-    CHEMICAL = "chemical_properties"
-
-    # Вложенные ключи
-    STRENGTH_CAT = "strength_category"
-    COMPOSITION = "composition"
-    TEMP_PAIRS = "temperature_value_pairs"
-    APP_AREA = "application_area"
-    NAME_STD = "name_material_standard"
-    NAME_ALT = "name_material_alternative"
-
-    # Поля значений
-    REF_ID = "source_ref_id"
-    VAL_STR_CAT = "value_strength_category"
-
 
 # Константа для логов
 LOG_FILENAME = "material_changelog.txt"
@@ -77,122 +63,11 @@ AUDIT_EVENT_NAMES = {
     "HELP_CHANGELOG_OPEN": "Справка: список изменений открыт",
 }
 
-# Маппинги свойств
-PHYSICAL_PROPERTIES_MAP = {
-    "modulus_elasticity": {
-        "name": "Модуль упругости",
-        "symbol": "E",
-        "unit": "МПа",
-        "unit_type": "Модуль упругости"
-    },
-    "coefficient_linear_expansion": {
-        "name": "Коэффициент линейного расширения (·10¯⁶)",
-        "symbol": "α",
-        "unit": "1/С",
-        "unit_type": "Коэфф. лин. расширения"
-    },
-    "coefficient_thermal_conductivity": {
-        "name": "Коэффициент теплопроводности",
-        "symbol": "λ",
-        "unit": "Вт/(м*С)",
-        "unit_type": "Теплопроводность"
-    },
-    "density": {
-        "name": "Плотность",
-        "symbol": "ρ",
-        "unit": "кг/м3",
-        "unit_type": "Плотность"
-    },
-    "specific_heat": {
-        "name": "Удельная теплоемкость",
-        "symbol": "С",
-        "unit": "Дж/(кг*С)",
-        "unit_type": "Удельная теплоемкость"
-    },
-}
-
-MECHANICAL_PROPERTIES_MAP = {
-    "yield_strength": {
-        "name": "Предел текучести",
-        "symbol": "σ_0,2",
-        "unit": "МПа",
-        "unit_type": "Предел текучести"
-    },
-    "tensile_strength": {
-        "name": "Предел прочности",
-        "symbol": "σ_в",
-        "unit": "МПа",
-        "unit_type": "Предел прочности"
-    },
-    "impact_strength": {
-        "name": "Ударная вязкость",
-        "symbol": "KCU",
-        "unit": "Дж/см2",
-        "unit_type": "Ударная вязкость"
-    },
-    "tensile_strength_limit_10_thousands_hours": {
-        "name": "Предел длит. прочности за 10 тыс.ч",
-        "symbol": "σ_дп_10",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "tensile_strength_limit_100_thousands_hours": {
-        "name": "Предел длит. прочности за 100 тыс.ч",
-        "symbol": "σ_дп_100",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "tensile_strength_limit_200_thousands_hours": {
-        "name": "Предел длит. прочности за 200 тыс.ч",
-        "symbol": "σ_дп_200",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "tensile_strength_limit_250_thousands_hours": {
-        "name": "Предел длит. прочности за 250 тыс.ч",
-        "symbol": "σ_дп_250",
-        "unit": "МПа",
-        "unit_type": "Предел длит. прочности"
-    },
-    "сreep_strain_rate_1_100_thousands_hours": {
-        "name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
-        "symbol": "σ_1_100",
-        "unit": "МПа",
-        "unit_type": "Предел ползучести"
-    },
-    "decrement_oscillations_at_800": {
-        "name": "Декремент колебаний при 800 (·10¯⁴)",
-        "symbol": "δψ_800",
-        "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
-    },
-    "decrement_oscillations_at_1200": {
-        "name": "Декремент колебаний при 1200 (·10¯⁴)",
-        "symbol": "δψ_1200",
-        "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
-    },
-    "decrement_oscillations_at_1600": {
-        "name": "Декремент колебаний при 1600 (·10¯⁴)",
-        "symbol": "δψ_1600",
-        "unit": "кгс/см2",
-        "unit_type": "Декремент колебаний"
-    },
-    "fatigue_limit_for_smooth_specimen": {
-        "name": "Предел выносливости (гладкий образец, N=10e7)",
-        "symbol": "σ_-1_smooth",
-        "unit": "МПа",
-        "unit_type": "Предел выносливости"
-    },
-    "fatigue_limit_for_notched_specimen": {
-        "name": "Предел выносливости (образец с надрезом, N=10e7)",
-        "symbol": "σ_-1_notched",
-        "unit": "МПа",
-        "unit_type": "Предел выносливости"
-    },
-}
-
-ALL_PROPERTIES_MAP = {**PHYSICAL_PROPERTIES_MAP, **MECHANICAL_PROPERTIES_MAP}
+PROPERTIES = PropertiesCatalog()
+PHYSICAL_MAP = {k: PROPERTIES.get_meta(k) for k in PROPERTIES.physical_keys()}
+MECHANICAL_MAP = {k: PROPERTIES.get_meta(k) for k in PROPERTIES.mechanical_keys()}
+ALL_PROPERTIES_MAP = {**PHYSICAL_MAP, **MECHANICAL_MAP}
+HARDNESS = HardnessTable()
 
 # Константа для сравнения списков (для логов)
 LIST_ITEM_KEYS = {
@@ -201,534 +76,10 @@ LIST_ITEM_KEYS = {
     (Schema.CHEMICAL, Schema.COMPOSITION, "other_elements"): "element"
 }
 
-# Текстовые константы (сокращены для примера, используйте свои полные версии)
-APP_TEXT = """Приложение "Material_Lib"
-Версия: 2.1.15
-Год: 2026.02.26
-Промт-инженер: Гаврилов П.Я.
-Тестировщики: Лалаева С.Г., Гаврилова Н.Я.
-AI ассистент (кодогенерирующий): gemini-2.5-pro, gpt-5.1-high
-
-Приложение для управления и анализа
-свойств конструкционных материалов.
-"""
-INSTR_TEXT = """
-ИНСТРУКЦИЯ ПО ИСПОЛЬЗОВАНИЮ ПРИЛОЖЕНИЯ "Material_Lib"
-
-
-1. НАЧАЛО РАБОТЫ
-
-1.1. Старт и загрузка базы
-- При первом запуске программа может автоматически загрузить материалы из папки "БД Материалов", расположенной рядом с исполняемым файлом (.exe).
-- В любой момент вы можете выбрать пункт меню "Файл" -> "Открыть директорию..." и указать папку, в которой хранятся ваши JSON-файлы материалов.
-- В одной папке могут лежать:
-  - файлы материалов (*.json);
-  - файл источников source.json (справочник по НТД);
-  - при желании — папка "Источники" с прикреплёнными к НТД файлами (PDF, DOCX, XLSX и т.п.).
-
-1.2. Структура JSON-файла материала
-Приложение ожидает, что каждый файл материала содержит ключевые разделы:
-
-- metadata
-  - name_material_standard        — основное наименование
-  - name_material_alternative     — список альтернативных названий
-  - comment                       — общий комментарий
-  - application_area              — список областей применения
-  - classification:
-      - classification_category
-      - classification_class
-      - classification_subclass
-  - temperature_application:
-      - value                     — рекомендуемая макс. рабочая температура
-      - comment                   — комментарий
-
-- physical_properties             — словарь физических свойств
-- mechanical_properties:
-    - strength_category           — список категорий прочности
-- chemical_properties:
-    - composition                 — список источников химического состава
-
-Нарушение этой структуры может привести к ошибкам при загрузке или расчётах.
-
-1.3. Источники (source.json)
-Файл source.json хранит справочник источников НТД и разделён на три группы:
-- property_sources      — источники для физических/механических свойств;
-- strength_sources      — источники для категорий прочности (КП);
-- chemical_sources      — источники для химического состава.
-
-Каждый источник содержит:
-- id_source       — уникальный идентификатор (UUID);
-- name_source     — наименование (например, ГОСТ 5632-2014);
-- description     — описание;
-- hyperlink       — путь к файлу или URL (опционально);
-- user_name_found / data_found    — кто и когда добавил;
-- user_name_change / data_change  — кто и когда редактировал.
-
-Связь материала с источником выполняется через поле source_ref_id
-(внутри соответствующих узлов JSON).
-
-
-2. ВКЛАДКА "ПОДБОР МАТЕРИАЛА"
-
-Вкладка содержит 5 подстраниц (Notebook):
-
-2.1. "Подбор по температуре"
-Назначение: быстро сравнить материалы по значениям свойств при заданной температуре.
-
-Основные элементы:
-- "Тип свойств":
-  - Физические свойства;
-  - Механические свойства;
-  - Твёрдость.
-- "Область применения" — фильтр по metadata.application_area.
-- Поле "Температура, °С" — ввод целевой температуры. Расчёт выполняется автоматически (с задержкой ~0.3 с).
-
-Таблица результатов разделена на две части:
-- Левые "замороженные" столбцы:
-  - Материал           — название материала;
-  - КП                 — категория прочности (для механики), либо "-";
-  - НТД                — источник (по справочнику источников или строковое поле);
-  - tприм ДО, °С       — metadata.temperature_application.value, если задан.
-- Правые прокручиваемые столбцы — значения свойств при заданной температуре.
-
-Особенности:
-- Для физических и механических свойств значения интерполируются линейно между ближайшими точками. Экстраполяция не выполняется: если температура вне диапазона известных точек, значение не показывается.
-- Для твёрдости выводятся Min/Max и единица измерения. Единицу можно сменить ПКМ по заголовку, перевод делается по таблице соответствий.
-
-Смена единиц измерения:
-- ПКМ по заголовку столбца -> список доступных единиц для данного типа (по UnitManager).
-- Значения автоматически пересчитываются в выбранные единицы.
-
-Дополнительно:
-- Таблица поддерживает сортировку по любому столбцу (щелчок по заголовку).
-- ПКМ по ячейке — команда "Копировать" (значение попадает в буфер обмена).
-
-2.2. "Расчёт отдельно"
-Назначение: получить таблицу значений всех ключевых свойств для одного материала/категории прочности, а также посчитать значения при произвольных температурах (включая экстраполяцию).
-
-Основные элементы:
-- Фильтр по области применения.
-- Выбор материала (Combobox).
-- Выбор категории прочности (КП) для выбранного материала (если есть).
-- Таблица со строками по температурам (T, °C) и столбцами по всем:
-  - физическим свойствам;
-  - механическим свойствам.
-
-Строки таблицы:
-- Верхняя часть — точки из базы данных. Для них:
-  - значения отображаются "как есть" (с интерполяцией только в границах исходных температур).
-- Разделитель "РАСЧЕТ".
-- Нижняя часть — пользовательские точки (произвольные температуры):
-  - рассчитываются с интерполяцией и, при необходимости, экстраполяцией (по двум ближайшим точкам).
-
-Формат значений в пользовательских строках:
-- 330.0      — значение соответствует точке из таблицы (точное совпадение);
-- (330.0)    — линейная интерполяция между точками;
-- [330.0]    — линейная экстраполяция (за пределами диапазона исходных точек).
-
-Панель управления расчётом:
-- Поле "Температура, °C" в блоке "Расчёт произвольной точки".
-- Кнопки:
-  - "+ Добавить расчёт" — добавить температуру в список расчётных строк;
-  - "- Исключить строку" — удалить выделенную расчётную строку;
-  - "Очистить все" — удалить все пользовательские точки.
-
-Управление столбцами:
-- Кнопка "Настроить столбцы" — меню для отображения/скрытия отдельных столбцов.
-- ПКМ по заголовку столбца — смена единиц измерения (через UnitManager).
-
-2.3. "Сравнение материалов (свойства)"
-Назначение: построение графиков зависимости одного выбранного свойства от температуры для нескольких материалов/категорий прочности.
-
-Основные элементы:
-- "Область применения" — фильтр по metadata.application_area.
-- "Свойство для сравнения" — список всех свойств из PHYSICAL_PROPERTIES_MAP и MECHANICAL_PROPERTIES_MAP.
-- "Поиск материала" — текстовый фильтр.
-- Списки:
-  - "Результаты поиска" — доступные материалы/материал+КП с данными по выбранному свойству;
-  - "Выбранные материалы" — то, что будет отображаться на графике.
-
-Работа:
-1. Выберите область применения (опционально).
-2. Выберите свойство.
-3. Введите часть имени материала (по желанию).
-4. Двойной щелчок по строке в "Результаты поиска" — добавление в "Выбранные".
-5. Двойной щелчок в "Выбранные материалы" — удаление из списка.
-6. Нажмите "Построить график".
-
-Особенности:
-- По оси X — температура, по оси Y — значение выбранного свойства.
-- Если для какого-то материала/КП нет данных по выбранному свойству,
-  он появляется в легенде с пометкой "(нет данных)".
-- На графике подписываются значения у точек (с округлением).
-- В панели matplotlib доступны стандартные функции: масштабирование, панорамирование.
-- Кнопка "Домой" (в кастомной панели) полностью пересобирает график, учитывая текущий выбор.
-
-2.4. "Сравнение материалов (хим. состав)"
-Вкладка разделена на два режима (внутренний Notebook):
-
-2.4.1. Подвкладка "По стандартам для материала"
-Сценарий: сравнение химического состава одного материала по разным источникам (ГОСТ, ТУ и т.п.).
-
-Слева:
-- "Область применения" — фильтр по metadata.application_area.
-- "Поиск материала" — фильтр по названию.
-- Список "Материалы" — одиночный выбор.
-
-Справа:
-- Верхняя таблица (pivot):
-  - Строки — элементы (C, Si, Cr, ...).
-  - Столбцы:
-    - Элемент    — символ;
-    - Название   — название элемента (из встроенного справочника);
-    - Далее по одному столбцу на каждый источник состава выбранного материала.
-  - В ячейках — форматированное значение диапазона (Min/Max с допусками, в том же виде, что и в редакторе состава).
-  - Строки, где диапазоны у разных источников различаются, подсвечиваются (светло-жёлтым).
-
-- Нижняя таблица "Источники состава выбранного материала":
-  - Источник    — имя (по справочнику или строковое поле);
-  - Комментарий;
-  - Основа      — base_element (например, Fe, Ti);
-  - Ед. изм.    — единицы содержаний (обычно "%").
-
-2.4.2. Подвкладка "Подбор по целевому составу"
-Сценарий: подбор материалов под заданный целевой химический состав.
-
-Слева:
-- "Область применения" — фильтр по metadata.application_area.
-- Блок "Целевой химический состав":
-  - Таблица с колонками:
-    - Элемент
-    - Target, %
-  - ПКМ по ячейке "Элемент" — выбор элемента из встроенного списка (название + символ).
-  - Кнопки:
-    - "+" — добавить строку;
-    - "-" — удалить выделенные строки.
-  - При любом изменении таблицы автоматически пересчитываются результаты справа.
-
-Справа:
-- Верхняя таблица "Результаты подбора материалов":
-  - Строка = один источник состава одного материала.
-  - Столбцы:
-    - Материал       — отображаемое имя материала;
-    - Источник       — наименование источника состава;
-    - Основа         — base_element (Fe, Ti и т.п.);
-    - Совпавших      — сколько целевых элементов попали в диапазон (с учётом допусков);
-    - Всего          — общее число целевых элементов;
-    - Статус:
-      - "Полное совпадение" (все целевые элементы попадают в расширенный диапазон),
-      - "Частичное совпадение",
-      - "Нет совпадений".
-  - Строки раскрашены:
-    - зелёный фон       — полное совпадение;
-    - жёлтый            — частичное;
-    - розовый           — нет совпадений.
-  - Кандидаты упорядочены:
-    1) по статусу (полное -> частичное -> нет);
-    2) по числу совпавших элементов (по убыванию);
-    3) по величине отклонений;
-    4) по имени материала.
-
-- Нижняя таблица "Детализированное сравнение по выбранному источнику":
-  - Столбцы:
-    - Элемент
-    - Target, {ед.}
-    - Min, {ед.}
-    - Max, {ед.}
-    - Допуск Min, {ед.}
-    - Допуск Max, {ед.}
-    - Статус:
-      - "в диапазоне"       — Target попадает в [Min-ДопускMin ; Max+ДопускMax]
-      - "ниже диапазона"
-      - "выше диапазона"
-      - "нет данных"
-    - Δ до границы, {ед.}  — расстояние до ближайшей границы расширенного диапазона.
-  - Строки также подсвечиваются:
-    - зелёный фон       — "в диапазоне";
-    - розовый           — отклонение;
-    - серый             — "нет данных".
-  - Учитываются допуски:
-    - Эффективный нижний предел = Min - ДопускMin (если оба заданы);
-    - Эффективный верхний предел = Max + ДопускMax (если оба заданы).
-
-- Блок "Влияние элементов на свойства стали":
-  - Отображается под детализированной таблицей.
-  - Имеет фиксированную высоту (примерно на 10 строк) и вертикальную прокрутку.
-  - Для каждого целевого элемента выводится:
-    - строка заголовка: "Углерод: C";
-    - строка "    - Повышает: ..." (если есть в подсказках);
-    - строка "    - Снижает: ..." (если есть).
-  - Список подсказок основан на встроенной таблице влияния элементов (element_tooltips).
-
-2.5. "Диаграмма Эшби"
-Назначение: построение диаграмм Эшби по классам материалов (структурный класс).
-
-Основные элементы:
-- "Область применения" — фильтр по metadata.application_area.
-- "Ось X" и "Ось Y":
-  - список свойств для диаграммы, включающий:
-    - "Температура" (T),
-    - все физические и механические свойства (из PHYSICAL_PROPERTIES_MAP и MECHANICAL_PROPERTIES_MAP).
-  - Нельзя выбрать одно и то же свойство для обеих осей.
-- "Поиск структурного класса" — фильтр по названию классификационного класса.
-- Списки:
-  - "Результаты поиска" — все классы, в которых есть хотя бы один материал для выбранной области;
-  - "Выбранные классы" — классы, которые будут показаны на диаграмме.
-
-Работа:
-1. Выберите область применения (или "Все").
-2. Выберите свойства для осей X и Y.
-3. Найдите нужный структурный класс и добавьте его двойным щелчком в "Выбранные классы".
-4. Нажмите "Построить диаграмму".
-
-Построение:
-- Для каждого класса:
-  - отбираются материалы этого класса (и выбранной области применения);
-  - для каждого материала/КП рассчитываются точки (X(T), Y(T)) по всем доступным температурам.
-- Если хотя бы одна ось — механическое свойство, то серии строятся по категориям прочности (КП).
-- На диаграмме:
-  - каждая серия (материал/КП) — отдельная линия с уникальным цветом;
-  - для целого класса строится и закрашивается выпуклая оболочка (область возможных значений).
-
-Панель графика:
-- Стандартный toolbar matplotlib (масштабирование, панорамирование, сброс вида).
-- Сетка по осям + дополнительные "промежуточные" линии для удобства чтения.
-
-
-3. ВКЛАДКА "ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ МАТЕРИАЛА"
-
-3.1. Верхняя панель
-- "Выберите материал" — список загруженных материалов.
-- Кнопка "Создать новый" — создаёт новый материал в памяти (без файла).
-- Кнопки:
-  - "Сохранить"
-    - сохраняет текущую редактируемую копию в исходный файл материала (перезапись).
-    - перед сохранением вычисляются изменения (diff) и пишутся в material_changelog.txt.
-  - "Сохранить как..."
-    - спрашивает путь/имя файла;
-    - сохраняет туда текущую копию;
-    - меняет рабочую директорию на выбранную;
-    - перегружает всю базу из новой директории.
-  - "Отменить изменения"
-    - для существующего материала: откатывает все несохранённые правки к состоянию файла;
-    - для нового материала: очищает/создаёт новый пустой материал.
-
-При выборе материала/создании нового:
-- данные загружаются во все вкладки редактора;
-- включаются все вкладки и кнопки управления.
-
-3.2. Вкладка "Общие данные"
-Содержит:
-- Наименование (стандарт);
-- Альтернативные названия (через запятую);
-- Общий комментарий.
-- Блок "Классификация":
-  - Категория;
-  - Структурный класс;
-  - Подкласс.
-- Блок "Области применения":
-  - список чекбоксов всех известных областей применения (собирается по базе + текущий материал);
-  - чекбоксы выбранных областей для текущего материала;
-  - поле "Добавить область применения" — добавляет новую строку (учитывается во всех вкладках
-    после сохранения/перезагрузки).
-- Блок "Параметры применения":
-  - "Температура применения ДО, °С" — число (через точку);
-  - "Комментарий к температуре".
-
-3.3. Вкладка "Физические свойства"
-Для каждого свойства (E, λ, ρ, и т.п.):
-- единица измерения (Combobox, с использованием UnitManager);
-- "Источник свойств" — Combobox, связанный с группой "Источник свойств" (property_sources)
-  во вкладке "Работа с источниками";
-- "Комментарий";
-- таблица точек (T, °C — значение);
-- интерактивный график справа.
-
-Поддержка старого и нового форматов:
-- Если в JSON есть source_ref_id — берётся имя из source.json;
-- Если нет — используется старое текстовое поле property_subsource.
-- При сохранении, если имя источника найдено в справочнике, создаётся/обновляется source_ref_id;
-  старое строковое поле дублируется для обратной совместимости.
-
-3.4. Вкладка "Механические свойства"
-Структура:
-- Комбобокс "Категория прочности" + кнопки "+" / "-" для добавления/удаления категорий.
-- Для каждой категории:
-  - "Название КП";
-  - "Источник КП" — Combobox, связанный с группой "Источник категории прочности" (strength_sources).
-  - Набор свойств (предел текучести, прочности, выносливости и т.д.) — такие же редакторы, как
-    для физических свойств.
-  - Блок "Твёрдость":
-    - единица твёрдости (Combobox, тип "Твердость");
-    - таблица строк: Min, Max.
-    - Старое поле property_subsource для твёрдости сохраняется "как есть", но не редактируется в UI.
-
-3.5. Вкладка "Химический состав"
-Верхняя часть:
-- "Источник состава" — Combobox по списку composition_source текущего материала (+ новые);
-  "+" — создать новый источник состава;
-  "-" — удалить выбранный (с подтверждением).
-
-При выборе источника:
-- "Источник" — Combobox, связанный с группой "Источник хим. свойств" (chemical_sources) в source.json;
-  при выборе значения сохраняется source_ref_id.
-  Старое поле composition_source продолжает дублироваться для совместимости.
-- "Комментарий" — строка;
-- "Основной элемент" — Combobox (например, Fe, Ti);
-- "Ед. изм." — единицы содержаний (обычно "%", тип "Безразмерный").
-
-Таблица элементов:
-- Столбцы:
-  - Название элемента
-  - Элемент (символ)
-  - Min
-  - Max
-  - Допуск Min
-  - Допуск Max
-- "+" / "-" — добавить/удалить строки.
-- ПКМ по колонкам "Название элемента" или "Элемент" — всплывающее окно-список элементов (10 строк с прокруткой),
-  выбор записывает название и символ.
-- При сохранении:
-  - строки без символа элемента игнорируются;
-  - значения Min/Max и допусков парсятся как числа;
-  - поле unit_value (единица) задаётся общим значением из "Ед. изм." для всех элементов источника.
-
-
-4. ВКЛАДКА "РАБОТА С ИСТОЧНИКАМИ"
-
-4.1. Структура вкладки
-Содержит внутренний Notebook с тремя подстраницами:
-- "Источник свойств"          — группа property_sources;
-- "Источник категории прочности" — группа strength_sources;
-- "Источник хим. свойств"     — группа chemical_sources.
-
-В каждой подстранице:
-- Таблица источников (Treeview):
-  - Наименование
-  - Описание
-  - Ссылка/Файл
-  - Изм.    — кто последний изменял
-  - Дата изм.
-  - Созд.   — кто создал
-  - Дата созд.
-- При выборе строки данные попадают в нижнюю общую форму редактирования.
-
-Нижняя форма:
-- "Наименование"
-- "Описание"
-- "Ссылка/Файл"
-- Кнопки:
-  - "Новый источник" — создаёт новый источник в текущей активной группе;
-  - "Сохранить изменения" — обновляет выделенный источник;
-  - "Удалить источник" — удаляет, если он не используется ни в одном материале (по source_ref_id);
-  - "Очистить поля" — сбрасывает форму и выделение.
-
-4.2. Открытие файлов по ссылке
-- ПКМ по строке таблицы открывает контекстное меню "Открыть ссылку".
-- Если hyperlink:
-  - относительный путь — ищется в папке "Источники" рядом с приложением;
-  - абсолютный путь или URL — открывается штатными средствами ОС.
-
-
-5. ВАЖНЫЕ ЗАМЕЧАНИЯ И РЕКОМЕНДАЦИИ
-
-5.1. Формат чисел
-- Вводите числа через точку: 123.45
-- Запись через запятую (123,45) будет автоматически преобразована в 123.45 при чтении, но лучше использовать точку.
-
-5.2. Логирование изменений
-- При сохранении материалов (кнопка "Сохранить"/"Сохранить как...") вычисляются изменения между
-  исходными данными и текущей копией.
-- Изменения записываются в текстовый файл material_changelog.txt в папке приложения.
-- В лог попадает:
-  - время;
-  - имя пользователя;
-  - имя материала;
-  - список изменённых полей с путём внутри JSON (в иерархическом виде).
-
-5.3. Совместимость форматов
-- Приложение поддерживает "старый" формат, где источники хранились строками (property_subsource, composition_source),
-  и "новый", где свойства/составы ссылаются на source.json через source_ref_id.
-- При загрузке:
-  - если есть source_ref_id — используется он;
-  - если нет — используются строковые поля.
-- При сохранении:
-  - при наличии справочника и совпадения по имени — создаётся/обновляется source_ref_id;
-  - строковые поля не удаляются, чтобы сохранить обратную совместимость.
-
-5.4. Ограничения и контроль качества данных
-- При отсутствии точек для свойства/категории приложение корректно отображает "нет данных".
-- При подборе по хим. составу:
-  - элемент, отсутствующий в составе, считается "нет данных" и не даёт "полного совпадения";
-  - диапазоны расширяются с учётом допусков Min/Max;
-  - интерпретация попадания в диапазон и отклонений выполняется автоматически.
-
-5.5. Рекомендации по работе
-- При добавлении новых материалов придерживайтесь уже используемой структуры JSON.
-- Для новых НТД и источников используйте вкладку "Работа с источниками" — так обеспечивается единообразие по всей базе.
-- После массовых правок материалов рекомендуем проверять вкладки:
-  - "Подбор по температуре",
-  - "Расчёт отдельно",
-  - "Сравнение материалов (свойства)",
-  - "Сравнение материалов (хим. состав)"
-  — чтобы убедиться в корректности интерполяций и отображения данных.
-"""
-CHANGELOG_TEXT = """
-"""
 
 # ======================================================================================
 # БЛОК 2: УТИЛИТЫ
 # ======================================================================================
-
-class MathUtils:
-    """Утилиты для математических расчетов."""
-
-    @staticmethod
-    def safe_float(value, default=None):
-        """Безопасное преобразование строки в float."""
-        if value is None: return default
-        if isinstance(value, (float, int)): return float(value)
-        try:
-            return float(str(value).strip().replace(',', '.'))
-        except (ValueError, TypeError):
-            return default
-
-    @staticmethod
-    def linear_interpolate(pairs, target_x):
-        """
-        Линейная интерполяция значения Y для target_x по списку пар [(x, y), ...].
-        Не выполняет экстраполяцию (возвращает None).
-        """
-        if not pairs: return None
-
-        # Сортировка пар по X
-        sorted_pairs = sorted(pairs, key=lambda p: p[0])
-
-        # Проверка границ
-        if target_x < sorted_pairs[0][0] or target_x > sorted_pairs[-1][0]:
-            return None  # Экстраполяция запрещена или невозможна
-
-        # Точное совпадение
-        for x, y in sorted_pairs:
-            if x == target_x: return y
-
-        # Поиск интервала
-        for i in range(len(sorted_pairs) - 1):
-            x1, y1 = sorted_pairs[i]
-            x2, y2 = sorted_pairs[i + 1]
-            if x1 < target_x < x2:
-                if x2 - x1 == 0: return y1
-                return y1 + (target_x - x1) * (y2 - y1) / (x2 - x1)
-
-        return None
-
-
-def get_app_directory():
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    else:
-        return os.path.dirname(os.path.abspath(__file__))
-
 
 def get_username():
     try:
@@ -853,8 +204,8 @@ def _audit_metadata_human_label(segments):
 def _audit_physical_human_label(segments):
     for seg in segments:
         sk = str(seg)
-        if sk in PHYSICAL_PROPERTIES_MAP:
-            return PHYSICAL_PROPERTIES_MAP[sk]["name"]
+        if sk in PROPERTIES.physical_keys():
+            return PROPERTIES.get_meta(sk)["name"]
     return "Физическое свойство"
 
 
@@ -872,9 +223,9 @@ def _audit_mechanical_human_label(segments):
             kp = s[len(f"{Schema.STRENGTH_CAT}["):-1]
     for seg in segments:
         s = str(seg)
-        if s in MECHANICAL_PROPERTIES_MAP:
+        if s in PROPERTIES.mechanical_keys():
             prop_key = s
-            name = MECHANICAL_PROPERTIES_MAP[prop_key]["name"]
+            name = PROPERTIES.get_meta(prop_key)["name"]
             if kp is not None and str(kp).strip() not in ("", "-1", "-"):
                 return f"КП «{kp}»: {name}"
             return name
@@ -1905,6 +1256,8 @@ class UnitManager:
         "d10": 0, "HB": 1, "HRA": 2, "HRC": 3, "HRB": 4, "HV": 5, "HSD": 6
     }
 
+
+
     @staticmethod
     def get_system_unit(type_name):
         cfg = UnitManager.REGISTRY.get(type_name)
@@ -1921,51 +1274,7 @@ class UnitManager:
         return []
 
     # --- ЛОГИКА ИНТЕРПОЛЯЦИИ ТВЕРДОСТИ (ИСПРАВЛЕННАЯ) ---
-    @staticmethod
-    def _interpolate_hardness(value, col_source_name, col_target_name):
-        """
-        Ищет значение в таблице, используя линейную интерполяцию.
-        Если значение выходит за пределы известных данных для этой пары единиц — возвращает None.
-        """
-        idx_src = UnitManager.HARDNESS_IDX.get(col_source_name)
-        idx_tgt = UnitManager.HARDNESS_IDX.get(col_target_name)
 
-        if idx_src is None or idx_tgt is None:
-            return None
-
-        # 1. Собираем только ВАЛИДНЫЕ пары (X, Y) для конкретных двух колонок
-        points = []
-        for row in UnitManager.HARDNESS_DATA:
-            x = row[idx_src]
-            y = row[idx_tgt]
-            if x is not None and y is not None:
-                points.append((float(x), float(y)))
-
-        # 2. Сортируем по X (входной величине)
-        points.sort(key=lambda p: p[0])
-
-        if not points:
-            return None
-
-        # 3. ПРОВЕРКА ГРАНИЦ (ИСПРАВЛЕНО)
-        # Если значение меньше минимума или больше максимума, определенного в таблице,
-        # значит конвертация невозможна (шкала не поддерживает такую твердость).
-        min_x = points[0][0]
-        max_x = points[-1][0]
-
-        if value < min_x or value > max_x:
-            return None  # Вернет 0.0 в методах to_system/from_system
-
-        # 4. Линейная интерполяция внутри диапазона
-        for i in range(len(points) - 1):
-            x1, y1 = points[i]
-            x2, y2 = points[i + 1]
-
-            if x1 <= value <= x2:
-                if x2 == x1: return y1
-                return y1 + (value - x1) * (y2 - y1) / (x2 - x1)
-
-        return points[-1][1]
 
     # --- КОНВЕРТАЦИЯ В СИСТЕМНУЮ ЕДИНИЦУ (ВХОД) ---
     @staticmethod
@@ -2516,9 +1825,9 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
 
         prop_map = {}
         if prop_type == "Физические свойства":
-            prop_map = PHYSICAL_PROPERTIES_MAP
+            prop_map = PHYSICAL_MAP
         elif prop_type == "Механические свойства":
-            prop_map = MECHANICAL_PROPERTIES_MAP
+            prop_map = MECHANICAL_MAP
         elif prop_type == "Твердость":
             prop_map = self.HARDNESS_COLUMNS
 
@@ -2543,12 +1852,10 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
     def _update_column_header(self, prop_key, prop_info=None):
         if not prop_info:
             current_type = self.prop_type_combo.get()
-            if current_type == "Физические свойства":
-                prop_info = PHYSICAL_PROPERTIES_MAP.get(prop_key)
-            elif current_type == "Механические свойства":
-                prop_info = MECHANICAL_PROPERTIES_MAP.get(prop_key)
-            elif current_type == "Твердость":
+            if current_type == "Твердость":
                 prop_info = self.HARDNESS_COLUMNS.get(prop_key)
+            else:
+                prop_info = PROPERTIES.get_meta(prop_key)
 
         if not prop_info: return
         current_unit = self.column_units.get(prop_key, prop_info.get('unit', ''))
@@ -2573,9 +1880,9 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         current_type = self.prop_type_combo.get()
         prop_info = {}
         if current_type == "Физические свойства":
-            prop_info = PHYSICAL_PROPERTIES_MAP.get(prop_key)
+            prop_info = PROPERTIES.get_meta(prop_key)
         elif current_type == "Механические свойства":
-            prop_info = MECHANICAL_PROPERTIES_MAP.get(prop_key)
+            prop_info = PROPERTIES.get_meta(prop_key)
         elif current_type == "Твердость":
             # Для твердости берем описание из HARDNESS_COLUMNS
             prop_info = self.HARDNESS_COLUMNS.get(prop_key)
@@ -2649,9 +1956,9 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
 
         prop_map = {}
         if is_phys:
-            prop_map = PHYSICAL_PROPERTIES_MAP
+            prop_map = PHYSICAL_MAP
         elif is_mech:
-            prop_map = MECHANICAL_PROPERTIES_MAP
+            prop_map = MECHANICAL_MAP
         elif is_hard:
             prop_map = self.HARDNESS_COLUMNS
 
@@ -2737,9 +2044,9 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
         prop_map = {}
         current_type = self.prop_type_combo.get()
         if current_type == "Физические свойства":
-            prop_map = PHYSICAL_PROPERTIES_MAP
+            prop_map = PHYSICAL_MAP
         elif current_type == "Механические свойства":
-            prop_map = MECHANICAL_PROPERTIES_MAP
+            prop_map = MECHANICAL_MAP
         elif current_type == "Твердость":
             prop_map = self.HARDNESS_COLUMNS
 
@@ -2840,9 +2147,9 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.main_app = main_app
         self.column_units = {}
         self.column_visibility = {
-            k: True for k in list(PHYSICAL_PROPERTIES_MAP.keys()) + list(MECHANICAL_PROPERTIES_MAP.keys())
+            k: True for k in list(PROPERTIES.physical_keys()) + list(PROPERTIES.mechanical_keys())
         }
-        self.ALL_KEYS = list(PHYSICAL_PROPERTIES_MAP.keys()) + list(MECHANICAL_PROPERTIES_MAP.keys())
+        self.ALL_KEYS = list(PROPERTIES.physical_keys()) + list(PROPERTIES.mechanical_keys())
         self.db_data_rows = []
         self.custom_temps = []
         style = ttk.Style()
@@ -2954,10 +2261,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.col_menu.add_separator()
 
         for key in self.ALL_KEYS:
-            if key in PHYSICAL_PROPERTIES_MAP:
-                name = PHYSICAL_PROPERTIES_MAP[key]['symbol']
-            else:
-                name = MECHANICAL_PROPERTIES_MAP[key]['symbol']
+            name = PROPERTIES.get_meta(key)['symbol']
 
             is_visible = self.column_visibility[key]
             self.col_menu.add_checkbutton(
@@ -3038,9 +2342,9 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         data_container = None
 
         # Определяем, откуда брать пары температур для свойства
-        if prop_key in PHYSICAL_PROPERTIES_MAP:
+        if prop_key in PROPERTIES.physical_keys():
             data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
-        elif prop_key in MECHANICAL_PROPERTIES_MAP:
+        elif prop_key in PROPERTIES.mechanical_keys():
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
                 data_container = cats[cat_idx].get(prop_key)
@@ -3120,7 +2424,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         all_temps = set()
 
         # Из физ свойств
-        for pk in PHYSICAL_PROPERTIES_MAP:
+        for pk in PROPERTIES.physical_keys():
             data = material.data.get(Schema.PHYSICAL, {}).get(pk, {})
             for t, v in data.get(Schema.TEMP_PAIRS, []):
                 all_temps.add(t)
@@ -3128,7 +2432,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         # Из мех свойств (для выбранной категории)
         cats = material.get_strength_categories()
         if cat_idx != -1 and cats:
-            for pk in MECHANICAL_PROPERTIES_MAP:
+            for pk in PROPERTIES.mechanical_keys():
                 data = cats[cat_idx].get(pk, {})
                 for t, v in data.get(Schema.TEMP_PAIRS, []):
                     all_temps.add(t)
@@ -3187,10 +2491,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
         # Заголовки свойств
         for prop_key in visible_keys:
-            if prop_key in PHYSICAL_PROPERTIES_MAP:
-                info = PHYSICAL_PROPERTIES_MAP[prop_key]
-            else:
-                info = MECHANICAL_PROPERTIES_MAP[prop_key]
+            info = PROPERTIES.get_meta(prop_key)
 
             base_unit = info.get("unit", "")
             current_unit = self.column_units.get(prop_key)
@@ -3227,7 +2528,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                     values.append("-")
                     continue
 
-                info = PHYSICAL_PROPERTIES_MAP.get(prop_key) or MECHANICAL_PROPERTIES_MAP.get(prop_key)
+                info = PROPERTIES.get_meta(prop_key)
                 unit_type = info.get("unit_type")
                 base_unit = info.get("unit")
                 target_unit = self.column_units.get(prop_key)
@@ -3362,10 +2663,10 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                 self._show_unit_menu(event, prop_key)
 
     def _show_unit_menu(self, event, prop_key):
-        if prop_key in PHYSICAL_PROPERTIES_MAP:
-            info = PHYSICAL_PROPERTIES_MAP[prop_key]
+        if prop_key in PROPERTIES.physical_keys():
+            info = PROPERTIES.get_meta(prop_key)
         else:
-            info = MECHANICAL_PROPERTIES_MAP.get(prop_key)
+            info = PROPERTIES.get_meta(prop_key)
 
         if not info:
             return
@@ -3516,7 +2817,7 @@ class PropertyComparisonTab(ttk.Frame):
             return
 
         prop_key = self.prop_keys[prop_idx]
-        is_mechanical = prop_key in MECHANICAL_PROPERTIES_MAP
+        is_mechanical = prop_key in PROPERTIES.mechanical_keys()
 
         for mat in self.app_data.materials:
             meta = mat.data.get("metadata", {})
@@ -3636,7 +2937,7 @@ class PropertyComparisonTab(ttk.Frame):
 
             prop_data = None
 
-            is_mechanical = prop_key in MECHANICAL_PROPERTIES_MAP
+            is_mechanical = prop_key in PROPERTIES.mechanical_keys()
 
             if is_mechanical:
                 # Если свойство механическое, ищем его ТОЛЬКО в категории
@@ -4988,10 +4289,10 @@ class AshbyDiagramTab(ttk.Frame):
         if prop_key == "temperature":
             return temp
 
-        if prop_key in PHYSICAL_PROPERTIES_MAP:
+        if prop_key in PROPERTIES.physical_keys():
             return material.get_interpolated_property(prop_key, temp)
 
-        if prop_key in MECHANICAL_PROPERTIES_MAP:
+        if prop_key in PROPERTIES.mechanical_keys():
             if cat_idx is None:
                 return None
             return material.get_interpolated_property(prop_key, temp, category_idx=cat_idx)
@@ -5013,14 +4314,14 @@ class AshbyDiagramTab(ttk.Frame):
             if prop_key == "temperature":
                 continue
 
-            if prop_key in PHYSICAL_PROPERTIES_MAP:
+            if prop_key in PROPERTIES.physical_keys():
                 prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
                 for t_raw, _ in prop_data.get(Schema.TEMP_PAIRS, []):
                     t_val = MathUtils.safe_float(t_raw)
                     if t_val is not None:
                         temps.add(t_val)
 
-            elif prop_key in MECHANICAL_PROPERTIES_MAP and cat_idx is not None:
+            elif prop_key in PROPERTIES.mechanical_keys() and cat_idx is not None:
                 cats = material.get_strength_categories()
                 if 0 <= cat_idx < len(cats):
                     prop_data = cats[cat_idx].get(prop_key, {})
@@ -5123,8 +4424,8 @@ class AshbyDiagramTab(ttk.Frame):
         # чтобы каждая кривая была с уникальным цветом.
         series_index = 0
 
-        x_is_mech = x_prop_key in MECHANICAL_PROPERTIES_MAP
-        y_is_mech = y_prop_key in MECHANICAL_PROPERTIES_MAP
+        x_is_mech = x_prop_key in PROPERTIES.mechanical_keys()
+        y_is_mech = y_prop_key in PROPERTIES.mechanical_keys()
 
         for idx_class, class_name in enumerate(selected_classes):
             class_color = class_colors[idx_class % len(class_colors)]
@@ -5800,7 +5101,7 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         scrollbar.pack(side="right", fill="y")
 
         # Свойства
-        for prop_key, prop_info in MECHANICAL_PROPERTIES_MAP.items():
+        for prop_key, prop_info in MECHANICAL_MAP.items():
             frame = ttk.LabelFrame(scrollable_frame, text=f"{prop_info['name']} ({prop_info['symbol']})", padding=10)
             frame.pack(fill="x", expand=True, padx=10, pady=5)
 
@@ -6656,7 +5957,7 @@ class EditorFrame(ttk.Frame):
         self.notebook.pack(expand=True, fill="both", padx=10, pady=(0, 10))
 
         self.general_tab = GeneralDataTab(self.notebook, self.app_data)
-        self.phys_tab = PropertyEditorTab(self.notebook, "physical_properties", PHYSICAL_PROPERTIES_MAP)
+        self.phys_tab = PropertyEditorTab(self.notebook, "physical_properties", PHYSICAL_MAP)
         self.mech_tab = MechanicalPropertiesTab(self.notebook)
         self.chem_tab = ChemicalCompositionTab(self.notebook)
 
