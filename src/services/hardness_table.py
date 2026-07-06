@@ -1,16 +1,23 @@
 import json
 from src.infrastructure.paths import config_dir
+from src.core.math.interpolation import MathUtils
 
 class HardnessTable:
+    SYSTEM_UNIT = "HB"
     def __init__(self):
         with open (config_dir()/"hardness_table.json", encoding="utf-8") as file:
             data = json.load(file)
         self._columns = data["columns"]
         self._rows = data["rows"]
         self._idx = {name: i for i, name in enumerate(self._columns)}
+
+    def convert(self, value, from_unit, to_unit):
+        """Перевод value из from_unit в to_unit."""
+        if from_unit == to_unit:
+            return float(value)
+        return self._interpolate(float(value), from_unit, to_unit)
     
-    @staticmethod
-    def _interpolate_hardness(self, value, col_source_name, col_target_name):
+    def _interpolate(self, value, col_source_name, col_target_name):
         """
         Ищет значение в таблице, используя линейную интерполяцию.
         Если значение выходит за пределы известных данных для этой пары единиц — возвращает None.
@@ -29,28 +36,10 @@ class HardnessTable:
             if x is not None and y is not None:
                 points.append((float(x), float(y)))
 
-        # 2. Сортируем по X (входной величине)
-        points.sort(key=lambda p: p[0])
+        return MathUtils.linear_interpolate(points, value)
 
-        if not points:
-            return None
-
-        # 3. ПРОВЕРКА ГРАНИЦ (ИСПРАВЛЕНО)
-        # Если значение меньше минимума или больше максимума, определенного в таблице,
-        # значит конвертация невозможна (шкала не поддерживает такую твердость).
-        min_x = points[0][0]
-        max_x = points[-1][0]
-
-        if value < min_x or value > max_x:
-            return None  # Вернет 0.0 в методах to_system/from_system
-
-        # 4. Линейная интерполяция внутри диапазона
-        for i in range(len(points) - 1):
-            x1, y1 = points[i]
-            x2, y2 = points[i + 1]
-
-            if x1 <= value <= x2:
-                if x2 == x1: return y1
-                return y1 + (value - x1) * (y2 - y1) / (x2 - x1)
-
-        return points[-1][1]
+    def columns_name(self):
+        return list(self._columns)
+    
+    def is_supported_unit(self, unit):
+        return unit in self._idx
