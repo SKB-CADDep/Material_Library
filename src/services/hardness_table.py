@@ -1,0 +1,45 @@
+import json
+from src.infrastructure.paths import config_dir
+from src.core.math.interpolation import MathUtils
+
+class HardnessTable:
+    SYSTEM_UNIT = "HB"
+    def __init__(self):
+        with open (config_dir()/"hardness_table.json", encoding="utf-8") as file:
+            data = json.load(file)
+        self._columns = data["columns"]
+        self._rows = data["rows"]
+        self._idx = {name: i for i, name in enumerate(self._columns)}
+
+    def convert(self, value, from_unit, to_unit):
+        """Перевод value из from_unit в to_unit."""
+        if from_unit == to_unit:
+            return float(value)
+        return self._interpolate(float(value), from_unit, to_unit)
+    
+    def _interpolate(self, value, col_source_name, col_target_name):
+        """
+        Ищет значение в таблице, используя линейную интерполяцию.
+        Если значение выходит за пределы известных данных для этой пары единиц — возвращает None.
+        """
+        idx_src = self._idx.get(col_source_name)
+        idx_tgt = self._idx.get(col_target_name)
+
+        if idx_src is None or idx_tgt is None:
+            return None
+
+        # 1. Собираем только ВАЛИДНЫЕ пары (X, Y) для конкретных двух колонок
+        points = []
+        for row in self._rows:
+            x = row[idx_src]
+            y = row[idx_tgt]
+            if x is not None and y is not None:
+                points.append((float(x), float(y)))
+
+        return MathUtils.linear_interpolate(points, value)
+
+    def columns_name(self):
+        return list(self._columns)
+    
+    def is_supported_unit(self, unit):
+        return unit in self._idx
