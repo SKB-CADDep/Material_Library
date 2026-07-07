@@ -1,0 +1,397 @@
+{
+    "schema_version": "1.0",
+    "elements": [
+        {
+            "symbol": "N",
+            "display_symbol": "N₂",
+            "name": "Азот",
+            "color": "#6B85F0",
+            "influence": "Азот.\nПовышает: -. \nСнижает: Вязкость, пластичность."
+        },
+        {
+            "symbol": "Al",
+            "display_symbol": "Al",
+            "name": "Алюминий",
+            "color": "#B5B5B5",
+            "influence": "Алюминий.\nПовышает: Жаростойкость, окалиностойкость. \nСнижает: -."
+        },
+        {
+            "symbol": "Ba",
+            "display_symbol": "Ba",
+            "name": "Барий",
+            "color": "#00C900",
+            "influence": null
+        },
+        {
+            "symbol": "Be",
+            "display_symbol": "Be",
+            "name": "Бериллий",
+            "color": "#B8CC7A",
+            "influence": null
+        },
+        {
+            "symbol": "B",
+            "display_symbol": "B",
+            "name": "Бор",
+            "color": "#2B2B2B",
+            "influence": null
+        },
+        {
+            "symbol": "V",
+            "display_symbol": "V",
+            "name": "Ванадий",
+            "color": "#949494",
+            "influence": "Ванадий.\nПовышает: Прочность, твердость, плотность. \nСнижает: -."
+        },
+        {
+            "symbol": "Bi",
+            "display_symbol": "Bi",
+            "name": "Висмут",
+            "color": "#C885C4",
+            "influence": null
+        },
+        {
+            "symbol": "H",
+            "display_symbol": "H₂",
+            "name": "Водород",
+            "color": "#F0F0F0",
+            "influence": "Водород.\nПовышает: Хрупкость. \nСнижает: -."
+        },
+        {
+            "symbol": "W",
+            "display_symbol": "W",
+            "name": "Вольфрам",
+            "color": "#5C5857",
+            "influence": "Вольфрам.\nПовышает: Твердость, прокаливаемость. \nСнижает: -."
+        },
+        {
+            "symbol": "Ga",
+            "display_symbol": "Ga",
+            "name": "Галлий",
+            "color": "#C2C2C2",
+            "influence": null
+        },
+        {
+            "symbol": "Fe",
+            "display_symbol": "Fe",
+            "name": "Железо",
+            "color": "#8C3E26",
+            "influence": null
+        },
+        {
+            "symbol": "Au",
+            "display_symbol": "Au",
+            "name": "Золото",
+            "color": "#FFD700",
+            "influence": null
+        },
+        {
+            "symbol": "In",
+            "display_symbol": "In",
+            "name": "Индий",
+            "color": "#4B0082",
+            "influence": null
+        },
+        {
+            "symbol": "Ir",
+            "display_symbol": "Ir",
+            "name": "Иридий",
+            "color": "#FFDEAD",
+            "influence": null
+        },
+        {
+            "symbol": "Y",
+            "display_symbol": "Y",
+            "name": "Иттрий",
+            "color": "#8AFAFA",
+            "influence": null
+        },
+        {
+            "symbol": "Cd",
+            "display_symbol": "Cd",
+            "name": "Кадмий",
+            "color": "#D1C366",
+            "influence": null
+        },
+        {
+            "symbol": "Ca",
+            "display_symbol": "Ca",
+            "name": "Кальций",
+            "color": "#808080",
+            "influence": null
+        },
+        {
+            "symbol": "O",
+            "display_symbol": "O₂",
+            "name": "Кислород",
+            "color": "#E60E0E",
+            "influence": "Кислород.\nПовышает: -. \nСнижает: Вязкость, пластичность."
+        },
+        {
+            "symbol": "Co",
+            "display_symbol": "Co",
+            "name": "Кобальт",
+            "color": "#1A569E",
+            "influence": "Кобальт.\nПовышает: Ударная прочность, жаропрочность, магнитные свойства. \nСнижает: -."
+        },
+        {
+            "symbol": "Si",
+            "display_symbol": "Si",
+            "name": "Кремний",
+            "color": "#8C8C8C",
+            "influence": "Кремний.\nПовышает: Прочность, упругость, электросопротивление, жаростойкость, твердость.\nСнижает: -."
+        },
+        {
+            "symbol": "La",
+            "display_symbol": "La",
+            "name": "Лантан",
+            "color": "#8AFAFA",
+            "influence": "Лантан.\nПовышает: Качество поверхности. \nСнижает: Пористость."
+        },
+        {
+            "symbol": "Li",
+            "display_symbol": "Li",
+            "name": "Литий",
+            "color": "#B52FED",
+            "influence": null
+        },
+        {
+            "symbol": "Mg",
+            "display_symbol": "Mg",
+            "name": "Магний",
+            "color": "#E3E3E3",
+            "influence": null
+        },
+        {
+            "symbol": "Mn",
+            "display_symbol": "Mn",
+            "name": "Марганец",
+            "color": "#8C6A8A",
+            "influence": "Марганец.\nПовышает: Твердость, износоустойчивость, ударная вязкость, прокаливаемость. \nСнижает: -."
+        },
+        {
+            "symbol": "Cu",
+            "display_symbol": "Cu",
+            "name": "Медь",
+            "color": "#D98048",
+            "influence": "Медь.\nПовышает: Коррозионная стойкость, пластичность. \nСнижает: -."
+        },
+        {
+            "symbol": "Mo",
+            "display_symbol": "Mo",
+            "name": "Молибден",
+            "color": "#8F88A1",
+            "influence": "Молибден.\nПовышает: Упругость, коррозионная стойкость, сопротивляемость растягивающим нагрузкам, прокаливаемость.  \nСнижает: -."
+        },
+        {
+            "symbol": "As",
+            "display_symbol": "As",
+            "name": "Мышьяк",
+            "color": "#7D8080",
+            "influence": null
+        },
+        {
+            "symbol": "Na",
+            "display_symbol": "Na",
+            "name": "Натрий",
+            "color": "#F2F20C",
+            "influence": null
+        },
+        {
+            "symbol": "Nd",
+            "display_symbol": "Nd",
+            "name": "Неодим",
+            "color": "#C7FACF",
+            "influence": "Неодим.\nПовышает: Качество поверхности. \nСнижает: Пористость."
+        },
+        {
+            "symbol": "Ni",
+            "display_symbol": "Ni",
+            "name": "Никель",
+            "color": "#5C8F54",
+            "influence": "Никель.\nПовышает: Пластичность, вязкость, коррозионная стойкость, ударная прочность. \nСнижает: -."
+        },
+        {
+            "symbol": "Nb",
+            "display_symbol": "Nb",
+            "name": "Ниобий",
+            "color": "#6ED6C6",
+            "influence": "Ниобий.\nПовышает: Коррозионная стойкость, устойчивость к кислотам. \nСнижает: -."
+        },
+        {
+            "symbol": "Sn",
+            "display_symbol": "Sn",
+            "name": "Олово",
+            "color": "#858282",
+            "influence": null
+        },
+        {
+            "symbol": "Pd",
+            "display_symbol": "Pd",
+            "name": "Палладий",
+            "color": "#006400",
+            "influence": null
+        },
+        {
+            "symbol": "Pt",
+            "display_symbol": "Pt",
+            "name": "Платина",
+            "color": "#E5E4E2",
+            "influence": null
+        },
+        {
+            "symbol": "РЗМ",
+            "display_symbol": "РЗМ",
+            "name": "РЗМ",
+            "color": "#E0E0E0",
+            "influence": null
+        },
+        {
+            "symbol": "Rh",
+            "display_symbol": "Rh",
+            "name": "Родий",
+            "color": "#FF00FF",
+            "influence": null
+        },
+        {
+            "symbol": "Hg",
+            "display_symbol": "Hg",
+            "name": "Ртуть",
+            "color": "#E6E6E6",
+            "influence": null
+        },
+        {
+            "symbol": "Ru",
+            "display_symbol": "Ru",
+            "name": "Рутений",
+            "color": "#708090",
+            "influence": null
+        },
+        {
+            "symbol": "Pb",
+            "display_symbol": "Pb",
+            "name": "Свинец",
+            "color": "#525252",
+            "influence": null
+        },
+        {
+            "symbol": "Se",
+            "display_symbol": "Se",
+            "name": "Селен",
+            "color": "#A0522D",
+            "influence": null
+        },
+        {
+            "symbol": "S",
+            "display_symbol": "S",
+            "name": "Сера",
+            "color": "#F2E82E",
+            "influence": "Сера.\nПовышает: Хрупкость при высоких температурах. \nСнижает: Прочность, пластичность, свариваемость, коррозионная стойкость"
+        },
+        {
+            "symbol": "Ag",
+            "display_symbol": "Ag",
+            "name": "Серебро",
+            "color": "#C0C0C0",
+            "influence": null
+        },
+        {
+            "symbol": "Sb",
+            "display_symbol": "Sb",
+            "name": "Сурьма",
+            "color": "#A1759C",
+            "influence": "Сурьма.\nПовышает: Отпускную хрупкость. \nСнижает: Качество поверхности литья."
+        },
+        {
+            "symbol": "Tl",
+            "display_symbol": "Tl",
+            "name": "Таллий",
+            "color": "#A52A2A",
+            "influence": null
+        },
+        {
+            "symbol": "Ta",
+            "display_symbol": "Ta",
+            "name": "Тантал",
+            "color": "#4682B4",
+            "influence": null
+        },
+        {
+            "symbol": "Te",
+            "display_symbol": "Te",
+            "name": "Теллур",
+            "color": "#D2691E",
+            "influence": null
+        },
+        {
+            "symbol": "Ti",
+            "display_symbol": "Ti",
+            "name": "Титан",
+            "color": "#85878A",
+            "influence": "Титан.\nПовышает: Прочность, коррозионная стойкость, обрабатываемость. \nСнижает: -."
+        },
+        {
+            "symbol": "C",
+            "display_symbol": "C",
+            "name": "Углерод",
+            "color": "#363636",
+            "influence": "Углерод.\nПовышает: Твердость, прочность, упругость.\nСнижает: Пластичность, вязкость."
+        },
+        {
+            "symbol": "P",
+            "display_symbol": "P",
+            "name": "Фосфор",
+            "color": "#DE5914",
+            "influence": "Фосфор.\nПовышает: Прочность, коррозионная стойкость.\nСнижает: Пластичность, вязкость"
+        },
+        {
+            "symbol": "F",
+            "display_symbol": "F",
+            "name": "Фтор",
+            "color": "#DAA520",
+            "influence": null
+        },
+        {
+            "symbol": "Cl",
+            "display_symbol": "Cl",
+            "name": "Хлор",
+            "color": "#1FF22D",
+            "influence": null
+        },
+        {
+            "symbol": "Cr",
+            "display_symbol": "Cr",
+            "name": "Хром",
+            "color": "#8A9EA8",
+            "influence": "Хром.\nПовышает: Твердость, прочность, ударная вязкость, коррозионная стойкость, электросопротивление. \nСнижает: Коэффициент линейного расширения, пластичность."
+        },
+        {
+            "symbol": "Cs",
+            "display_symbol": "Cs",
+            "name": "Цезий",
+            "color": null,
+            "influence": "Цезий.\nПовышает: Качество поверхности. \nСнижает: Пористость."
+        },
+        {
+            "symbol": "Ce",
+            "display_symbol": "Ce",
+            "name": "Церий",
+            "color": "#FFFFC7",
+            "influence": "Церий.\nПовышает: Пластичность, прочность. \nСнижает: -."
+        },
+        {
+            "symbol": "Zn",
+            "display_symbol": "Zn",
+            "name": "Цинк",
+            "color": "#797D82",
+            "influence": null
+        },
+        {
+            "symbol": "Zr",
+            "display_symbol": "Zr",
+            "name": "Цирконий",
+            "color": "#C4E0B6",
+            "influence": null
+        }
+    ]
+}
