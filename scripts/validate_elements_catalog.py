@@ -128,7 +128,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from main import ChemicalCompositionTab, ChemComparisonTab
 
 tech_key = ChemicalCompositionTab.ELEMENTS_MAP
-display = ChemComparisonTab.element_tooltips
+o = object.__new__(ChemComparisonTab)
+o.__init__(None, None, None)
+display = getattr(o, 'element_tooltips', {})
 with open(path_to_elements_catalog, "r", encoding="utf-8") as file:
     elements = json.load(file)
     elements = elements["elements"]
