@@ -205,7 +205,7 @@ def _audit_metadata_human_label(segments):
 def _audit_physical_human_label(segments):
     for seg in segments:
         sk = str(seg)
-        if sk in PROPERTIES.physical_keys():
+        if PROPERTIES.is_physical(sk):
             return PROPERTIES.get_meta(sk)["name"]
     return "Физическое свойство"
 
@@ -224,7 +224,7 @@ def _audit_mechanical_human_label(segments):
             kp = s[len(f"{Schema.STRENGTH_CAT}["):-1]
     for seg in segments:
         s = str(seg)
-        if s in PROPERTIES.mechanical_keys():
+        if PROPERTIES.is_mechanical(s):
             prop_key = s
             name = PROPERTIES.get_meta(prop_key)["name"]
             if kp is not None and str(kp).strip() not in ("", "-1", "-"):
@@ -1583,9 +1583,11 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         self.main_app = main_app
         self.column_units = {}
         self.column_visibility = {
-            k: True for k in list(PROPERTIES.physical_keys()) + list(PROPERTIES.mechanical_keys())
+            k: True for k in PROPERTIES.all_keys()
         }
-        self.ALL_KEYS = list(PROPERTIES.physical_keys()) + list(PROPERTIES.mechanical_keys())
+        self.ALL_KEYS = PROPERTIES.all_keys()
+        self.TEMP_KEYS = [k for k in self.ALL_KEYS if PROPERTIES.supports_temperature(k)]
+        self.SCALAR_KEYS = [k for k in self.ALL_KEYS if not PROPERTIES.supports_temperature(k)]
         self.db_data_rows = []
         self.custom_temps = []
         style = ttk.Style()
@@ -1778,9 +1780,9 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         data_container = None
 
         # Определяем, откуда брать пары температур для свойства
-        if prop_key in PROPERTIES.physical_keys():
+        if PROPERTIES.is_physical(prop_key):
             data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
-        elif prop_key in PROPERTIES.mechanical_keys():
+        elif PROPERTIES.is_mechanical(prop_key):
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
                 data_container = cats[cat_idx].get(prop_key)
@@ -1847,6 +1849,28 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         val = y1 + (temp - x1) * (y2 - y1) / (x2 - x1)
         return val, "approx"
 
+    def _get_property_container(self, material, prop_key, cat_idx=None):
+        if PROPERTIES.is_physical(prop_key):
+            return material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+        if PROPERTIES.is_mechanical(prop_key):
+            cats = material.get_strength_categories()
+            if cat_idx is not None and 0 <= cat_idx < len(cats):
+                return cats[cat_idx].get(prop_key)
+        return None
+
+    def _get_scalar_value(self, material, prop_key, cat_idx=None):
+        """Скалярные свойства (δ, ψ, угол): одно значение без привязки к T."""
+        data_container = self._get_property_container(material, prop_key, cat_idx)
+        if not data_container:
+            return None
+
+        pairs = data_container.get(Schema.TEMP_PAIRS, [])
+        for _, v_raw in pairs:
+            v_val = safe_float(v_raw)
+            if v_val is not None:
+                return v_val
+        return None
+
     def _calculate_db_rows(self):
         """Сбор данных из БД (без экстраполяции, только точные точки и интерполяция)."""
         mat_name = self.material_combo.get()
@@ -1856,36 +1880,43 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
         cat_idx = self.category_combo.current()
 
-        # Собираем все температуры
+        # Собираем температуры только из температурно-зависимых свойств
         all_temps = set()
+        cat_idx_arg = cat_idx if cat_idx != -1 else None
 
-        # Из физ свойств
-        for pk in PROPERTIES.physical_keys():
-            data = material.data.get(Schema.PHYSICAL, {}).get(pk, {})
-            for t, v in data.get(Schema.TEMP_PAIRS, []):
+        for pk in self.TEMP_KEYS:
+            data = self._get_property_container(material, pk, cat_idx_arg)
+            if not data:
+                continue
+            for t, _ in data.get(Schema.TEMP_PAIRS, []):
                 all_temps.add(t)
 
-        # Из мех свойств (для выбранной категории)
-        cats = material.get_strength_categories()
-        if cat_idx != -1 and cats:
-            for pk in PROPERTIES.mechanical_keys():
-                data = cats[cat_idx].get(pk, {})
-                for t, v in data.get(Schema.TEMP_PAIRS, []):
-                    all_temps.add(t)
+        scalar_values = {
+            pk: self._get_scalar_value(material, pk, cat_idx_arg)
+            for pk in self.SCALAR_KEYS
+        }
 
         sorted_temps = sorted(list(all_temps))
         self.db_data_rows = []
+        if not sorted_temps and any(v is not None for v in scalar_values.values()):
+            row = {"temp": "—"}
+            for prop_key in self.SCALAR_KEYS:
+                row[prop_key] = {"value": scalar_values.get(prop_key), "mode": "scalar"}
+            self.db_data_rows.append(row)
+
         for t in sorted_temps:
             row = {"temp": t}
-            for prop_key in self.ALL_KEYS:
+            for prop_key in self.TEMP_KEYS:
                 value, mode = self._get_value_with_mode(
                     material,
                     prop_key,
                     t,
-                    cat_idx=cat_idx if cat_idx != -1 else None,
+                    cat_idx=cat_idx_arg,
                     allow_extrapolation=False
                 )
                 row[prop_key] = {"value": value, "mode": mode}
+            for prop_key in self.SCALAR_KEYS:
+                row[prop_key] = {"value": scalar_values.get(prop_key), "mode": "scalar"}
             self.db_data_rows.append(row)
 
         self._render_table()
@@ -1902,17 +1933,23 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
             return {"temp": temp}
 
         cat_idx = self.category_combo.current()
+        cat_idx_arg = cat_idx if cat_idx != -1 else None
 
         row = {"temp": temp}
-        for prop_key in self.ALL_KEYS:
+        for prop_key in self.TEMP_KEYS:
             value, mode = self._get_value_with_mode(
                 material,
                 prop_key,
                 temp,
-                cat_idx=cat_idx if cat_idx != -1 else None,
+                cat_idx=cat_idx_arg,
                 allow_extrapolation=True
             )
             row[prop_key] = {"value": value, "mode": mode}
+        for prop_key in self.SCALAR_KEYS:
+            row[prop_key] = {
+                "value": self._get_scalar_value(material, prop_key, cat_idx_arg),
+                "mode": "scalar",
+            }
         return row
 
     def _render_table(self):
@@ -2099,7 +2136,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                 self._show_unit_menu(event, prop_key)
 
     def _show_unit_menu(self, event, prop_key):
-        if prop_key in PROPERTIES.physical_keys():
+        if PROPERTIES.is_physical(prop_key):
             info = PROPERTIES.get_meta(prop_key)
         else:
             info = PROPERTIES.get_meta(prop_key)
@@ -2153,8 +2190,11 @@ class PropertyComparisonTab(ttk.Frame):
         self.area_combo.bind("<<ComboboxSelected>>", self._update_search_pool)
 
         ttk.Label(controls_frame, text="Свойство для сравнения:").pack(fill="x", pady=(0, 2))
-        prop_names = [f"{info['name']} ({info.get('symbol', '')})" for info in ALL_PROPERTIES_MAP.values()]
-        self.prop_keys = list(ALL_PROPERTIES_MAP.keys())
+        self.prop_keys = [k for k in ALL_PROPERTIES_MAP if PROPERTIES.supports_temperature(k)]
+        prop_names = [
+            f"{ALL_PROPERTIES_MAP[k]['name']} ({ALL_PROPERTIES_MAP[k].get('symbol', '')})"
+            for k in self.prop_keys
+        ]
         self.prop_combo = ttk.Combobox(controls_frame, state="readonly", values=prop_names)
         self.prop_combo.pack(fill="x", pady=(0, 10))
         if prop_names:
@@ -2253,7 +2293,6 @@ class PropertyComparisonTab(ttk.Frame):
             return
 
         prop_key = self.prop_keys[prop_idx]
-        is_mechanical = prop_key in PROPERTIES.mechanical_keys()
 
         for mat in self.app_data.materials:
             meta = mat.data.get("metadata", {})
@@ -2263,7 +2302,7 @@ class PropertyComparisonTab(ttk.Frame):
 
             display_name = mat.get_display_name()
 
-            if is_mechanical:
+            if PROPERTIES.is_mechanical(prop_key):
                 # Для механического свойства показываем только те категории прочности,
                 # в которых это свойство реально заполнено (есть точки).
                 cats = mat.data.get("mechanical_properties", {}).get("strength_category", [])
@@ -2373,9 +2412,8 @@ class PropertyComparisonTab(ttk.Frame):
 
             prop_data = None
 
-            is_mechanical = prop_key in PROPERTIES.mechanical_keys()
 
-            if is_mechanical:
+            if PROPERTIES.is_mechanical(prop_key):
                 # Если свойство механическое, ищем его ТОЛЬКО в категории
                 if category_data and prop_key in category_data:
                     prop_data = category_data[prop_key]
@@ -3725,10 +3763,10 @@ class AshbyDiagramTab(ttk.Frame):
         if prop_key == "temperature":
             return temp
 
-        if prop_key in PROPERTIES.physical_keys():
+        if PROPERTIES.is_physical(prop_key):
             return material.get_interpolated_property(prop_key, temp)
 
-        if prop_key in PROPERTIES.mechanical_keys():
+        if PROPERTIES.is_mechanical(prop_key):
             if cat_idx is None:
                 return None
             return material.get_interpolated_property(prop_key, temp, category_idx=cat_idx)
@@ -3750,14 +3788,14 @@ class AshbyDiagramTab(ttk.Frame):
             if prop_key == "temperature":
                 continue
 
-            if prop_key in PROPERTIES.physical_keys():
+            if PROPERTIES.is_physical(prop_key):
                 prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
                 for t_raw, _ in prop_data.get(Schema.TEMP_PAIRS, []):
                     t_val = MathUtils.safe_float(t_raw)
                     if t_val is not None:
                         temps.add(t_val)
 
-            elif prop_key in PROPERTIES.mechanical_keys() and cat_idx is not None:
+            elif PROPERTIES.is_mechanical(prop_key) and cat_idx is not None:
                 cats = material.get_strength_categories()
                 if 0 <= cat_idx < len(cats):
                     prop_data = cats[cat_idx].get(prop_key, {})
@@ -3860,8 +3898,8 @@ class AshbyDiagramTab(ttk.Frame):
         # чтобы каждая кривая была с уникальным цветом.
         series_index = 0
 
-        x_is_mech = x_prop_key in PROPERTIES.mechanical_keys()
-        y_is_mech = y_prop_key in PROPERTIES.mechanical_keys()
+        x_is_mech = PROPERTIES.iS_mechanical(x_prop_key)
+        y_is_mech = PROPERTIES.is_mechanical(y_prop_key)
 
         for idx_class, class_name in enumerate(selected_classes):
             class_color = class_colors[idx_class % len(class_colors)]
@@ -3981,6 +4019,7 @@ class SinglePropertyEditor(ttk.Frame):
         super().__init__(parent)
         self.prop_key = prop_key
         self.prop_info = prop_info
+        self._temperature_dependent = PROPERTIES.supports_temperature(prop_key)
 
         # Менеджер источников и кэш отображения
         self.source_manager = None
@@ -3991,6 +4030,8 @@ class SinglePropertyEditor(ttk.Frame):
         self.fig = None
         self.ax = None
         self.canvas = None
+        self.tree = None
+        self.scalar_value_entry = None
 
         self._setup_layout()
 
@@ -4035,7 +4076,8 @@ class SinglePropertyEditor(ttk.Frame):
         left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
         right_panel = ttk.Frame(content_frame)
-        right_panel.pack(side="right", fill="both", expand=True)
+        if self._temperature_dependent:
+            right_panel.pack(side="right", fill="both", expand=True)
 
         # --- ЛЕВАЯ ПАНЕЛЬ (ПОЛЯ ВЕРТИКАЛЬНО) ---
         left_panel.columnconfigure(1, weight=1)
@@ -4064,6 +4106,18 @@ class SinglePropertyEditor(ttk.Frame):
         self.comment_entry = ttk.Entry(left_panel)
         self.comment_entry.grid(row=2, column=1, sticky="we", pady=2)
 
+        if self._temperature_dependent:
+            self._setup_temperature_widgets(left_panel, right_panel)
+        else:
+            self._setup_scalar_widgets(left_panel)
+
+    def _setup_scalar_widgets(self, left_panel):
+        """Скалярные свойства (δ, ψ, угол): одно значение без таблицы T и графика."""
+        ttk.Label(left_panel, text="Значение:").grid(row=3, column=0, sticky="w", pady=2)
+        self.scalar_value_entry = ttk.Entry(left_panel)
+        self.scalar_value_entry.grid(row=3, column=1, sticky="we", pady=2)
+
+    def _setup_temperature_widgets(self, left_panel, right_panel):
         # 4. Таблица
         table_frame = ttk.Frame(left_panel)
         table_frame.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=5)
@@ -4098,6 +4152,8 @@ class SinglePropertyEditor(ttk.Frame):
 
     def update_graph(self):
         """Перерисовывает график на основе данных из таблицы."""
+        if not self._temperature_dependent or not self.tree or not self.ax:
+            return
         points = []
         for item in self.tree.get_children():
             v = self.tree.set(item)
@@ -4156,28 +4212,38 @@ class SinglePropertyEditor(ttk.Frame):
         self.comment_entry.delete(0, tk.END)
         self.comment_entry.insert(0, prop_data.get("comment", ""))
 
-        # Таблица точек
-        for i in self.tree.get_children():
-            self.tree.delete(i)
-        for t, v in prop_data.get("temperature_value_pairs", []):
-            self.tree.insert("", "end", values=[t, v])
-
-        self.update_graph()
+        if self._temperature_dependent:
+            for i in self.tree.get_children():
+                self.tree.delete(i)
+            for t, v in prop_data.get("temperature_value_pairs", []):
+                self.tree.insert("", "end", values=[t, v])
+            self.update_graph()
+        elif self.scalar_value_entry is not None:
+            self.scalar_value_entry.delete(0, tk.END)
+            pairs = prop_data.get("temperature_value_pairs", [])
+            if pairs:
+                self.scalar_value_entry.insert(0, str(pairs[0][1]))
 
     def get_data(self):
         """Собирает данные из полей (поддержка нового и старого формата источников)."""
-        pairs = []
-        for item in self.tree.get_children():
-            v = self.tree.set(item)
-            t_val = safe_float(v["temp"])
-            v_val = safe_float(v["value"])
-            if t_val is not None and v_val is not None:
-                pairs.append([t_val, v_val])
-
         source_name = self.source_combo.get().strip()
         comment = self.comment_entry.get().strip()
-
         has_meta = bool(source_name or comment)
+
+        if self._temperature_dependent:
+            pairs = []
+            for item in self.tree.get_children():
+                v = self.tree.set(item)
+                t_val = safe_float(v["temp"])
+                v_val = safe_float(v["value"])
+                if t_val is not None and v_val is not None:
+                    pairs.append([t_val, v_val])
+        else:
+            pairs = []
+            if self.scalar_value_entry is not None:
+                scalar_val = safe_float(self.scalar_value_entry.get())
+                if scalar_val is not None:
+                    pairs.append([20.0, scalar_val])
 
         if not pairs and not has_meta:
             return None

@@ -1,6 +1,9 @@
 import json
 from src.infrastructure.paths import config_dir
 class PropertiesCatalog:
+    """Единственный источник метаданных физ./мех. свойств.
+    Загружает config/physical_properties.json и config/mechanical_properties.json.
+    """
     def _load_json(self, filename):
         path = config_dir() / filename
         if not path.is_file():
@@ -30,6 +33,21 @@ class PropertiesCatalog:
     def supports_temperature(self, key):
         meta = self.get_meta(key)
         return meta.get("temperature_dependent", True)
+    
+    def all_keys(self) -> list[str]:
+        return self.physical_keys() + self.mechanical_keys()
+
+    def is_physical(self, key: str) -> bool:
+        return key in self._physical
+
+    def is_mechanical(self, key: str) -> bool:
+        return key in self._mechanical
+
+    def physical_items(self) -> dict:
+        return dict(self._physical)
+
+    def mechanical_items(self) -> dict:
+        return dict(self._mechanical)
 
     
 
