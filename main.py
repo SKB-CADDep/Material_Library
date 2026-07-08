@@ -21,6 +21,8 @@ from src.core.models.material import Material
 from src.core.math.interpolation import MathUtils
 from src.infrastructure.paths import get_app_directory
 from src.services.hardness_table import HardnessTable
+from src.services.source_service import SourceService
+from src.services.material_repository import MaterialRepository
 
 # ======================================================================================
 # БЛОК 1: КОНФИГУРАЦИЯ И КОНСТАНТЫ
@@ -886,173 +888,7 @@ class UnitManager:
         return val / factor
 
 
-class SourceManager:
-    """Менеджер источников."""
-    FILENAME = "source.json"
 
-    def __init__(self):
-        self.app_dir = get_app_directory()
-        self.filepath = os.path.join(self.app_dir, self.FILENAME)
-        # Структура: три группы источников
-        self.sources = {
-            "property_sources": [],
-            "strength_sources": [],
-            "chemical_sources": []
-        }
-        self.load()
-
-    def load(self):
-        """Загрузка source.json с поддержкой старого формата (список)."""
-        if not os.path.exists(self.filepath):
-            # Файл отсутствует — сохраняем пустую структуру нового формата
-            self.save()
-            return
-        try:
-            with open(self.filepath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        except Exception as e:
-            print(f"Ошибка загрузки source.json: {e}")
-            return
-
-        # Старый формат: просто список источников
-        if isinstance(data, list):
-            self.sources = {
-                "property_sources": data,
-                "strength_sources": [],
-                "chemical_sources": []
-            }
-        # Новый формат: словарь с группами
-        elif isinstance(data, dict):
-            self.sources = {
-                "property_sources": data.get("property_sources", []),
-                "strength_sources": data.get("strength_sources", []),
-                "chemical_sources": data.get("chemical_sources", [])
-            }
-        else:
-            # Некорректный формат — сбрасываем в пустую структуру
-            self.sources = {
-                "property_sources": [],
-                "strength_sources": [],
-                "chemical_sources": []
-            }
-
-    def save(self):
-        """Сохранение в новом формате (3 группы в одном JSON)."""
-        try:
-            with open(self.filepath, 'w', encoding='utf-8') as f:
-                json.dump(self.sources, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Ошибка сохранения source.json: {e}")
-
-    def get_all(self, group=None):
-        """
-        Возвращает список источников:
-        - group == None: все источники всех групп (плоский список);
-        - group in {"property_sources","strength_sources","chemical_sources"}: только указанную группу.
-        """
-        if group is not None:
-            return self.sources.get(group, [])
-        # Плоский список по всем группам
-        result = []
-        for lst in self.sources.values():
-            result.extend(lst)
-        return result
-
-    def get_source_by_id(self, source_id):
-        """Ищет источник по ID во всех группах."""
-        for lst in self.sources.values():
-            for src in lst:
-                if src.get("id_source") == source_id:
-                    return src
-        return None
-
-    def get_name_by_id(self, source_id):
-        src = self.get_source_by_id(source_id)
-        return src.get("name_source", "Без названия") if src else "Неизвестный источник"
-
-    def add_source(self, name, description="", hyperlink="", group=None):
-        """
-        Добавляет источник в указанную группу.
-        Если group не задана или некорректна — используется "property_sources"
-        (для обратной совместимости с существующими вызовами).
-        """
-        if group not in ("property_sources", "strength_sources", "chemical_sources"):
-            group = "property_sources"
-
-        new_id = str(uuid.uuid4())
-        new_source = {
-            "id_source": new_id,
-            "name_source": name,
-            "description": description,
-            "hyperlink": hyperlink,
-            "user_name_found": get_username(),
-            "data_found": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "user_name_change": "",
-            "data_change": ""
-        }
-        self.sources.setdefault(group, []).append(new_source)
-        self.save()
-        return new_id
-
-    def update_source(self, source_id, name, description, hyperlink):
-        """Обновляет источник по ID (ищет во всех группах)."""
-        for lst in self.sources.values():
-            for src in lst:
-                if src.get("id_source") == source_id:
-                    src.update({
-                        "name_source": name,
-                        "description": description,
-                        "hyperlink": hyperlink,
-                        "user_name_change": get_username(),
-                        "data_change": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
-                    self.save()
-                    return True
-        return False
-
-    def delete_source(self, source_id):
-        """Удаляет источник по ID (из любой группы)."""
-        removed = False
-        for group, lst in self.sources.items():
-            new_lst = [s for s in lst if s.get("id_source") != source_id]
-            if len(new_lst) != len(lst):
-                self.sources[group] = new_lst
-                removed = True
-        if removed:
-            self.save()
-
-
-
-class AppData:
-    """Состояние приложения."""
-
-    def __init__(self):
-        self.work_dir = ""
-        self.materials = []
-        self.application_areas = []
-        self.current_material = None
-        self.source_manager = SourceManager()
-
-    def load_materials_from_dir(self, directory):
-        self.work_dir = directory
-        self.materials.clear()
-        if not os.path.isdir(directory): return
-
-        for filename in os.listdir(directory):
-            if filename.endswith('.json') and filename != "source.json":
-                try:
-                    mat = Material(filepath=os.path.join(directory, filename))
-                    self.materials.append(mat)
-                except Exception as e:
-                    print(f"Ошибка чтения {filename}: {e}")
-        self.materials.sort(key=lambda m: m.get_display_name())
-        self.load_application_areas()
-
-    def load_application_areas(self):
-        all_areas = set()
-        for m in self.materials:
-            all_areas.update(m.data.get(Schema.METADATA, {}).get(Schema.APP_AREA, []))
-        self.application_areas = sorted(list(all_areas))
 
 
 # ======================================================================================
@@ -4052,7 +3888,7 @@ class SinglePropertyEditor(ttk.Frame):
         try:
             sources = self.source_manager.get_all("property_sources")
         except TypeError:
-            # На случай старого интерфейса SourceManager без групп
+            # На случай старого интерфейса SourceService без групп
             sources = self.source_manager.get_all()
 
         names = []
@@ -4255,7 +4091,7 @@ class SinglePropertyEditor(ttk.Frame):
         }
 
         # Источник:
-        # если имя сопоставимо с id из SourceManager -> записываем source_ref_id + дублируем имя
+        # если имя сопоставимо с id из SourceService -> записываем source_ref_id + дублируем имя
         # иначе просто legacy property_subsource.
         if source_name:
             if self.source_manager:
@@ -4449,7 +4285,7 @@ class PropertyEditorTab(ttk.Frame, ScrollableMixin):
         self._setup_widgets()
 
     def set_app_data(self, app_data):
-        """Устанавливает app_data и передаёт SourceManager во все редакторы свойств."""
+        """Устанавливает app_data и передаёт SourceService во все редакторы свойств."""
         self.app_data = app_data
         if not self.app_data or not self.app_data.source_manager:
             return
@@ -4535,7 +4371,7 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         """
         Устанавливает app_data:
         - заполняет список источников КП (группа strength_sources),
-        - передаёт SourceManager во все редакторы свойств,
+        - передаёт SourceService во все редакторы свойств,
           чтобы их поле 'Источник свойств' было связано с группой property_sources.
         """
         self.app_data = app_data
@@ -4887,7 +4723,7 @@ class ChemicalCompositionTab(ttk.Frame):
 
     def set_app_data(self, app_data):
         self.app_data = app_data
-        # Привязываем SourceManager и обновляем список источников хим. свойств
+        # Привязываем SourceService и обновляем список источников хим. свойств
         if self.app_data and hasattr(self.app_data, "source_manager"):
             self.source_manager = self.app_data.source_manager
             self._refresh_source_list()
@@ -4897,7 +4733,7 @@ class ChemicalCompositionTab(ttk.Frame):
         self._source_name_to_id = {}
         self._source_id_to_name = {}
 
-        # Если SourceManager не задан — очищаем выпадающий список
+        # Если SourceService не задан — очищаем выпадающий список
         if not self.source_manager:
             if hasattr(self, "source_entry"):
                 self.source_entry.config(values=[])
@@ -4906,7 +4742,7 @@ class ChemicalCompositionTab(ttk.Frame):
         try:
             sources = self.source_manager.get_all("chemical_sources")
         except TypeError:
-            # На случай старого SourceManager без групп
+            # На случай старого SourceService без групп
             sources = self.source_manager.get_all()
 
         names = []
@@ -5359,7 +5195,7 @@ class ChemicalCompositionTab(ttk.Frame):
         comp_data["base_element"] = self.base_element_entry.get()
 
         # Логика источника:
-        # - Новый формат: source_ref_id указывает на SourceManager (группа chemical_sources),
+        # - Новый формат: source_ref_id указывает на SourceService (группа chemical_sources),
         #   при этом дублируем имя в composition_source для обратной совместимости.
         # - Старый формат / неизвестный источник: только composition_source (без source_ref_id).
         if source_name and self.source_manager:
@@ -6077,7 +5913,7 @@ class SourcesManagerTab(ttk.Frame):
     # === ОБНОВЛЕНИЕ ДАННЫХ ===
 
     def update_view(self):
-        """Обновляет таблицы во всех трёх вкладках данными из SourceManager."""
+        """Обновляет таблицы во всех трёх вкладках данными из SourceService."""
         self._clear_form()
 
         for tree in self.trees.values():
@@ -6533,7 +6369,7 @@ class MainApplication(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.app_data = AppData()
+        self.app_data = MaterialRepository()
         self.title(f"Material_Lib ({self.APP_VERSION})")
         self.geometry("1200x800")
 
