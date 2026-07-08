@@ -171,7 +171,7 @@ SSRF;
     }
     
     payload = {
-        'model': 'grok-beta',
+        'model': 'grok-2',
         'messages': [
             {'role': 'system', 'content': 'Ты опытный senior developer, который проводит code review.'},
             {'role': 'user', 'content': prompt}
