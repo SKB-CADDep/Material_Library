@@ -1,12 +1,13 @@
 import os
 import requests
-import json
 
 def get_pr_diff():
     """Получает diff из pull request"""
     repo = os.environ['REPO_NAME']
     pr_number = os.environ['PR_NUMBER']
     token = os.environ['GITHUB_TOKEN']
+    
+    print(f"📦 Repo: {repo}, PR: {pr_number}")
     
     headers = {
         'Authorization': f'token {token}',
@@ -15,13 +16,20 @@ def get_pr_diff():
     
     url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}'
     response = requests.get(url, headers=headers)
-    return response.text
-
-def review_with_grok(diff):
-    """Отправляет код на ревью через Grok API"""
-    api_key = os.environ.get('GROK_API_KEY')
     
-    # Промпт для AI
+    if response.status_code == 200:
+        print("✅ Diff получен успешно")
+        return response.text
+    else:
+        print(f"❌ Ошибка получения diff: {response.status_code}")
+        return ""
+
+def review_with_github_models(diff):
+    """Отправляет код на ревью через GitHub Models (бесплатно)"""
+    token = os.environ['GITHUB_TOKEN']
+    
+    print("🤖 Отправляю на ревью через GitHub Models...")
+    
     prompt = f"""Роль
 Ты — опытный Senior Software Engineer и Tech Lead. Проводишь code review Pull Request'ов так, как это делают в сильных продуктовых компаниях (Google, Meta, Amazon, JetBrains, Stripe и др.).
 Твоя задача — помочь разработчику сделать код более качественным, безопасным, поддерживаемым и понятным.
@@ -164,37 +172,50 @@ SSRF;
 Сосредоточься на изменениях в Pull Request, а не на всём проекте.
 В конце дай краткое итоговое заключение: готов ли PR к слиянию, требует ли исправлений или нуждается в дополнительном обсуждении."""
 
-    # Запрос к Grok API (xAI)
     headers = {
-        'Authorization': f'Bearer {api_key}',
+        'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
     }
     
+    # Используем бесплатную модель GPT-4o через GitHub Models
     payload = {
-        'model': 'grok-beta',
+        'model': 'gpt-4o',
         'messages': [
-            {'role': 'system', 'content': 'Ты опытный senior developer, который проводит code review.'},
+            {'role': 'system', 'content': 'Ты опытный senior developer, который проводит code review. Отвечай на русском языке.'},
             {'role': 'user', 'content': prompt}
         ],
         'max_tokens': 2000
     }
     
-    response = requests.post(
-        'https://api.x.ai/v1/chat/completions',
-        headers=headers,
-        json=payload
-    )
-    
-    if response.status_code == 200:
-        return response.json()['choices'][0]['message']['content']
-    else:
-        return f"Error: {response.status_code}\n{response.text}"
+    try:
+        response = requests.post(
+            'https://models.inference.ai.azure.com/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        
+        print(f"📡 Статус ответа: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()['choices'][0]['message']['content']
+            print("✅ Ревью получено!")
+            return result
+        else:
+            print(f"❌ Ошибка API: {response.text}")
+            return f"API Error: {response.status_code}\n{response.text}"
+            
+    except Exception as e:
+        print(f"❌ Исключение: {str(e)}")
+        return f"Error: {str(e)}"
 
 def post_review_comment(review_text):
     """Публикует ревью как комментарий к PR"""
     repo = os.environ['REPO_NAME']
     pr_number = os.environ['PR_NUMBER']
     token = os.environ['GITHUB_TOKEN']
+    
+    print("📝 Публикую комментарий...")
     
     headers = {
         'Authorization': f'token {token}',
@@ -207,31 +228,41 @@ def post_review_comment(review_text):
     
     payload = {'body': comment_body}
     
-    response = requests.post(url, headers=headers, json=payload)
-    return response.status_code
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print(f"📡 Статус публикации: {response.status_code}")
+        
+        if response.status_code == 201:
+            print("✅ Комментарий опубликован!")
+            return True
+        else:
+            print(f"❌ Ошибка: {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Исключение при публикации: {str(e)}")
+        return False
 
 def main():
-    print("🔍 Получение diff pull request...")
+    print("🚀 Запуск AI Code Review...")
+    
     diff = get_pr_diff()
     
     if not diff.strip():
-        print("✅ Нет изменений для ревью")
+        print("⚠️ Нет изменений для ревью")
         return
     
-    print("🤖 Отправка кода на AI ревью...")
-    review = review_with_grok(diff)
+    review = review_with_github_models(diff)
     
-    print("📝 Публикация ревью...")
-    status = post_review_comment(review)
-    
-    # Сохраняем результат в файл
-    with open('review_result.md', 'w') as f:
+    with open('review_result.md', 'w', encoding='utf-8') as f:
         f.write(review)
+    print("💾 Ревью сохранено в review_result.md")
     
-    if status == 201:
-        print("✅ Ревью успешно опубликовано!")
+    success = post_review_comment(review)
+    
+    if success:
+        print("🎉 Готово!")
     else:
-        print(f" Ошибка публикации: {status}")
+        print("⚠️ Ревью создано, но не опубликовано")
 
 if __name__ == '__main__':
     main()
