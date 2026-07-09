@@ -10,6 +10,8 @@ import uuid
 import copy
 import sys
 from datetime import datetime
+
+from matplotlib.colors import to_rgb, to_hex
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.patches import Ellipse, Patch
@@ -2231,9 +2233,16 @@ class PropertyComparisonTab(ttk.Frame):
         self.ax.clear()
 
         selected_names = self.selected_listbox.get(0, tk.END)
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
-                  '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
-
+        colors = [
+            # Исходные 10 цветов (Tableau10)
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+            # Дополнительные 20 цветов (расширенная палитра)
+            '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
+            '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5',
+            '#393b79', '#637939', '#8c6d31', '#843c39', '#7b4173',
+            '#5254a3', '#8ca252', '#bd9e39', '#ad494a', '#a55194'
+        ]
         for i, display_name in enumerate(selected_names):
             color = colors[i % len(colors)]
 
@@ -3827,8 +3836,8 @@ class AshbyDiagramTab(ttk.Frame):
                 class_color = class_colors[idx_class % len(class_colors)]
                 patch = Patch(
                     facecolor=class_color,
-                    edgecolor='none',
-                    alpha=0.15,
+                    edgecolor=to_hex(tuple(c * 0.5 for c in to_rgb(class_color))),
+                    alpha=0.19,
                     label=f"Класс: {class_name}"
                 )
                 handles.append(patch)
