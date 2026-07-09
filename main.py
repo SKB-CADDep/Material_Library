@@ -3734,7 +3734,7 @@ class AshbyDiagramTab(ttk.Frame):
         # чтобы каждая кривая была с уникальным цветом.
         series_index = 0
 
-        x_is_mech = PROPERTIES.iS_mechanical(x_prop_key)
+        x_is_mech = PROPERTIES.is_mechanical(x_prop_key)
         y_is_mech = PROPERTIES.is_mechanical(y_prop_key)
 
         for idx_class, class_name in enumerate(selected_classes):
