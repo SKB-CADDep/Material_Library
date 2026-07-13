@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkspaceContext";
 
 export function AppShell() {
-  const { workspace (isOpen, openDirectory } = useWorkspace();
+  const { workspace ,isOpen, openDirectory } = useWorkspace();
 
   const handleOpenFolder = async () => {
     // Вариант A: prompt с путём (dev, пока backend не готов)

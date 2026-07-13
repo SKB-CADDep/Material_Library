@@ -10,3 +10,9 @@ export type WorkspaceResponse = {
     areas: string[];
     filename: string;
   };
+
+  export type SourcesResponse = {
+    property_sources: Array<Record<string, string>>;
+    strength_sources: Array<Record<string, string>>;
+    chemical_sources: Array<Record<string, string>>;
+  };
