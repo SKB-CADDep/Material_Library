@@ -52,7 +52,7 @@ class SourceUpdateRequest(BaseModel):
     description: str = ""
     hyperlink: str = ""
 
-class SoursesResponse(BaseModel):
+class SourcesResponse(BaseModel):
     property_sources: list[dict[str,str]]
     strength_sources: list[dict[str,str]]
     chemical_sources: list[dict[str,str]]

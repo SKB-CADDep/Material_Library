@@ -4,6 +4,9 @@ from fastapi import Depends, HTTPException
 from pathlib import Path
 from src.infrastructure.storage_backend import LocalDirectoryStorage
 from src.services.material_repository import MaterialRepository
+from src.services.properties_catalog import PropertiesCatalog
+from src.services.hardness_table import HardnessTable
+from src.services.source_service import SourceService
 
 @dataclass
 class AppState:
@@ -28,11 +31,11 @@ def get_state() -> AppState:
 
 def get_repository(state: AppState = Depends(get_state)) -> MaterialRepository:
     if state.repository is None:
-        raise HTTPExeption(status_code = 400, detail="Workspace не открыт")
+        raise HTTPException(status_code = 409, detail="Workspace не открыт")
     return state.repository
 
 def open_workspace(state: AppState, directory: Path) -> MaterialRepository:
-    state,storage = LocalDirectoryStorage(directory)
+    state.storage = LocalDirectoryStorage(directory)
     state.repository = MaterialRepository(source_service = state.sources, storage=state.storage)
     state.repository.load_materials_from_dir(directory)
     return state.repository
