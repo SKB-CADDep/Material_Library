@@ -4,11 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# ВАЖНО: Добавляем разрешение на использование GitHub Models
 permissions:
   contents: read
   pull-requests: write
-  models: read
+  models: read  #  ВАЖНО: разрешение на доступ к GitHub Models
 
 jobs:
   review:
@@ -38,7 +37,7 @@ jobs:
 
       - name: Run AI Review
         env:
-          # Ключ OpenRouter больше не нужен!
+          # OPENROUTER_API_KEY больше не нужен!
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO_NAME: ${{ github.repository }}
