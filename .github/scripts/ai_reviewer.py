@@ -211,79 +211,44 @@ def clean_thinking_tags(text: str) -> str:
 # ═══════════════════════════════════════════════════════════════
 # STREAMING-ВЫЗОВ OPENROUTER
 # ═══════════════════════════════════════════════════════════════
-def call_openrouter(system_prompt: str, user_prompt: str) -> str:
-    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not api_key:
-        raise ValueError("OPENROUTER_API_KEY не задан")
+def call_github_models(system_prompt: str, user_prompt: str) -> str:
+    """Вызывает GitHub Models (бесплатно, без внешних ключей)"""
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise ValueError("GITHUB_TOKEN не найден")
+    
+    model = "gpt-4o-mini"  # Бесплатная модель от GitHub
+    print(f">>> Используем GitHub Model: {model}")
     
     headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com",
-        "X-Title": "GitHub AI Code Reviewer",
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
     
-    last_error: Exception | None = None
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 4096
+    }
     
-    for model in OPENROUTER_MODELS:
-        print(f"\n>>> Пробуем модель: {model}")
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.3,
-            "max_tokens": 4096,
-            "stream": True,
-        }
-        
-        if REASONING_ENABLED:
-            payload["reasoning"] = {"enabled": True}
-        
-        for attempt in range(1, MAX_RETRIES + 1):
-            print(f"  Попытка {attempt}/{MAX_RETRIES}")
-            try:
-                result = _stream_request(headers, payload)
-                print(f"  Успех с моделью: {model}")
-                return result
-            except FallbackError as e:
-                last_error = e
-                print(f"  ↳ {e} — переключаемся на следующую модель")
-                break
-            except RetryableError as e:
-                last_error = e
-                wait = 2 ** attempt
-                print(f"  ↳ {e} — жду {wait}с и повторяю...")
-                time.sleep(wait)
-            except Exception as e:
-                raise
-    
-    raise Exception(f"Все модели исчерпаны. Последняя ошибка: {last_error}")
-
-class RetryableError(Exception):
-    pass
-
-class FallbackError(Exception):
-    pass
-
-def _stream_request(headers: dict, payload: dict) -> str:
-    with requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
+    response = requests.post(
+        "https://models.inference.ai.azure.com/chat/completions",
         headers=headers,
         json=payload,
-        stream=True,
-        timeout=(10, 300),
-    ) as response:
-        print(f"    HTTP статус: {response.status_code}")
-        if response.status_code == 429:
-            raise FallbackError(f"HTTP 429 (rate limit) для {payload['model']}")
-        if response.status_code in RETRY_STATUSES:
-            raise RetryableError(f"HTTP {response.status_code}")
-        if response.status_code != 200:
-            body = response.text[:500]
-            raise Exception(f"API Error {response.status_code}: {body}")
-        return _parse_sse_stream(response)
+        timeout=120
+    )
+    
+    print(f"    HTTP статус: {response.status_code}")
+    
+    if response.status_code != 200:
+        raise Exception(f"API Error {response.status_code}: {response.text[:500]}")
+    
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
 
 def _parse_sse_stream(response: requests.Response) -> str:
     full_content = []
@@ -380,7 +345,7 @@ def main() -> int:
     
     print("Вызываем модель...")
     try:
-        review_text = call_openrouter(system_prompt, user_prompt)
+        review_text = call_github_models(system_prompt, user_prompt)
         print(f"✅ Ревью получено ({len(review_text)} символов)")
     except Exception as e:
         review_text = (
