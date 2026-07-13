@@ -1,46 +1,5 @@
 {
-  "property_sources": [
-    {
-      "id_source": "1ab46c5c-c0df-43f3-bf5f-3fc7c2b72951",
-      "name_source": "Тест API",
-      "description": "smoke",
-      "hyperlink": "https://example.com",
-      "user_name_found": "Liza",
-      "data_found": "2026-07-13 11:57:42",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "bb1d7ad2-ae24-4e2a-9f37-9890b7703ffe",
-      "name_source": "Тест API",
-      "description": "smoke",
-      "hyperlink": "https://example.com",
-      "user_name_found": "Liza",
-      "data_found": "2026-07-13 11:59:41",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "5fe7c2de-70fb-404e-a6ab-f19729b77043",
-      "name_source": "Тест API",
-      "description": "smoke",
-      "hyperlink": "https://example.com",
-      "user_name_found": "Liza",
-      "data_found": "2026-07-13 12:00:42",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "bf9d1612-5fa1-438f-8caa-d70be5147605",
-      "name_source": "Swagger smoke test",
-      "description": "проверка",
-      "hyperlink": "https://example.com",
-      "user_name_found": "Liza",
-      "data_found": "2026-07-13 12:15:14",
-      "user_name_change": "",
-      "data_change": ""
-    }
-  ],
+  "property_sources": [],
   "strength_sources": [],
   "chemical_sources": []
 }
