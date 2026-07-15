@@ -16,3 +16,8 @@ export type WorkspaceResponse = {
     strength_sources: Array<Record<string, string>>;
     chemical_sources: Array<Record<string, string>>;
   };
+
+  export type MaterialSaveResponse = {
+    ok: boolean
+    filename: string
+  }
