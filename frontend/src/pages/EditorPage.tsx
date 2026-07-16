@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listMaterials, getMaterial, saveMaterial } from "../api/materials";
 import { useState, useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
+import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -113,7 +114,7 @@ export function EditorPage() {
             />
             <Route
               path="physical"
-              element={<p className="tab-placeholder">Физические свойства — в разработке</p>}
+              element={<PhysicalPropertiesTab material={draft ?? undefined}/>}
             />
             <Route
               path="mechanical"

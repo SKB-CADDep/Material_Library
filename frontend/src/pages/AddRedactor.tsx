@@ -157,6 +157,21 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
                 <input
                   type="checkbox"
                   checked={metadata.application_area?.includes(area) ?? false}
+                  onChange={(event) => {
+                    const status = event.target.checked;
+                    if (status) {
+                      onDraftChange({
+                        ...material,
+                        metadata: { ...metadata, application_area:[...(metadata.application_area ?? []), area]
+                      },});
+                    }
+                    if (!status) {
+                      onDraftChange({
+                        ...material,
+                        metadata: { ...metadata, application_area:[...(metadata.application_area ?? []).filter(a => a!==area)]
+                      },});
+                    }
+                  }}
                   
                 />
                 {area}
@@ -179,6 +194,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
                 const trimmed = newArea.trim();
                 if (!trimmed || areas.includes(trimmed)) return;
                 setAreas([...areas, trimmed]);
+                onDraftChange({...material, metadata: {...metadata, application_area:[...(metadata.application_area ?? []), trimmed]}})
                 setNewArea("");
               }}
             >
