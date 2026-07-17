@@ -9,7 +9,7 @@
         "name": "Коэффициент линейного расширения (·10¯⁶)",
         "symbol": "α",
         "unit": "1/С",
-        "unit_type": "Коэфф. лин. расширения",
+        "unit_type": "Коэффициент линейного расширения",
         "temperature_dependent": true
     },
     "coefficient_thermal_conductivity": {

@@ -4,6 +4,7 @@ import { listMaterials, getMaterial, saveMaterial } from "../api/materials";
 import { useState, useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
 import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
+import { MechanicalPropertiesTab } from "./MechaicalPropertiesTab";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -114,11 +115,11 @@ export function EditorPage() {
             />
             <Route
               path="physical"
-              element={<PhysicalPropertiesTab material={draft ?? undefined}/>}
+              element={<PhysicalPropertiesTab material={draft ?? undefined}  onDraftChange={setDraft}/>}
             />
             <Route
               path="mechanical"
-              element={<p className="tab-placeholder">Механические свойства — в разработке</p>}
+              element={<MechanicalPropertiesTab material={draft ?? undefined}  onDraftChange={setDraft}/>}
             />
             <Route
               path="chemical"

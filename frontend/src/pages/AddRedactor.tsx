@@ -74,7 +74,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
                 const text = event.target.value;
                 onDraftChange({
                   ...material,
-                  metadata: { ...metadata, name_material_alternative: text },
+                  metadata: { ...metadata, name_material_alternative: text.split(",").map(s => s.trim()).filter(Boolean)},
                 });
               }}
           />
@@ -213,10 +213,11 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
               value={metadata.temperature_application?.value ?? ""}
               className="input"
               onChange={(event) => {
-                const number = event.target.value;
+                const raw = event.target.value;
+                const value = raw === "" ? "": Number(raw);
                 onDraftChange({
                     ...material,
-                    metadata: { ...metadata, temperature_application:{...metadata.temperature_application, value: number }
+                    metadata: { ...metadata, temperature_application:{...metadata.temperature_application, value: value }
                   },});
               }}
             />

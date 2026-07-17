@@ -21,3 +21,9 @@ export type WorkspaceResponse = {
     ok: boolean
     filename: string
   }
+
+  export type UnitResponse = {
+    unit_type: string
+    system_unit: string
+    units: string[]
+  }

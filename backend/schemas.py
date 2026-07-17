@@ -66,3 +66,8 @@ class SourceItem(BaseModel):
 class PropertiesResponse(BaseModel):
     physical: dict[str, dict]
     mechanical: dict[str, dict]
+
+class UnitResponse(BaseModel):
+    unit_type: str
+    system_unit: str
+    units: list[str]
