@@ -40,7 +40,7 @@ body{
     font-size: 14px;
     position: relative;
   }
-
+  
   /* Обёртка для кнопки с dropdown — не должна влиять на высоту */
   .menu-button-wrapper {
     position: relative;
@@ -48,7 +48,7 @@ body{
     align-items: center;
     height: 100%;               /* Занимает всю высоту header */
   }
-
+  
   /* Сама кнопка */
   .menu-button {
     padding: 6px 12px;
@@ -60,11 +60,11 @@ body{
     border-radius: 4px;
     line-height: 1.5;           /* Одинаковая высота строки для всех кнопок */
   }
-
+  
   .menu-button:hover {
     background-color: var(--bg);
   }
-
+  
   /* Dropdown — абсолютно позиционирован, не влияет на поток */
   .dropdown {
     position: absolute;
@@ -372,24 +372,24 @@ select {
     border-radius: 4px 4px 0 0;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
-
+  
   .nested-tab:hover {
     background-color: var(--surface);
     color: var(--text);
   }
-
+  
   .nested-tab.active {
     color: var(--accent);
     border-bottom-color: var(--accent);
     background-color: var(--surface);
   }
-
+  
   /* Контент окна */
   .window-content {
     padding: 16px;
     background-color: var(--bg);
   }
-
+  
   /* Секция (группа полей) */
   .section {
     background-color: var(--surface);
@@ -619,12 +619,13 @@ select {
     min-width: 220px;
   }
 
-  /* Обертка для всей секции */
+  /* Обертка для всей секции: таблица | график ~50/50 */
 .property-section-layout {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
-  align-items: flex-start;
+  align-items: stretch;
+  width: 100%;
 }
 
 
@@ -656,8 +657,9 @@ select {
 /* Правая колонка с графиком */
 .property-section-chart {
   min-height: 300px;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  box-sizing: border-box;
   background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -695,7 +697,9 @@ select {
     flex-direction: column;
   }
 
-  .property-section-chart {
+  .property-section-layout:has(.property-section-chart) > .property-section-fields,
+  .property-section-layout:has(.property-section-chart) > .property-section-chart {
+    max-width: none;
     width: 100%;
   }
 }
@@ -712,18 +716,27 @@ select {
 .property-section-fields {
   flex: 1;
   min-width: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
 
+/* Таблица + график: равные колонки как в Tkinter */
+.property-section-layout:has(.property-section-chart) > .property-section-fields,
+.property-section-layout:has(.property-section-chart) > .property-section-chart {
+  flex: 1 1 0;
+  max-width: calc(50% - 12px);
+}
+
 .property-section-fields .table-wrapper {
   width: 100%;
   align-self: stretch;
+  overflow-x: auto;
 }
 
 .property-section-chart {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
 }
 
@@ -837,4 +850,99 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+}
+
+.note-field {
+  display: flex;
+  flex-direction: column; /* Это ключевое - располагает элементы вертикально */
+  gap: 8px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.note-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.note-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  min-height: 120px; /* Минимальная высота */
+}
+
+.note-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
+}
+
+/* Контекстное меню */
+.context-menu {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.context-menu-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+  background-color: var(--bg);
+}
+
+.context-menu-item::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #666;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.context-menu-header {
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--text);
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.table-row-selected {
+  background-color: var(--bg) !important;
+  border-left: 3px solid var(--accent);
+}
+
+.table-row-selected td {
+  background-color: var(--bg);
+}
+
+.table-row-selected .table-cell-input {
+  border-color: var(--accent);
+}
+
+.error-message {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 4px;
 }

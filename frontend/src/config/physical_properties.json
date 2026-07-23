@@ -1,0 +1,35 @@
+{"modulus_elasticity": {
+        "name": "Модуль упругости",
+        "symbol": "E",
+        "unit": "МПа",
+        "unit_type": "Модуль упругости",
+        "temperature_dependent": true
+    },
+    "coefficient_linear_expansion": {
+        "name": "Коэффициент линейного расширения (·10¯⁶)",
+        "symbol": "α",
+        "unit": "1/С",
+        "unit_type": "Коэффициент линейного расширения",
+        "temperature_dependent": true
+    },
+    "coefficient_thermal_conductivity": {
+        "name": "Коэффициент теплопроводности",
+        "symbol": "λ",
+        "unit": "Вт/(м*С)",
+        "unit_type": "Теплопроводность",
+        "temperature_dependent": true
+    },
+    "density": {
+        "name": "Плотность",
+        "symbol": "ρ",
+        "unit": "кг/м3",
+        "unit_type": "Плотность",
+        "temperature_dependent": true
+    },
+    "specific_heat": {
+        "name": "Удельная теплоемкость",
+        "symbol": "С",
+        "unit": "Дж/(кг*С)",
+        "unit_type": "Удельная теплоемкость",
+        "temperature_dependent": true
+    }}
