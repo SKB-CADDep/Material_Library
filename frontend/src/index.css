@@ -805,6 +805,37 @@ select {
   outline: none;
 }
 
+/* Редактируемые T–value таблицы: клик по ячейке — выбор строки, по числу — ввод */
+.data-table--selectable-rows .data-table-select-cell {
+  cursor: pointer;
+}
+
+.data-table--selectable-rows .table-cell-input {
+  width: auto;
+  max-width: calc(100% - 8px);
+  min-width: 3.5rem;
+  display: inline-block;
+  vertical-align: middle;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.data-table--selectable-rows .table-cell-input:hover {
+  border-color: var(--border);
+}
+
+.data-table--selectable-rows .table-cell-input:focus {
+  cursor: text;
+  border-color: var(--accent);
+  background-color: var(--surface);
+}
+
+.data-table--selectable-rows tbody tr:hover .data-table-select-cell {
+  background-color: var(--bg);
+}
+
 /* Контейнер для кнопок + и - */
 .table-controls {
   display: flex;

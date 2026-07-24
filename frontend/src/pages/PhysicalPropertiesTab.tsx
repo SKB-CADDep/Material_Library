@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -16,8 +17,23 @@ type PhysicalPropertiesTabProps = {
 
 type ChartPoint = { temperature: number; value: number };
 
+/** Пустая строка в input → NaN в draft (можно стереть поле backspace). */
+function parsePairNumber(raw: string): number {
+  if (raw === "" || raw === "-") return NaN;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function formatPairNumber(value: number): string {
+  return Number.isFinite(value) ? String(value) : "";
+}
+
 function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
-  return (pairs ?? []).map(([temperature, value]) => ({ temperature, value }));
+  return (pairs ?? [])
+    .filter(([temperature, value]) =>
+      Number.isFinite(temperature) && Number.isFinite(value),
+    )
+    .map(([temperature, value]) => ({ temperature, value }));
 }
 
 type TemperatureGraphProps = {
@@ -64,13 +80,35 @@ function TemperatureGraph({ data, yLabel = "Значение" }: TemperatureGrap
 
 type TemperatureValueTableProps = {
   pairs: Array<[number, number]> | undefined;
+  onChangeValue?: (rowIndex: number, raw: string) => void;
+  onChangeTemperature?: (rowIndex: number, raw: string) => void;
+  selectedRowIndex?: number | null;
+  onRowSelect?: (index: number) => void;
+  onAddRow?: () => void;
+  onDeleteRow?: () => void;
 };
 
-function TemperatureValueTable({ pairs }: TemperatureValueTableProps) {
+function TemperatureValueTable({
+  pairs,
+  onChangeValue,
+  onChangeTemperature,
+  selectedRowIndex,
+  onRowSelect,
+  onAddRow,
+  onDeleteRow
+}: TemperatureValueTableProps) {
+  const isRowSelectionEnabled = Boolean(onRowSelect);
+
   return (
     <div className="table-wrapper">
       <div className="data-table-container">
-        <table className="data-table">
+        <table
+          className={
+            isRowSelectionEnabled
+              ? "data-table data-table--selectable-rows"
+              : "data-table"
+          }
+        >
           <thead>
             <tr>
               <th>T, °C</th>
@@ -79,21 +117,54 @@ function TemperatureValueTable({ pairs }: TemperatureValueTableProps) {
           </thead>
           <tbody>
             {(pairs ?? []).map(([temperature, value], index) => (
-              <tr key={index}>
-                <td>
+              <tr
+                key={index}
+                className={
+                  selectedRowIndex === index ? "table-row-selected" : ""
+                }
+              >
+                <td
+                  className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                  onClick={
+                    isRowSelectionEnabled
+                      ? () => onRowSelect?.(index)
+                      : undefined
+                  }
+                >
                   <input
                     type="number"
-                    readOnly
-                    value={temperature}
+                    readOnly={!onChangeTemperature}
+                    value={formatPairNumber(temperature)}
+                    onChange={
+                      onChangeTemperature
+                        ? (e) => onChangeTemperature(index, e.target.value)
+                        : undefined
+                    }
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     className="table-cell-input"
                   />
                 </td>
-                <td>
+                <td
+                  className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                  onClick={
+                    isRowSelectionEnabled
+                      ? () => onRowSelect?.(index)
+                      : undefined
+                  }
+                >
                   <input
                     type="number"
-                    readOnly
-                    value={value}
+                    readOnly={!onChangeValue}
+                    onChange={
+                      onChangeValue
+                        ? (e) => onChangeValue(index, e.target.value)
+                        : undefined
+                    }
+                    value={formatPairNumber(value)}
                     className="table-cell-input"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                   />
                 </td>
               </tr>
@@ -105,16 +176,22 @@ function TemperatureValueTable({ pairs }: TemperatureValueTableProps) {
         <button
           type="button"
           className="table-control-btn"
-          disabled
-          title="Редактирование — в следующем шаге (B6)"
+          title="Добавить пару"
+          onClick={() => onAddRow?.()}
+          disabled={!onAddRow}
         >
           +
         </button>
         <button
           type="button"
           className="table-control-btn"
-          disabled
-          title="Редактирование — в следующем шаге (B6)"
+          title={
+            selectedRowIndex == null
+              ? "Сначала выберите строку"
+              : "Удалить пару"
+          }
+          disabled={selectedRowIndex == null || !onDeleteRow}
+          onClick={() => onDeleteRow?.()}
         >
           −
         </button>
@@ -124,6 +201,9 @@ function TemperatureValueTable({ pairs }: TemperatureValueTableProps) {
 }
 
 export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPropertiesTabProps) {
+  const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
+    number | null
+  >(null);
 
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
@@ -221,6 +301,83 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               </div>
               <TemperatureValueTable
                 pairs={physical_properties.modulus_elasticity?.temperature_value_pairs}
+                onChangeValue={(rowIndex, raw) => {
+                  const nextValue = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.modulus_elasticity?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      modulus_elasticity: {
+                        ...physical_properties.modulus_elasticity,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [pair[0], nextValue],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                onChangeTemperature={(rowIndex, raw) => {
+                  const nextTemperature = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.modulus_elasticity?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      modulus_elasticity: {
+                        ...physical_properties.modulus_elasticity,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [nextTemperature, pair[1]],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                selectedRowIndex={modulusSelectedRowIndex}
+                onRowSelect={setModulusSelectedRowIndex}
+                onAddRow={() => {
+                  const prev =
+                    physical_properties.modulus_elasticity?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      modulus_elasticity: {
+                        ...physical_properties.modulus_elasticity,
+                        temperature_value_pairs: [...prev, [NaN, NaN]],
+                      },
+                    },
+                  });
+                  setModulusSelectedRowIndex(null);
+                }}
+                onDeleteRow={() => {
+                  const prev = physical_properties.modulus_elasticity?.temperature_value_pairs ?? [];
+                  if (prev.length === 0) return;
+                  if (
+                    !window.confirm(
+                      "Вы уверены, что хотите удалить эту пару?",
+                    )
+                  ) {
+                    return;
+                  }
+                  const next = prev.filter((_, i) => i !== modulusSelectedRowIndex);
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      modulus_elasticity: {
+                        ...physical_properties.modulus_elasticity,
+                        temperature_value_pairs: next,
+                      },
+                    },
+                  });
+                  setModulusSelectedRowIndex(null);
+                }}
               />
             </div>
             <div className="property-section-chart">

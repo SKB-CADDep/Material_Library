@@ -69,8 +69,12 @@ class MaterialRepository:
     def save_material(self, material: Material) -> None:
         if not material.filepath:
             raise ValueError("Путь для сохранения не указан")
+        is_new_file = (
+            self._storage is None
+            or not self._storage.exists(Path(material.filepath))
+        )
         material.save()
-        if self._storage and not self._storage.exists(Path(material.filepath)):
+        if is_new_file:
             self.materials.append(material)
             self.materials.sort(key=lambda m: m.get_display_name())
             self.load_application_areas()

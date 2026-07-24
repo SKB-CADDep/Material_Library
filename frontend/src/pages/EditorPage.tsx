@@ -1,6 +1,14 @@
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listMaterials, getMaterial, saveMaterial, saveNewMaterial } from "../api/materials";
+import {
+  listMaterials,
+  getMaterial,
+  saveMaterial,
+  saveNewMaterial,
+  materialDraftFilename,
+  normalizeMaterialFilename,
+  validateMaterialDraftForSave,
+} from "../api/materials";
 import { useState, useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
 import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
@@ -9,50 +17,6 @@ import { ChemicalProperties } from "./ChemicalProperties"
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
-}
-type ChemicalPropertiesSlice = {
-  composition?: Array<{ composition_source?: string }>;
-};
-
-type MechanicalPropertiesSlice = {
-  strength_category?: Array<{
-    value_strength_category?: string;
-    source_strength_category?: string | null;
-    source_ref_id?: string | null;
-  }>;
-};
-
-function hasKpSource(cat: {
-  source_strength_category?: string | null;
-  source_ref_id?: string | null;
-}): boolean {
-  return (
-    Boolean((cat.source_strength_category ?? "").trim()) ||
-    Boolean((cat.source_ref_id ?? "").trim())
-  );
-}
-
-function validateDraftForSave(draft: Record<string, unknown>): string | null {
-  const categories =
-    (draft.mechanical_properties as MechanicalPropertiesSlice | undefined)
-      ?.strength_category ?? [];
-  for (const [i, cat] of categories.entries()) {
-    if (!hasKpSource(cat)) {
-      const name =
-        (cat.value_strength_category ?? "").trim() || `КП #${i + 1}`;
-      return `Укажите источник КП для категории «${name}»`;
-    }
-  }
-
-  const compositions =
-    (draft.chemical_properties as ChemicalPropertiesSlice | undefined)
-      ?.composition ?? [];
-  for (const [i, entry] of compositions.entries()) {
-    if (!(entry.composition_source ?? "").trim()) {
-      return `Укажите источник для набора состава #${i + 1}`;
-    }
-  }
-  return null;
 }
 
 function createEmptyMaterialDraft(): Record<string, unknown> {
@@ -107,9 +71,57 @@ function createEmptyMaterialDraft(): Record<string, unknown> {
         property_last_updated: "",
       },
     },
-    mechanical_properties: { strength_category: [] },
-    chemical_properties: { composition: [] },
+    mechanical_properties: {
+      strength_category: [
+        {
+          value_strength_category: "Новая КП 1",
+          source_strength_category: "",
+          source_ref_id: "",
+          hardness: [],
+          hardness_unit: "",
+        },
+      ],
+    },
+    chemical_properties: {
+      composition: [
+        {
+          composition_source: "",
+          other_elements: [],
+          comment: "",
+          base_element: "Fe",
+        },
+      ],
+    },
   };
+}
+
+function promptFilename(draft: Record<string, unknown>): string | null {
+  let defaultName: string;
+  try {
+    defaultName = materialDraftFilename(draft);
+  } catch {
+    defaultName = "Новыйматериал.json";
+  }
+  const input = window.prompt("Имя файла для сохранения", defaultName);
+  if (input === null) {
+    return null;
+  }
+  try {
+    return normalizeMaterialFilename(input);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Неверное имя файла";
+    window.alert(message);
+    return null;
+  }
+}
+
+function draftCopyAsNewFile(
+  draft: Record<string, unknown>
+): Record<string, unknown> {
+  const copy = structuredClone(draft);
+  copy.material_id = crypto.randomUUID();
+  return copy;
 }
 
 export function EditorPage() {
@@ -141,13 +153,31 @@ export function EditorPage() {
   const hasFileOnDisk = selectedId !== null && !isNewMaterial;
   const queryClient = useQueryClient();
   const newSave = useMutation({
-    mutationFn: () => saveNewMaterial(draft!),
-    onSuccess: () => {queryClient.invalidateQueries({ queryKey: ["material"] }); const id = draft?.material_id as string ;setIsNewMaterial(false); setSelectedId(id)}
-  })
+    mutationFn: ({
+      body,
+      filename,
+    }: {
+      body: Record<string, unknown>;
+      filename: string;
+    }) => saveNewMaterial(body, filename),
+    onSuccess: (_data, variables) => {
+      const id = variables.body.material_id as string;
+      queryClient.setQueryData(["material", id], variables.body);
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+      setIsNewMaterial(false);
+      setSelectedId(id);
+      setDraft(structuredClone(variables.body));
+    },
+  });
   const save = useMutation({
     mutationFn: () => saveMaterial(selectedId!, draft!),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["material"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+      queryClient.invalidateQueries({ queryKey: ["material", selectedId] });
+    },
   });
+
+  const saveBusy = save.isPending || newSave.isPending;
 
   if (result.isLoading) {
     return <p className="status-message">Загрузка…</p>;
@@ -163,6 +193,37 @@ export function EditorPage() {
     setIsNewMaterial(true);
     setDraft(createEmptyMaterialDraft());
     setSaveValidationError(null);
+  }
+
+  function runSaveFlow() {
+    if (!draft) return;
+    const error = validateMaterialDraftForSave(draft);
+    if (error) {
+      setSaveValidationError(error);
+      return;
+    }
+    setSaveValidationError(null);
+    if (hasFileOnDisk) {
+      save.mutate();
+      return;
+    }
+    const filename = promptFilename(draft);
+    if (!filename) return;
+    newSave.mutate({ body: draft, filename });
+  }
+
+  function runSaveAsFlow() {
+    if (!draft) return;
+    const error = validateMaterialDraftForSave(draft);
+    if (error) {
+      setSaveValidationError(error);
+      return;
+    }
+    setSaveValidationError(null);
+    const filename = promptFilename(draft);
+    if (!filename) return;
+    const body = hasFileOnDisk ? draftCopyAsNewFile(draft) : draft;
+    newSave.mutate({ body, filename });
   }
 
   return (
@@ -197,34 +258,16 @@ export function EditorPage() {
           </button>
           <button
             type="button"
-            disabled={!selectedId || !draft || save.isPending || isNewMaterial}
-            onClick={() => {
-              if (!draft) return;
-              const error = validateDraftForSave(draft);
-              if (error) {
-                setSaveValidationError(error);
-                return;
-              }
-              setSaveValidationError(null);
-              save.mutate();
-            }}
+            disabled={!draft || saveBusy}
+            onClick={runSaveFlow}
           >
             {save.isPending ? "Сохранение…" : "Сохранить"}
           </button>
           <button
             type="button"
             className="button-secondary"
-            disabled={!draft || newSave.isPending || !isNewMaterial}
-            onClick={() => {
-              if (!draft) return;
-              const error = validateDraftForSave(draft);
-              if (error) {
-                setSaveValidationError(error);
-                return;
-              }
-              setSaveValidationError(null);
-              newSave.mutate();
-            }}
+            disabled={!draft || saveBusy}
+            onClick={runSaveAsFlow}
           >
             {newSave.isPending ? "Сохранение…" : "Сохранить как…"}
           </button>

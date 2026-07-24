@@ -461,7 +461,6 @@ useEffect(() => {
                   composition: next,
                 },
               });
-              // как в Tkinter populate_form: после удаления выбрать первую, иначе сбросить
               setCompositionSourceIndex(0);
             }}
           >
