@@ -1,23 +1,37 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useWorkspace } from "../context/WorkSpaceContext";
 
 type AddRedactorProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
 };
 
-const ALL_AREAS = [
-  "Зарубежные материалы",
-  "Конструкционные материалы",
-  "Крепежные материалы",
-  "Литейные материалы",
-  "Материалы дисков и роторов",
-  "Материалы лопаток",
-  "Трубки конденсатора",
-];
-
 export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
   const [newArea, setNewArea] = useState("");
-  const [areas, setAreas] = useState(ALL_AREAS);
+  const [localAddedAreas, setLocalAddedAreas] = useState<string[]>([]);
+  const { workspace } = useWorkspace();
+
+  const materialKey =
+    (material as { material_id?: string } | undefined)?.material_id ?? null;
+
+  useEffect(() => {
+    setLocalAddedAreas([]);
+  }, [materialKey]);
+
+  const materialAreas =
+    (
+      material?.metadata as { application_area?: string[] } | undefined
+    )?.application_area ?? [];
+
+  const areas = useMemo(() => {
+    const fromWorkspace = workspace?.application_areas ?? [];
+    const merged = new Set([
+      ...fromWorkspace,
+      ...materialAreas,
+      ...localAddedAreas,
+    ]);
+    return [...merged].sort((a, b) => a.localeCompare(b, "ru"));
+  }, [workspace?.application_areas, materialAreas, localAddedAreas]);
 
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
@@ -151,6 +165,11 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
 
         <fieldset className="form-section">
           <legend>Области применения</legend>
+          {areas.length === 0 && (
+            <p className="tab-placeholder tab-placeholder--inline">
+              Области не найдены в workspace — добавьте вручную ниже
+            </p>
+          )}
           <div className="checkbox-list">
             {areas.map((area) => (
               <label key={area} className="checkbox-item">
@@ -193,8 +212,19 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
               onClick={() => {
                 const trimmed = newArea.trim();
                 if (!trimmed || areas.includes(trimmed)) return;
-                setAreas([...areas, trimmed]);
-                onDraftChange({...material, metadata: {...metadata, application_area:[...(metadata.application_area ?? []), trimmed]}})
+                setLocalAddedAreas((prev) =>
+                  prev.includes(trimmed) ? prev : [...prev, trimmed],
+                );
+                onDraftChange({
+                  ...material,
+                  metadata: {
+                    ...metadata,
+                    application_area: [
+                      ...(metadata.application_area ?? []),
+                      trimmed,
+                    ],
+                  },
+                });
                 setNewArea("");
               }}
             >

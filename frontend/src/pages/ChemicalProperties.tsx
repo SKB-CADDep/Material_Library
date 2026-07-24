@@ -231,7 +231,6 @@ export function ChemicalProperties({
     y: number; 
     rowIndex: number | null;
   } | null>(null);
-  const [selectedElement, setSelectedElement] = useState<Elements | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   
   

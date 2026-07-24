@@ -11,6 +11,13 @@ import {
 import { UnitSelect } from "./UnitSelect";
 import { getSources } from "../api/sources";
 import { useQuery } from "@tanstack/react-query";
+import type { SourceItem } from "../types/api";
+import {
+  PropertySourceSelect,
+  isOrphanSource,
+  resolvePropertySourceName,
+} from "./PropertySourceSelect";
+import { chartValueLabel, yLabelWithUnit } from "./chartLabels";
 type MechanicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
@@ -21,6 +28,7 @@ type PropertyData = {
   value_unit?: string;
   comment?: string;
   property_subsource?: string | number | readonly string[];
+  source_ref_id?: string | null;
   min_value?: number;
   is_acceptance?: boolean;
 };
@@ -36,7 +44,7 @@ type StrengthCategory = {
 /** Имя источника КП: строковое поле или резолв source_ref_id через strength_sources. */
 function resolveKpSourceName(
   cat: StrengthCategory | undefined,
-  sources: Array<Record<string, string>>,
+  sources: SourceItem[],
 ): string {
   const byName = (cat?.source_strength_category ?? "").trim();
   if (byName) return byName;
@@ -61,6 +69,15 @@ type UndependMechPropertiesConfig = {
   legend: string;
   unitType: string;
 };
+function parsePairNumber(raw: string): number {
+  if (raw === "" || raw === "-") return NaN;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function formatPairNumber(value: number): string {
+  return Number.isFinite(value) ? String(value) : "";
+}
 /** Температурозависимые мех. свойства: от предела текучести до выносливости (как в Tkinter / catalog). */
 const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
   {
@@ -168,7 +185,11 @@ const UNDEPEND_MECH_PROPERTIES: UndependMechPropertiesConfig[] = [
 type ChartPoint = { temperature: number; value: number };
 
 function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
-  return (pairs ?? []).map(([temperature, value]) => ({ temperature, value }));
+  return (pairs ?? [])
+    .filter(([temperature, value]) =>
+      Number.isFinite(temperature) && Number.isFinite(value),
+    )
+    .map(([temperature, value]) => ({ temperature, value }));
 }
 
 function TemperatureGraph({
@@ -201,8 +222,8 @@ function TemperatureGraph({
           label={{ value: yLabel, angle: -90, position: "insideLeft" }}
         />
         <Tooltip
-          formatter={(value) => [value, "Значение"]}
-          labelFormatter={(label) => `Температура: ${label}°C`}
+          formatter={(value) => [value, chartValueLabel(yLabel)]}
+          labelFormatter={(label) => `Температура: ${label} °C`}
         />
         <Line
           type="linear"
@@ -216,16 +237,33 @@ function TemperatureGraph({
     </ResponsiveContainer>
   );
 }
-
+type TemperatureValueTableProps = {
+  pairs: Array<[number, number]> | undefined;
+  onChangeValue?: (rowIndex: number, raw: string) => void;
+  onChangeTemperature?: (rowIndex: number, raw: string) => void;
+  selectedRowIndex?: number | null;
+  onRowSelect?: (index: number) => void;
+  onAddRow?: () => void;
+  onDeleteRow?: () => void;
+};
 function TemperatureValueTable({
   pairs,
-}: {
-  pairs: Array<[number, number]> | undefined;
-}) {
+  onChangeValue,
+  onChangeTemperature,
+  selectedRowIndex,
+  onRowSelect,
+  onAddRow,
+  onDeleteRow
+}: TemperatureValueTableProps){
+  const isRowSelectionEnabled = Boolean(onRowSelect);
   return (
     <div className="table-wrapper">
       <div className="data-table-container">
-        <table className="data-table">
+        <table  className={
+            isRowSelectionEnabled
+              ? "data-table data-table--selectable-rows"
+              : "data-table"
+          }>
           <thead>
             <tr>
               <th>T, °C</th>
@@ -233,26 +271,60 @@ function TemperatureValueTable({
             </tr>
           </thead>
           <tbody>
-            {(pairs ?? []).map(([temperature, value], index) => (
-              <tr key={index}>
-                <td>
+            {(pairs ?? []).length === 0 ? (
+              <tr>
+                <td colSpan={2} className="table-empty">
+                  Нет точек — нажмите «+», чтобы добавить пару T–значение
+                </td>
+              </tr>
+            ) : (
+              (pairs ?? []).map(([temperature, value], index) => (
+              <tr key={index} className={
+                selectedRowIndex === index ? "table-row-selected" : ""
+              }>
+                <td  className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                  onClick={
+                    isRowSelectionEnabled
+                      ? () => onRowSelect?.(index)
+                      : undefined
+                  }>
                   <input
                     type="number"
-                    readOnly
-                    value={temperature}
+                    readOnly={!onChangeTemperature}
+                    value={formatPairNumber(temperature)}
+                    onChange={
+                      onChangeTemperature
+                        ? (e) => onChangeTemperature(index, e.target.value)
+                        : undefined
+                    }
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     className="table-cell-input"
                   />
                 </td>
-                <td>
+                <td className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                  onClick={
+                    isRowSelectionEnabled
+                      ? () => onRowSelect?.(index)
+                      : undefined
+                  }>
                   <input
                     type="number"
-                    readOnly
-                    value={value}
+                    readOnly={!onChangeValue}
+                    onChange={
+                      onChangeValue
+                        ? (e) => onChangeValue(index, e.target.value)
+                        : undefined
+                    }
+                    value={formatPairNumber(value)}
                     className="table-cell-input"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                   />
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -260,16 +332,22 @@ function TemperatureValueTable({
         <button
           type="button"
           className="table-control-btn"
-          disabled
-          title="Редактирование — позже"
+          title="Добавить пару"
+          onClick={() => onAddRow?.()}
+          disabled={!onAddRow}
         >
           +
         </button>
         <button
           type="button"
           className="table-control-btn"
-          disabled
-          title="Редактирование — позже"
+          title={
+            selectedRowIndex == null
+              ? "Сначала выберите строку"
+              : "Удалить пару"
+          }
+          disabled={selectedRowIndex == null || !onDeleteRow}
+          onClick={() => onDeleteRow?.()}
         >
           −
         </button>
@@ -325,6 +403,8 @@ export function MechanicalPropertiesTab({
     queryFn: getSources,
   });
   const mechanicalSources = result.data?.strength_sources ?? [];
+  const propertySources = result.data?.property_sources ?? [];
+  const propertySourceNames = propertySources.map((src) => src.name_source);
   const [categoryIndex, setCategoryIndex] = useState(0);
   const materialKey =
     (material as { id?: string } | undefined)?.id ??
@@ -341,6 +421,9 @@ export function MechanicalPropertiesTab({
   const sourceNames = mechanicalSources.map((src) => src.name_source);
   const showOrphan =
     currentSource !== "" && !sourceNames.includes(currentSource);
+  const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
+    number | null
+  >(null);
 
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
@@ -382,6 +465,11 @@ export function MechanicalPropertiesTab({
               ),
             )}
           </select>
+          {(mechanical_properties.strength_category?.length ?? 0) === 0 && (
+            <p className="tab-placeholder tab-placeholder--inline">
+              Нет категорий прочности — нажмите «+», чтобы добавить КП
+            </p>
+          )}
           <button
             type="button"
             className="table-control-btn"
@@ -525,6 +613,14 @@ export function MechanicalPropertiesTab({
           const unitId = `${prop.key}_value_unit`;
           const sourceId = `${prop.key}_property_subsource`;
           const commentId = `${prop.key}_comment`;
+          const currentPropertySource = resolvePropertySourceName(
+            data,
+            propertySources,
+          );
+          const showPropertyOrphan = isOrphanSource(
+            currentPropertySource,
+            propertySourceNames,
+          );
 
           return (
             <fieldset key={prop.key} className="form-section">
@@ -578,13 +674,25 @@ export function MechanicalPropertiesTab({
                   </div>
                   <div className="form-row">
                     <label htmlFor={sourceId}>Источник свойств:</label>
-                    <input
+                    <PropertySourceSelect
                       id={sourceId}
-                      type="text"
-                      value={data?.property_subsource ?? ""}
-                      className="input"
-                      readOnly
-                      title="Редактирование источника — позже"
+                      value={currentPropertySource}
+                      showOrphan={showPropertyOrphan}
+                      sources={propertySources}
+                      onChange={(name, sourceRefId) => {
+                        onDraftChange(
+                          patchCategoryProperty(
+                            material,
+                            mechanical_properties,
+                            categoryIndex,
+                            prop.key,
+                            {
+                              property_subsource: name,
+                              source_ref_id: sourceRefId,
+                            },
+                          ),
+                        );
+                      }}
                     />
                   </div>
                   <div className="form-row">
@@ -609,6 +717,79 @@ export function MechanicalPropertiesTab({
                   </div>
                   <TemperatureValueTable
                     pairs={data?.temperature_value_pairs}
+                    onChangeValue={(rowIndex, raw) => {
+                      const nextValue = parsePairNumber(raw);
+                      const prevPairs = data?.temperature_value_pairs ?? [];
+                      onDraftChange(
+                        patchCategoryProperty(
+                          material,
+                          mechanical_properties,
+                          categoryIndex,
+                          prop.key,
+                          {
+                            temperature_value_pairs: prevPairs.map((pair, i) =>
+                              i !== rowIndex ? pair : [pair[0], nextValue],
+                            ),
+                          },
+                        ),
+                      );
+                    }}
+                    onChangeTemperature={(rowIndex, raw) => {
+                      const nextTemperature = parsePairNumber(raw);
+                      const prevPairs = data?.temperature_value_pairs ?? [];
+                      onDraftChange(
+                        patchCategoryProperty(
+                          material,
+                          mechanical_properties,
+                          categoryIndex,
+                          prop.key,
+                          {
+                            temperature_value_pairs: prevPairs.map((pair, i) =>
+                              i !== rowIndex ? pair : [nextTemperature, pair[1]],
+                            ),
+                          },
+                        ),
+                      );
+                    }}
+                    selectedRowIndex={modulusSelectedRowIndex}
+                    onRowSelect={setModulusSelectedRowIndex}
+                    onAddRow={() => {
+                      const prev = data?.temperature_value_pairs ?? [];
+                      onDraftChange(
+                        patchCategoryProperty(
+                          material,
+                          mechanical_properties,
+                          categoryIndex,
+                          prop.key,
+                          { temperature_value_pairs: [...prev, [NaN, NaN]] },
+                        ),
+                      );
+                      setModulusSelectedRowIndex(null);
+                    }}
+                    onDeleteRow={() => {
+                      const prev = data?.temperature_value_pairs ?? [];
+                      if (prev.length === 0) return;
+                      if (
+                        !window.confirm(
+                          "Вы уверены, что хотите удалить эту пару?",
+                        )
+                      ) {
+                        return;
+                      }
+                      const next = prev.filter(
+                        (_, i) => i !== modulusSelectedRowIndex,
+                      );
+                      onDraftChange(
+                        patchCategoryProperty(
+                          material,
+                          mechanical_properties,
+                          categoryIndex,
+                          prop.key,
+                          { temperature_value_pairs: next },
+                        ),
+                      );
+                      setModulusSelectedRowIndex(null);
+                    }}
                   />
                 </div>
                 <div className="property-section-chart">
@@ -702,12 +883,20 @@ export function MechanicalPropertiesTab({
                 </tr>
               </thead>
               <tbody>
-                {hardnessRows.map((row, i) => (
+                {hardnessRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="table-empty">
+                      Нет данных о твердости
+                    </td>
+                  </tr>
+                ) : (
+                  hardnessRows.map((row, i) => (
                   <tr key={i}>
                     <td>{row.min_value ?? ""}</td>
                     <td>{row.max_value ?? ""}</td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
@@ -718,6 +907,14 @@ export function MechanicalPropertiesTab({
           const sourceId = `${prop.key}_property_subsource`;
           const commentId = `${prop.key}_comment`;
           const value = `${prop.key}_value`;
+          const currentPropertySource = resolvePropertySourceName(
+            data,
+            propertySources,
+          );
+          const showPropertyOrphan = isOrphanSource(
+            currentPropertySource,
+            propertySourceNames,
+          );
 
           return (
             <fieldset key={prop.key} className="form-section">
@@ -769,13 +966,25 @@ export function MechanicalPropertiesTab({
                   </div>
                   <div className="form-row">
                     <label htmlFor={sourceId}>Источник свойств:</label>
-                    <input
+                    <PropertySourceSelect
                       id={sourceId}
-                      type="text"
-                      value={data?.property_subsource ?? ""}
-                      className="input"
-                      readOnly
-                      title="Редактирование источника — позже"
+                      value={currentPropertySource}
+                      showOrphan={showPropertyOrphan}
+                      sources={propertySources}
+                      onChange={(name, sourceRefId) => {
+                        onDraftChange(
+                          patchCategoryProperty(
+                            material,
+                            mechanical_properties,
+                            categoryIndex,
+                            prop.key,
+                            {
+                              property_subsource: name,
+                              source_ref_id: sourceRefId,
+                            },
+                          ),
+                        );
+                      }}
                     />
                   </div>
                   <div className="form-row">
@@ -843,17 +1052,6 @@ export function MechanicalPropertiesTab({
   );
 }
 
-
-/** Показывать единицу из draft, если она есть. */
-function yLabelWithUnit(baseLabel: string, unit: string | undefined): string {
-  if (!unit) return baseLabel;
-  // если в подписи уже есть единица после запятой — заменяем хвост
-  const comma = baseLabel.lastIndexOf(",");
-  if (comma >= 0) {
-    return `${baseLabel.slice(0, comma)}, ${unit}`;
-  }
-  return `${baseLabel}, ${unit}`;
-}
 
 // алиас на случай старого имени экспорта
 export { MechanicalPropertiesTab as MechaicalPropertiesTab };

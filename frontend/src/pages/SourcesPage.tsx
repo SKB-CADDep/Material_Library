@@ -1,22 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSources } from "../api/sources";
-import React, { useState } from 'react';
-
-export interface SourceItem {
-  name_source: string;
-  description: string;
-  hyperlink: string;
-  user_name_change: string;
-  data_change: string;
-  user_name_found: string;
-  data_found: string;
-}
-
-export type SourcesResponse = {
-  property_sources: SourceItem[];
-  strength_sources: SourceItem[];
-  chemical_sources: SourceItem[];
-};
+import { useState } from "react";
+import type { SourceItem, SourceResponse } from "../types/api";
 
 const TAB_CONFIG = {
   property_sources: {
@@ -65,7 +50,7 @@ export function SourcesPage() {
     return <p className="tab-placeholder">Ошибка загрузки данных</p>;
   }
 
-  const data = result.data as SourcesResponse;
+  const data = result.data as SourceResponse;
   const currentTabConfig = TAB_CONFIG[activeTab];
   const currentData: SourceItem[] = data[currentTabConfig.apiKey] || [];
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWorkspace } from "../../context/WorkspaceContext";
+import { useWorkspace } from "../../context/WorkSpaceContext";
 
 export function OpenWorkspaceScreen() {
   const { openDirectory } = useWorkspace();

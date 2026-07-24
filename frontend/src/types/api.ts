@@ -12,6 +12,7 @@ filename: string;
 };
 
 export interface SourceItem {
+  id_source?: string;
   name_source: string;
   description: string;
   hyperlink: string;
