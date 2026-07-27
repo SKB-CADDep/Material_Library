@@ -13,7 +13,55 @@ import { useState, useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
 import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
 import { MechanicalPropertiesTab } from "./MechaicalPropertiesTab";
-import { ChemicalProperties } from "./ChemicalProperties"
+import { ChemicalProperties } from "./ChemicalProperties";
+import toast, { Toaster } from 'react-hot-toast';
+
+const TOAST_DURATIONS = {
+  SUCCESS: 5000,
+  ERROR: 7000,
+  WARNING: 6000,
+} as const;
+
+const showToastWithOK = (
+  message: string,
+  type: 'success' | 'error' | 'warning' = 'success'
+) => {
+  const duration = type === 'error'
+    ? TOAST_DURATIONS.ERROR
+    : type === 'warning'
+      ? TOAST_DURATIONS.WARNING
+      : TOAST_DURATIONS.SUCCESS;
+
+  toast.custom(
+    (t) => {
+      const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️'
+      };
+
+      return (
+        <div className={`toast-item toast-item-${type}`}>
+          <span className="toast-icon">{icons[type]}</span>
+          <span className={`toast-message toast-message-${type}`}>
+            {message}
+          </span>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className={`toast-ok-button toast-ok-button-${type}`}
+          >
+            ОК
+          </button>
+        </div>
+      );
+    },
+    {
+      duration,
+      position: 'top-right',
+      className: 'custom-toast-wrapper',
+    }
+  );
+};
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -119,16 +167,13 @@ function promptFilename(draft: Record<string, unknown>): string | null {
   try {
     return normalizeMaterialFilename(input);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Неверное имя файла";
-    window.alert(message);
+    const message = error instanceof Error ? error.message : "Неверное имя файла";
+    showToastWithOK(message, 'error');
     return null;
   }
 }
 
-function draftCopyAsNewFile(
-  draft: Record<string, unknown>
-): Record<string, unknown> {
+function draftCopyAsNewFile(draft: Record<string, unknown>): Record<string, unknown> {
   const copy = structuredClone(draft);
   copy.material_id = crypto.randomUUID();
   return copy;
@@ -146,8 +191,9 @@ export function EditorPage() {
     enabled: selectedId !== null,
   });
   const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
-  const [saveValidationError, setSaveValidationError] = useState<string | null>(null)
-  const [isNewMaterial, setIsNewMaterial] = useState(false)
+  const [saveValidationError, setSaveValidationError] = useState<string | null>(null);
+  const [isNewMaterial, setIsNewMaterial] = useState(false);
+
   useEffect(() => {
     if (isNewMaterial) {
       return;
@@ -160,16 +206,13 @@ export function EditorPage() {
       setDraft(structuredClone(detail.data));
     }
   }, [selectedId, detail.data, isNewMaterial]);
+
   const hasFileOnDisk = selectedId !== null && !isNewMaterial;
   const queryClient = useQueryClient();
+
   const newSave = useMutation({
-    mutationFn: ({
-      body,
-      filename,
-    }: {
-      body: Record<string, unknown>;
-      filename: string;
-    }) => saveNewMaterial(body, filename),
+    mutationFn: ({ body, filename }: { body: Record<string, unknown>; filename: string }) =>
+      saveNewMaterial(body, filename),
     onSuccess: (_data, variables) => {
       const id = variables.body.material_id as string;
       queryClient.setQueryData(["material", id], variables.body);
@@ -177,13 +220,24 @@ export function EditorPage() {
       setIsNewMaterial(false);
       setSelectedId(id);
       setDraft(structuredClone(variables.body));
+
+      showToastWithOK(`Материал "${variables.filename}" успешно сохранён`, 'success');
+    },
+    onError: (error: Error) => {
+      showToastWithOK(`Ошибка сохранения: ${error.message}`, 'error');
     },
   });
+
   const save = useMutation({
     mutationFn: () => saveMaterial(selectedId!, draft!),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["materials"] });
       queryClient.invalidateQueries({ queryKey: ["material", selectedId] });
+
+      showToastWithOK(`Материал "${data.filename}" успешно сохранён`, 'success');
+    },
+    onError: (error: Error) => {
+      showToastWithOK(`Ошибка сохранения: ${error.message}`, 'error');
     },
   });
 
@@ -217,6 +271,7 @@ export function EditorPage() {
     const error = validateMaterialDraftForSave(draft);
     if (error) {
       setSaveValidationError(error);
+      showToastWithOK(error, 'warning');
       return;
     }
     setSaveValidationError(null);
@@ -234,6 +289,7 @@ export function EditorPage() {
     const error = validateMaterialDraftForSave(draft);
     if (error) {
       setSaveValidationError(error);
+      showToastWithOK(error, 'warning');
       return;
     }
     setSaveValidationError(null);
@@ -278,6 +334,13 @@ export function EditorPage() {
 
   return (
     <div className="editor-page">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          className: 'custom-toast-wrapper',
+        }}
+      />
+
       <div className="editor-toolbar">
         <div className="material-select">
           <label htmlFor="material-select">Выберите материал:</label>
@@ -326,22 +389,6 @@ export function EditorPage() {
           </button>
         </div>
       </div>
-      {saveValidationError && (
-  <p className="editor-feedback error">{saveValidationError}</p>
-)}
-      {newSave.isError && <p className="editor-feedback-error">{newSave.error.message}</p>}
-      {save.isError && <p className="editor-feedback error">{save.error.message}</p>}
-      {save.isSuccess && (
-        <p className="editor-feedback success-message">
-          Материал {save.data.filename} успешно сохранён
-        </p>
-      )}
-       {newSave.isSuccess && (
-        <p className="editor-feedback success-message">
-          Материал {newSave.data.filename} успешно сохранён
-        </p>
-      )}
-      
 
       <div className="editor-body">
         <nav className="editor-subtabs">
@@ -370,15 +417,15 @@ export function EditorPage() {
             />
             <Route
               path="physical"
-              element={<PhysicalPropertiesTab material={draft ?? undefined}  onDraftChange={handleDraftChange}/>}
+              element={<PhysicalPropertiesTab material={draft ?? undefined} onDraftChange={setDraft} />}
             />
             <Route
               path="mechanical"
-              element={<MechanicalPropertiesTab material={draft ?? undefined}  onDraftChange={handleDraftChange}/>}
+              element={<MechanicalPropertiesTab material={draft ?? undefined} onDraftChange={setDraft} />}
             />
             <Route
               path="chemical"
-              element={<ChemicalProperties material={draft ?? undefined}  onDraftChange={handleDraftChange}/>}
+              element={<ChemicalProperties material={draft ?? undefined} onDraftChange={setDraft} />}
             />
           </Routes>
         </div>
