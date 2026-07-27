@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { WorkspaceProvider, useWorkspace } from "./context/WorkspaceContext";
+import { WorkspaceProvider, useWorkspace } from "./context/WorkSpaceContext";
 import { AppShell } from "./components/Layout/AppShell";
-import { OpenWorkspaceScreen } from "./components/Layout/OpenWorkspaceScreen";
+import { OpenWorkspaceScreen } from "./components/Layout/OpenWorkSpaceScreen";
 import { SelectionPage } from "./pages/SelectionPage";
 import { EditorPage } from "./pages/EditorPage";
 import { SourcesPage } from "./pages/SourcesPage";

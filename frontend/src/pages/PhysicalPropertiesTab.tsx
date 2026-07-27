@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getSources } from "../api/sources";
 import {
   LineChart,
   Line,
@@ -9,6 +11,20 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { UnitSelect } from "./UnitSelect.tsx"
+import {
+  PropertySourceSelect,
+  isOrphanSource,
+  resolvePropertySourceName,
+} from "./PropertySourceSelect.tsx";
+import { chartValueLabel, yLabelWithUnit } from "./chartLabels.ts";
+
+const PHYSICAL_Y_LABELS = {
+  modulus_elasticity: "E, МПа",
+  coefficient_linear_expansion: "α, ·10⁻⁶ 1/°C",
+  coefficient_thermal_conductivity: "λ, Вт/(м·°C)",
+  density: "ρ, кг/м³",
+  specific_heat: "C, Дж/(кг·°C)",
+} as const;
 
 type PhysicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
@@ -62,8 +78,8 @@ function TemperatureGraph({ data, yLabel = "Значение" }: TemperatureGrap
           label={{ value: yLabel, angle: -90, position: "insideLeft" }}
         />
         <Tooltip
-          formatter={(value) => [value, "Значение"]}
-          labelFormatter={(label) => `Температура: ${label}°C`}
+          formatter={(value) => [value, chartValueLabel(yLabel)]}
+          labelFormatter={(label) => `Температура: ${label} °C`}
         />
         <Line
           type="linear"
@@ -116,7 +132,14 @@ function TemperatureValueTable({
             </tr>
           </thead>
           <tbody>
-            {(pairs ?? []).map(([temperature, value], index) => (
+            {(pairs ?? []).length === 0 ? (
+              <tr>
+                <td colSpan={2} className="table-empty">
+                  Нет точек — нажмите «+», чтобы добавить пару T–значение
+                </td>
+              </tr>
+            ) : (
+              (pairs ?? []).map(([temperature, value], index) => (
               <tr
                 key={index}
                 className={
@@ -168,7 +191,8 @@ function TemperatureValueTable({
                   />
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -201,9 +225,27 @@ function TemperatureValueTable({
 }
 
 export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPropertiesTabProps) {
+  const result = useQuery({
+    queryKey: ["sources"],
+    queryFn: getSources,
+  });
+  const physicalSources = result.data?.property_sources ?? [];
   const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
     number | null
   >(null);
+  const [coefficientLinearSelectedRowIndex, setCoefficientLinearSelectedRowIndex] = useState<
+    number | null
+  >(null);
+  const [coefficientThermalSelectedRowIndex, setcoefficientThermalSelectedRowIndex] = useState<
+    number | null
+  >(null);
+  const [densitySelectedRowIndex, setDensitySelectedRowIndex] = useState<
+    number | null
+  >(null);
+  const [specificHeatSelectedRowIndex, setSpecificHeatSelectedRowIndex] = useState<
+    number | null
+  >(null);
+
 
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
@@ -215,30 +257,72 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
       value_unit?: string;
       comment?: string;
       property_subsource?: string | number | readonly string[];
+      source_ref_id?: string | null;
     };
     coefficient_linear_expansion?: {
       temperature_value_pairs?: Array<[number, number]>;
       value_unit?: string;
       comment?: string;
       property_subsource?: string | number | readonly string[];
+      source_ref_id?: string | null;
     };
     coefficient_thermal_conductivity?: {
       temperature_value_pairs?: Array<[number, number]>;
       value_unit?: string;
       comment?: string;
       property_subsource?: string | number | readonly string[];
+      source_ref_id?: string | null;
     };
     density?: {
       temperature_value_pairs?: Array<[number, number]>;
       value_unit?: string;
       comment?: string;
+      property_subsource?: string | number | readonly string[];
+      source_ref_id?: string | null;
     };
     specific_heat?: {
       temperature_value_pairs?: Array<[number, number]>;
       value_unit?: string;
       comment?: string;
+      property_subsource?: string | number | readonly string[];
+      source_ref_id?: string | null;
     };
   };
+  const currentModulusSource = resolvePropertySourceName(
+    physical_properties.modulus_elasticity,
+    physicalSources,
+  );
+  const currentCoefficientLinearSource = resolvePropertySourceName(
+    physical_properties.coefficient_linear_expansion,
+    physicalSources,
+  );
+  const currentCoefficientThermalSource = resolvePropertySourceName(
+    physical_properties.coefficient_thermal_conductivity,
+    physicalSources,
+  );
+  const currentDensitySource = resolvePropertySourceName(
+    physical_properties.density,
+    physicalSources,
+  );
+  const currentSpecificHeatSource = resolvePropertySourceName(
+    physical_properties.specific_heat,
+    physicalSources,
+  );
+  const sourceNames = physicalSources.map((src) => src.name_source);
+  const showOrphanModulus = isOrphanSource(currentModulusSource, sourceNames);
+  const showOrphanLinear = isOrphanSource(
+    currentCoefficientLinearSource,
+    sourceNames,
+  );
+  const showOrphanThermal = isOrphanSource(
+    currentCoefficientThermalSource,
+    sourceNames,
+  );
+  const showOrphanDensity = isOrphanSource(currentDensitySource, sourceNames);
+  const showOrphanSpecificHeat = isOrphanSource(
+    currentSpecificHeatSource,
+    sourceNames,
+  );
 
   return (
     <form
@@ -274,13 +358,23 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 <label htmlFor="modulus_elasticity_property_subsource">
                   Источник свойств:
                 </label>
-                <input
+                <PropertySourceSelect
                   id="modulus_elasticity_property_subsource"
-                  type="number"
-                  value={physical_properties.modulus_elasticity?.property_subsource ?? ""}
-                  className="input"
-                  onChange={(event) => {
-                    const text = event.target.value;
+                  value={currentModulusSource}
+                  showOrphan={showOrphanModulus}
+                  sources={physicalSources}
+                  onChange={(name, sourceRefId) => {
+                    onDraftChange({
+                      ...material,
+                      physical_properties: {
+                        ...physical_properties,
+                        modulus_elasticity: {
+                          ...physical_properties.modulus_elasticity,
+                          property_subsource: name,
+                          source_ref_id: sourceRefId,
+                        },
+                      },
+                    });
                   }}
                 />
               </div>
@@ -385,7 +479,10 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 data={toChartData(
                   physical_properties.modulus_elasticity?.temperature_value_pairs,
                 )}
-                yLabel="E, МПа"
+                yLabel={yLabelWithUnit(
+                  PHYSICAL_Y_LABELS.modulus_elasticity,
+                  physical_properties.modulus_elasticity?.value_unit,
+                )}
               />
             </div>
           </div>
@@ -419,16 +516,23 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 <label htmlFor="coefficient_linear_expansion_property_subsource">
                   Источник свойств:
                 </label>
-                <input
+                <PropertySourceSelect
                   id="coefficient_linear_expansion_property_subsource"
-                  type="number"
-                  value={
-                    physical_properties.coefficient_linear_expansion?.property_subsource ??
-                    ""
-                  }
-                  className="input"
-                  onChange={(event) => {
-                    const text = event.target.value;
+                  value={currentCoefficientLinearSource}
+                  showOrphan={showOrphanLinear}
+                  sources={physicalSources}
+                  onChange={(name, sourceRefId) => {
+                    onDraftChange({
+                      ...material,
+                      physical_properties: {
+                        ...physical_properties,
+                        coefficient_linear_expansion: {
+                          ...physical_properties.coefficient_linear_expansion,
+                          property_subsource: name,
+                          source_ref_id: sourceRefId,
+                        },
+                      },
+                    });
                   }}
                 />
               </div>
@@ -452,6 +556,83 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 pairs={
                   physical_properties.coefficient_linear_expansion?.temperature_value_pairs
                 }
+                onChangeValue={(rowIndex, raw) => {
+                  const nextValue = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.coefficient_linear_expansion?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_linear_expansion: {
+                        ...physical_properties.coefficient_linear_expansion,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [pair[0], nextValue],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                onChangeTemperature={(rowIndex, raw) => {
+                  const nextTemperature = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.coefficient_linear_expansion?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_linear_expansion: {
+                        ...physical_properties.coefficient_linear_expansion,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [nextTemperature, pair[1]],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                selectedRowIndex={coefficientLinearSelectedRowIndex}
+                onRowSelect={setCoefficientLinearSelectedRowIndex}
+                onAddRow={() => {
+                  const prev =
+                    physical_properties.coefficient_linear_expansion?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_linear_expansion: {
+                        ...physical_properties.coefficient_linear_expansion,
+                        temperature_value_pairs: [...prev, [NaN, NaN]],
+                      },
+                    },
+                  });
+                  setCoefficientLinearSelectedRowIndex(null);
+                }}
+                onDeleteRow={() => {
+                  const prev = physical_properties.coefficient_linear_expansion?.temperature_value_pairs ?? [];
+                  if (prev.length === 0) return;
+                  if (
+                    !window.confirm(
+                      "Вы уверены, что хотите удалить эту пару?",
+                    )
+                  ) {
+                    return;
+                  }
+                  const next = prev.filter((_, i) => i !== coefficientLinearSelectedRowIndex);
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_linear_expansion: {
+                        ...physical_properties.coefficient_linear_expansion,
+                        temperature_value_pairs: next,
+                      },
+                    },
+                  });
+                  setCoefficientLinearSelectedRowIndex(null);
+                }}
               />
             </div>
             <div className="property-section-chart">
@@ -459,7 +640,10 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 data={toChartData(
                   physical_properties.coefficient_linear_expansion?.temperature_value_pairs,
                 )}
-                yLabel="α, ·10⁻⁶ 1/°C"
+                yLabel={yLabelWithUnit(
+                  PHYSICAL_Y_LABELS.coefficient_linear_expansion,
+                  physical_properties.coefficient_linear_expansion?.value_unit,
+                )}
               />
             </div>
           </div>
@@ -495,16 +679,23 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 <label htmlFor="coefficient_thermal_conductivity_property_subsource">
                   Источник свойств:
                 </label>
-                <input
+                <PropertySourceSelect
                   id="coefficient_thermal_conductivity_property_subsource"
-                  type="number"
-                  value={
-                    physical_properties.coefficient_thermal_conductivity
-                      ?.property_subsource ?? ""
-                  }
-                  className="input"
-                  onChange={(event) => {
-                    const text = event.target.value;
+                  value={currentCoefficientThermalSource}
+                  showOrphan={showOrphanThermal}
+                  sources={physicalSources}
+                  onChange={(name, sourceRefId) => {
+                    onDraftChange({
+                      ...material,
+                      physical_properties: {
+                        ...physical_properties,
+                        coefficient_thermal_conductivity: {
+                          ...physical_properties.coefficient_thermal_conductivity,
+                          property_subsource: name,
+                          source_ref_id: sourceRefId,
+                        },
+                      },
+                    });
                   }}
                 />
               </div>
@@ -532,6 +723,83 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                   physical_properties.coefficient_thermal_conductivity
                     ?.temperature_value_pairs
                 }
+                onChangeValue={(rowIndex, raw) => {
+                  const nextValue = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.coefficient_thermal_conductivity?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_thermal_conductivity: {
+                        ...physical_properties.coefficient_thermal_conductivity,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [pair[0], nextValue],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                onChangeTemperature={(rowIndex, raw) => {
+                  const nextTemperature = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.coefficient_thermal_conductivity?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_thermal_conductivity: {
+                        ...physical_properties.coefficient_thermal_conductivity,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [nextTemperature, pair[1]],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                selectedRowIndex={coefficientThermalSelectedRowIndex}
+                onRowSelect={setcoefficientThermalSelectedRowIndex}
+                onAddRow={() => {
+                  const prev =
+                    physical_properties.coefficient_thermal_conductivity?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_thermal_conductivity: {
+                        ...physical_properties.coefficient_thermal_conductivity,
+                        temperature_value_pairs: [...prev, [NaN, NaN]],
+                      },
+                    },
+                  });
+                  setcoefficientThermalSelectedRowIndex(null);
+                }}
+                onDeleteRow={() => {
+                  const prev = physical_properties.coefficient_thermal_conductivity?.temperature_value_pairs ?? [];
+                  if (prev.length === 0) return;
+                  if (
+                    !window.confirm(
+                      "Вы уверены, что хотите удалить эту пару?",
+                    )
+                  ) {
+                    return;
+                  }
+                  const next = prev.filter((_, i) => i !== coefficientLinearSelectedRowIndex);
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      coefficient_thermal_conductivity: {
+                        ...physical_properties.coefficient_thermal_conductivity,
+                        temperature_value_pairs: next,
+                      },
+                    },
+                  });
+                  setcoefficientThermalSelectedRowIndex(null);
+                }}
               />
             </div>
             <div className="property-section-chart">
@@ -540,7 +808,10 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                   physical_properties.coefficient_thermal_conductivity
                     ?.temperature_value_pairs,
                 )}
-                yLabel="λ, Вт/(м·°C)"
+                yLabel={yLabelWithUnit(
+                  PHYSICAL_Y_LABELS.coefficient_thermal_conductivity,
+                  physical_properties.coefficient_thermal_conductivity?.value_unit,
+                )}
               />
             </div>
           </div>
@@ -571,6 +842,28 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
               </div>
               <div className="form-row">
+                <label htmlFor="density_property_subsource">Источник свойств:</label>
+                <PropertySourceSelect
+                  id="density_property_subsource"
+                  value={currentDensitySource}
+                  showOrphan={showOrphanDensity}
+                  sources={physicalSources}
+                  onChange={(name, sourceRefId) => {
+                    onDraftChange({
+                      ...material,
+                      physical_properties: {
+                        ...physical_properties,
+                        density: {
+                          ...physical_properties.density,
+                          property_subsource: name,
+                          source_ref_id: sourceRefId,
+                        },
+                      },
+                    });
+                  }}
+                />
+              </div>
+              <div className="form-row">
                 <label htmlFor="density_comment">Комментарий:</label>
                 <input
                   id="density_comment"
@@ -587,12 +880,92 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               </div>
               <TemperatureValueTable
                 pairs={physical_properties.density?.temperature_value_pairs}
+                onChangeValue={(rowIndex, raw) => {
+                  const nextValue = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.density?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      density: {
+                        ...physical_properties.density,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [pair[0], nextValue],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                onChangeTemperature={(rowIndex, raw) => {
+                  const nextTemperature = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.density?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      density: {
+                        ...physical_properties.density,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [nextTemperature, pair[1]],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                selectedRowIndex={densitySelectedRowIndex}
+                onRowSelect={setDensitySelectedRowIndex}
+                onAddRow={() => {
+                  const prev =
+                    physical_properties.density?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      density: {
+                        ...physical_properties.density,
+                        temperature_value_pairs: [...prev, [NaN, NaN]],
+                      },
+                    },
+                  });
+                  setDensitySelectedRowIndex(null);
+                }}
+                onDeleteRow={() => {
+                  const prev = physical_properties.density?.temperature_value_pairs ?? [];
+                  if (prev.length === 0) return;
+                  if (
+                    !window.confirm(
+                      "Вы уверены, что хотите удалить эту пару?",
+                    )
+                  ) {
+                    return;
+                  }
+                  const next = prev.filter((_, i) => i !== densitySelectedRowIndex);
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      density: {
+                        ...physical_properties.density,
+                        temperature_value_pairs: next,
+                      },
+                    },
+                  });
+                  setDensitySelectedRowIndex(null);
+                }}
               />
             </div>
             <div className="property-section-chart">
               <TemperatureGraph
                 data={toChartData(physical_properties.density?.temperature_value_pairs)}
-                yLabel="ρ, кг/м³"
+                yLabel={yLabelWithUnit(
+                  PHYSICAL_Y_LABELS.density,
+                  physical_properties.density?.value_unit,
+                )}
               />
             </div>
           </div>
@@ -623,6 +996,30 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
               </div>
               <div className="form-row">
+                <label htmlFor="specific_heat_property_subsource">
+                  Источник свойств:
+                </label>
+                <PropertySourceSelect
+                  id="specific_heat_property_subsource"
+                  value={currentSpecificHeatSource}
+                  showOrphan={showOrphanSpecificHeat}
+                  sources={physicalSources}
+                  onChange={(name, sourceRefId) => {
+                    onDraftChange({
+                      ...material,
+                      physical_properties: {
+                        ...physical_properties,
+                        specific_heat: {
+                          ...physical_properties.specific_heat,
+                          property_subsource: name,
+                          source_ref_id: sourceRefId,
+                        },
+                      },
+                    });
+                  }}
+                />
+              </div>
+              <div className="form-row">
                 <label htmlFor="specific_heat_comment">Комментарий:</label>
                 <input
                   id="specific_heat_comment"
@@ -638,6 +1035,83 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               </div>
               <TemperatureValueTable
                 pairs={physical_properties.specific_heat?.temperature_value_pairs}
+                onChangeValue={(rowIndex, raw) => {
+                  const nextValue = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.specific_heat?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      specific_heat: {
+                        ...physical_properties.specific_heat,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [pair[0], nextValue],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                onChangeTemperature={(rowIndex, raw) => {
+                  const nextTemperature = parsePairNumber(raw);
+                  const prevPairs =
+                    physical_properties.specific_heat?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      specific_heat: {
+                        ...physical_properties.specific_heat,
+                        temperature_value_pairs: prevPairs.map((pair, i) =>
+                          i !== rowIndex ? pair : [nextTemperature, pair[1]],
+                        ),
+                      },
+                    },
+                  });
+                }}
+                selectedRowIndex={specificHeatSelectedRowIndex}
+                onRowSelect={setSpecificHeatSelectedRowIndex}
+                onAddRow={() => {
+                  const prev =
+                    physical_properties.specific_heat?.temperature_value_pairs ??
+                    [];
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      specific_heat: {
+                        ...physical_properties.specific_heat,
+                        temperature_value_pairs: [...prev, [NaN, NaN]],
+                      },
+                    },
+                  });
+                  setSpecificHeatSelectedRowIndex(null);
+                }}
+                onDeleteRow={() => {
+                  const prev = physical_properties.specific_heat?.temperature_value_pairs ?? [];
+                  if (prev.length === 0) return;
+                  if (
+                    !window.confirm(
+                      "Вы уверены, что хотите удалить эту пару?",
+                    )
+                  ) {
+                    return;
+                  }
+                  const next = prev.filter((_, i) => i !== specificHeatSelectedRowIndex);
+                  onDraftChange({
+                    ...material,
+                    physical_properties: {
+                      ...physical_properties,
+                      specific_heat: {
+                        ...physical_properties.specific_heat,
+                        temperature_value_pairs: next,
+                      },
+                    },
+                  });
+                  setSpecificHeatSelectedRowIndex(null);
+                }}
               />
             </div>
             <div className="property-section-chart">
@@ -645,7 +1119,10 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
                 data={toChartData(
                   physical_properties.specific_heat?.temperature_value_pairs,
                 )}
-                yLabel="C, Дж/(кг·°C)"
+                yLabel={yLabelWithUnit(
+                  PHYSICAL_Y_LABELS.specific_heat,
+                  physical_properties.specific_heat?.value_unit,
+                )}
               />
             </div>
           </div>

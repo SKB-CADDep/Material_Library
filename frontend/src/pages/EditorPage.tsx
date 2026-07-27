@@ -118,6 +118,16 @@ function createEmptyMaterialDraft(): Record<string, unknown> {
         temperature_value_pairs: [],
         property_last_updated: "",
       },
+      specific_heat: {
+        property_name: "Удельная теплоёмкость",
+        property_unit: "Дж/(кг·°С)",
+        property_source: "",
+        property_subsource: "",
+        comment: "",
+        temperature_value_pairs: [],
+        property_last_updated: "",
+        value_unit: "Дж/(кг·°С)",
+      },
     },
     mechanical_properties: {
       strength_category: [
@@ -233,6 +243,13 @@ export function EditorPage() {
 
   const saveBusy = save.isPending || newSave.isPending;
 
+  function handleDraftChange(next: Record<string, unknown>) {
+    setDraft(next);
+    setSaveValidationError(null);
+    save.reset();
+    newSave.reset();
+  }
+
   if (result.isLoading) {
     return <p className="status-message">Загрузка…</p>;
   }
@@ -280,6 +297,39 @@ export function EditorPage() {
     if (!filename) return;
     const body = hasFileOnDisk ? draftCopyAsNewFile(draft) : draft;
     newSave.mutate({ body, filename });
+  }
+
+  async function handleRevertChanges() {
+    if (!draft) return;
+
+    if (isNewMaterial) {
+      if (
+        !window.confirm("Сбросить создание нового материала?")
+      ) {
+        return;
+      }
+      handleCreateNew();
+      setSaveValidationError(null);
+      return;
+    }
+
+    if (!selectedId) return;
+
+    if (
+      !window.confirm("Отменить все несохранённые изменения?")
+    ) {
+      return;
+    }
+
+    await queryClient.refetchQueries({ queryKey: ["material", selectedId] });
+    const fresh = queryClient.getQueryData<Record<string, unknown>>([
+      "material",
+      selectedId,
+    ]);
+    if (fresh) {
+      setDraft(structuredClone(fresh));
+    }
+    setSaveValidationError(null);
   }
 
   return (
@@ -334,7 +384,7 @@ export function EditorPage() {
           >
             {newSave.isPending ? "Сохранение…" : "Сохранить как…"}
           </button>
-          <button type="button" className="button-secondary" disabled>
+          <button type="button" className="button-secondary" disabled={!draft||saveBusy} onClick={handleRevertChanges}>
             Отменить изменения
           </button>
         </div>
@@ -362,7 +412,7 @@ export function EditorPage() {
             <Route
               path="general"
               element={
-                <AddRedactor material={draft ?? undefined} onDraftChange={setDraft} />
+                <AddRedactor material={draft ?? undefined} onDraftChange={handleDraftChange} />
               }
             />
             <Route

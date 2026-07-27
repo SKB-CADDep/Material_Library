@@ -1,7 +1,7 @@
 import { api } from "./client";
-import type { SourcesResponse } from "../types/api";
+import type { SourceResponse } from "../types/api";
 
-export async function getSources(): Promise<SourcesResponse>{
-    const {data} = await api.get<SourcesResponse>("/sources");
+export async function getSources(): Promise<SourceResponse>{
+    const {data} = await api.get<SourceResponse>("/sources");
     return data;
 }

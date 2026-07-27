@@ -573,6 +573,19 @@ select {
     text-align: center;
   }
 
+  .tab-placeholder--inline {
+    padding: 8px 0 12px;
+    text-align: left;
+  }
+
+  .table-empty {
+    padding: 16px 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+    font-style: italic;
+  }
+
   .general-form {
     max-width: 1200px;
   }

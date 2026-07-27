@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { useWorkspace } from "../../context/WorkspaceContext";
+import { useWorkspace } from "../../context/WorkSpaceContext";
 import { useState, useRef, useEffect } from 'react';
 
 export function AppShell() {
