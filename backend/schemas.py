@@ -71,3 +71,31 @@ class UnitResponse(BaseModel):
     unit_type: str
     system_unit: str
     units: list[str]
+
+class TemperatureSelectionColumn(BaseModel):
+    key: str
+    label: str
+    unit: str = ""
+    unit_type: str | None = None
+
+class TemperatureSelectionRow(BaseModel):
+    material_id: str
+    material_name: str
+    strength_category: str
+    source: str
+    max_temp: str | int | float | None = None
+    temperature_comment: str | None = None
+    values: dict[str, float | str | None]
+
+class TemperatureSelectionRequest(BaseModel):
+    prop_type: Literal["physical", "mechanical", "hardness"]
+    area: str | None = None
+    areas: list[str] | None = None
+    temperature: float = 20.0
+
+class TemperatureSelectionResponse(BaseModel):
+    prop_type: Literal["physical", "mechanical", "hardness"]
+    temperature: float
+    area: str | None = None
+    columns: list[TemperatureSelectionColumn]
+    rows: list[TemperatureSelectionRow]

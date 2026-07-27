@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from backend.dependencies import get_app_state
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import health, materials, catalogs, sources
+from backend.routers import health, materials, catalogs, sources, selection
 
 
 @asynccontextmanager
@@ -27,3 +27,4 @@ app.include_router(health.router, prefix="/api")
 app.include_router(materials.router, prefix="/api")
 app.include_router(catalogs.router, prefix="/api")
 app.include_router(sources.router, prefix="/api")
+app.include_router(selection.router, prefix="/api")

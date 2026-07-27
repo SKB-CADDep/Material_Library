@@ -39,3 +39,37 @@ filename: string
     system_unit: string
     units: string[]
   }
+
+  export type PropType = "physical" | "mechanical" | "hardness";
+
+export type TemperatureSelectionColumn = {
+  key: string;
+  label: string;
+  unit: string;
+  unit_type?: string | null;
+};
+
+export type TemperatureSelectionRow = {
+  material_id: string;
+  material_name: string;
+  strength_category: string;
+  source: string;
+  max_temp?: string | number | null;
+  temperature_comment?: string | null;
+  values: Record<string, number | string | null>;
+};
+
+export type TemperatureSelectionRequest = {
+  prop_type: PropType;
+  temperature: number;
+  area?: string | null;      
+  areas?: string[] | null;   
+};
+
+export type TemperatureSelectionResponse = {
+  prop_type: PropType;
+  temperature: number;
+  area: string | null;
+  columns: TemperatureSelectionColumn[];
+  rows: TemperatureSelectionRow[];
+};

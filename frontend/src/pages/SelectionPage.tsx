@@ -1,24 +1,28 @@
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
+import { TempSelectionTab } from "./TempSelectionTab";
+
+function selectionSubtabClass({ isActive }: { isActive: boolean }) {
+    return isActive ? "editor-subtab active" : "editor-subtab";
+  }
 
 export function SelectionPage() {
   
     return (
       <div className="selection-page">
-        <h1>Подбор материала</h1>
-        <nav>
-            <NavLink to="/selection/temperature">
+        <nav className="editor-subtabs">
+            <NavLink to="/selection/temperature" className={selectionSubtabClass}>
                 Подбор по температуре
             </NavLink>
-            <NavLink to="/selection/calc">
+            <NavLink to="/selection/calc" className={selectionSubtabClass}>
                 Расчёт отдельно
             </NavLink>
-            <NavLink to="/selection/compare-props">
+            <NavLink to="/selection/compare-props" className={selectionSubtabClass}>
                    Сравнение материалов(свойства)
             </NavLink>
-            <NavLink to="/selection/compare-chem">
+            <NavLink to="/selection/compare-chem" className={selectionSubtabClass}>
                    Сравнение материалов(хим.состав)
             </NavLink>
-            <NavLink to="/selection/ashby">
+            <NavLink to="/selection/ashby" className={selectionSubtabClass}>
                    Диаграмма Эшби
             </NavLink>
         </nav>
@@ -28,11 +32,7 @@ export function SelectionPage() {
             <Route 
                 path="temperature"
                 element={
-                    <>
-                        <h2>
-                            Подбор по температуре
-                        </h2>
-                    </>
+                   <TempSelectionTab/>
                 }
             />
 

@@ -114,13 +114,39 @@ button{
     padding: 8px 16px;
 }
 
+/* Кнопки, стилизованные как поля ввода (фильтры, combobox) */
+button.input,
+button.area-filter-trigger {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+button.input:hover:not(:disabled),
+button.area-filter-trigger:hover:not(:disabled) {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+button.input:focus-visible,
+button.area-filter-trigger:focus-visible {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}
+
 button:disabled{
     background-color: #8a8c8f;
     color: white;
     cursor: not-allowed;
 }
 
-button:hover:not(:disabled){
+button:hover:not(:disabled):not(.input):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item) {
     background-color: var(--accent-hover);
 }
 
@@ -271,6 +297,249 @@ select {
     border-radius: var(--radius);
     background-color: var(--surface);
     color: var(--text);
+  }
+
+  /* Excel-like multiselect filter for application areas */
+  .area-filter {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .area-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .area-filter-trigger-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .area-filter-trigger-caret {
+    flex-shrink: 0;
+    margin-left: 8px;
+    color: var(--text-muted);
+  }
+
+  .area-filter-panel {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    padding: 8px;
+  }
+
+  .area-filter-panel--portal {
+    position: fixed;
+    z-index: 2000;
+  }
+
+  .area-filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .area-filter-action {
+    padding: 4px 8px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .area-filter-action:hover:not(:disabled) {
+    background-color: var(--accent-soft);
+  }
+
+  .area-filter-action:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .area-filter-list.checkbox-list {
+    max-height: 220px;
+    margin: 0;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .area-filter-empty {
+    flex: 1;
+  }
+
+  /* Toolbar фильтров подбора (паритет Tkinter controls_frame) */
+  .selection-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .selection-page > .editor-subtabs {
+    flex-shrink: 0;
+  }
+
+  .selection-controls {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0 20px;
+    padding: 10px 12px;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .selection-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .selection-control label {
+    font-size: 14px;
+    color: var(--text);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .selection-control .input {
+    flex: none;
+  }
+
+  .selection-control .input:hover {
+    border-color: var(--border);
+  }
+
+  .selection-control .input:focus {
+    border-color: var(--accent);
+  }
+
+  .selection-control--prop-type select {
+    width: 200px;
+  }
+
+  /* В toolbar не растягивать фильтр областей (глобально .area-filter { flex: 1 }) */
+  .selection-controls .area-filter {
+    flex: none;
+    width: 280px;
+  }
+
+  .selection-control--area .area-filter {
+    flex: none;
+    width: 280px;
+  }
+
+  .selection-control--temperature input {
+    width: 72px;
+  }
+
+  /* Вкладка «Подбор по температуре»: toolbar + таблица на всю ширину */
+  .temp-selection-tab {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .selection-body {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .selection-table-panel {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+    overflow: hidden;
+  }
+
+  .selection-table-scroll {
+    width: 100%;
+    max-height: min(70vh, calc(100vh - 220px));
+    overflow: auto;
+  }
+
+  .selection-table {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+  }
+
+  .selection-table-col--index {
+    width: 48px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .selection-table-col--material {
+    min-width: 200px;
+    max-width: 320px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .selection-table-col--kp {
+    width: 64px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .selection-table-col--source {
+    min-width: 120px;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .selection-table-col--temp {
+    width: 100px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .selection-table-col--value {
+    min-width: 88px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .selection-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--bg);
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  .tab-placeholder--error {
+    color: var(--danger);
   }
 
   /* Контейнер для списка чекбоксов */
