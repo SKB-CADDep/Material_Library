@@ -1,15 +1,17 @@
 {
-  "material_id": "4ef93888-ac2e-495b-a25a-025c038125d8",
+  "material_id": "dbe0652b-6ff6-46ed-b5da-272bd43b825d",
   "metadata": {
-    "name_material_standard": "12ХМ",
-    "name_material_alternative": [],
+    "name_material_standard": "10ХСНД",
+    "name_material_alternative": [
+      "10ХСНД-Ш"
+    ],
     "application_area": [
-      "Конструкционные материалы"
+      "Трубки конденсатора"
     ],
     "comment": "",
     "classification": {
-      "classification_category": "Жаропрочная низколегированная",
-      "classification_class": "Перлитный",
+      "classification_category": "Сталь конструкционная для сварных конструкций",
+      "classification_class": "",
       "classification_subclass": ""
     }
   },
@@ -22,7 +24,7 @@
       "property_type": "mechanical",
       "strength_groups": [
         {
-          "strength_category": "КП24",
+          "strength_category": "КП40",
           "comment": "",
           "properties": [
             {
@@ -33,8 +35,7 @@
                 "comment": ""
               }
             }
-          ],
-          "source_ref_id": "fc19e5ba-ec82-4c3c-aced-5f40809c3c96"
+          ]
         }
       ]
     },
@@ -44,60 +45,78 @@
         {
           "property_name": "composition",
           "data": {
-            "composition_source": "ГОСТ 5520 - 79",
+            "composition_source": "ГОСТ 19281 - 2014",
             "other_elements": [
               {
                 "element": "C",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.16
+                "max_value": 0.12
               },
               {
                 "element": "Si",
-                "unit_value": "%",
-                "min_value": 0.17,
-                "max_value": 0.37
-              },
-              {
-                "element": "Mn",
-                "unit_value": "%",
-                "min_value": 0.4,
-                "max_value": 0.7
-              },
-              {
-                "element": "Ni",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.3
-              },
-              {
-                "element": "S",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.025
-              },
-              {
-                "element": "P",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.025
-              },
-              {
-                "element": "Cr",
                 "unit_value": "%",
                 "min_value": 0.8,
                 "max_value": 1.1
               },
               {
-                "element": "Mo",
+                "element": "Mn",
+                "unit_value": "%",
+                "min_value": 0.5,
+                "max_value": 0.8
+              },
+              {
+                "element": "Ni",
+                "unit_value": "%",
+                "min_value": 0.5,
+                "max_value": 0.8
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.035
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.03
+              },
+              {
+                "element": "Cr",
+                "unit_value": "%",
+                "min_value": 0.6,
+                "max_value": 0.9
+              },
+              {
+                "element": "V",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.12
+              },
+              {
+                "element": "N",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.008
+              },
+              {
+                "element": "Cu",
                 "unit_value": "%",
                 "min_value": 0.4,
-                "max_value": 0.55
+                "max_value": 0.6
+              },
+              {
+                "element": "As",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.08
               }
             ],
             "comment": "",
             "base_element": "Fe",
-            "source_ref_id": "cd565f11-4277-4ff3-8919-e598b608ae0c"
+            "source_ref_id": "414c9f07-8174-4fd0-94fd-f67ab8e46b54"
           }
         }
       ]
