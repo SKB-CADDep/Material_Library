@@ -8,580 +8,746 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "",
+      "classification_category": "Конструкционная углеродистая обыкновенного качества",
       "classification_class": "",
       "classification_subclass": ""
     }
   },
-  "physical_properties": {
-    "modulus_elasticity": {
-      "property_name": "Модуль упругости",
-      "property_unit": "МПа",
-      "property_source": "",
-      "property_subsource": "",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          194000.0
-        ],
-        [
-          100.0,
-          192000.0
-        ],
-        [
-          200.0,
-          187000.0
-        ],
-        [
-          300.0,
-          183000.0
-        ],
-        [
-          400.0,
-          178000.0
-        ],
-        [
-          500.0,
-          167000.0
-        ],
-        [
-          600.0,
-          159000.0
-        ],
-        [
-          700.0,
-          146000.0
-        ],
-        [
-          800.0,
-          120000.0
-        ],
-        [
-          900.0,
-          99000.0
-        ]
-      ],
-      "property_last_updated": "2025-09-11T09:47:41.116687"
+  "property_groups": [
+    {
+      "property_type": "physical",
+      "properties": [
+        {
+          "property_name": "modulus_elasticity",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                194000.0
+              ],
+              [
+                100.0,
+                192000.0
+              ],
+              [
+                200.0,
+                187000.0
+              ],
+              [
+                300.0,
+                183000.0
+              ],
+              [
+                400.0,
+                178000.0
+              ],
+              [
+                500.0,
+                167000.0
+              ],
+              [
+                600.0,
+                159000.0
+              ],
+              [
+                700.0,
+                146000.0
+              ],
+              [
+                800.0,
+                120000.0
+              ],
+              [
+                900.0,
+                99000.0
+              ]
+            ],
+            "value_unit": "МПа",
+            "comment": ""
+          }
+        },
+        {
+          "property_name": "coefficient_linear_expansion",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                11.9
+              ],
+              [
+                200.0,
+                12.5
+              ],
+              [
+                300.0,
+                13.1
+              ],
+              [
+                400.0,
+                13.6
+              ],
+              [
+                500.0,
+                14.0
+              ],
+              [
+                600.0,
+                14.4
+              ]
+            ],
+            "value_unit": "1/С",
+            "comment": ""
+          }
+        },
+        {
+          "property_name": "coefficient_thermal_conductivity",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                55.0
+              ],
+              [
+                200.0,
+                54.0
+              ],
+              [
+                300.0,
+                50.0
+              ],
+              [
+                400.0,
+                45.0
+              ],
+              [
+                500.0,
+                39.0
+              ],
+              [
+                600.0,
+                34.0
+              ],
+              [
+                700.0,
+                30.0
+              ]
+            ],
+            "value_unit": "Вт/(м*С)",
+            "comment": ""
+          }
+        },
+        {
+          "property_name": "density",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                7820.0
+              ],
+              [
+                100.0,
+                7820.0
+              ]
+            ],
+            "value_unit": "кг/м3",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "specific_heat",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                460.0
+              ],
+              [
+                100.0,
+                460.0
+              ]
+            ],
+            "value_unit": "Дж/(кг*С)",
+            "comment": ""
+          }
+        }
+      ]
     },
-    "coefficient_linear_expansion": {
-      "property_name": "Коэффициент линейного расширения",
-      "property_unit": "1/°С",
-      "property_source": "",
-      "property_subsource": "",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          100.0,
-          11.9
-        ],
-        [
-          200.0,
-          12.5
-        ],
-        [
-          300.0,
-          13.1
-        ],
-        [
-          400.0,
-          13.6
-        ],
-        [
-          500.0,
-          14.0
-        ],
-        [
-          600.0,
-          14.4
-        ]
-      ],
-      "property_last_updated": "2025-09-11T09:47:41.116687"
+    {
+      "property_type": "mechanical",
+      "strength_groups": [
+        {
+          "strength_category": "КП20",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    206.0
+                  ],
+                  [
+                    200.0,
+                    216.0
+                  ],
+                  [
+                    300.0,
+                    206.0
+                  ],
+                  [
+                    400.0,
+                    157.0
+                  ],
+                  [
+                    500.0,
+                    126.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    422.0
+                  ],
+                  [
+                    200.0,
+                    500.0
+                  ],
+                  [
+                    300.0,
+                    490.0
+                  ],
+                  [
+                    400.0,
+                    275.0
+                  ],
+                  [
+                    500.0,
+                    216.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+              }
+            },
+            {
+              "property_name": "impact_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    56.0
+                  ],
+                  [
+                    200.0,
+                    41.0
+                  ],
+                  [
+                    300.0,
+                    43.0
+                  ],
+                  [
+                    400.0,
+                    60.0
+                  ],
+                  [
+                    500.0,
+                    60.0
+                  ]
+                ],
+                "value_unit": "Дж/см2",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_notched_specimen",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    95.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_smooth_specimen",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    195.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+              }
+            }
+          ]
+        },
+        {
+          "strength_category": "КП23",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "property_name": "Предел текучести",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "[5]",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    225.0
+                  ],
+                  [
+                    200.0,
+                    235.0
+                  ],
+                  [
+                    300.0,
+                    225.0
+                  ],
+                  [
+                    400.0,
+                    176.0
+                  ],
+                  [
+                    500.0,
+                    145.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "property_name": "Предел прочности",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "[5]",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    422.0
+                  ],
+                  [
+                    200.0,
+                    500.0
+                  ],
+                  [
+                    300.0,
+                    490.0
+                  ],
+                  [
+                    400.0,
+                    275.0
+                  ],
+                  [
+                    500.0,
+                    216.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "impact_strength",
+              "data": {
+                "property_name": "Ударная вязкость",
+                "property_unit": "Дж/см²",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "[5]",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    56.0
+                  ],
+                  [
+                    200.0,
+                    41.0
+                  ],
+                  [
+                    300.0,
+                    43.0
+                  ],
+                  [
+                    400.0,
+                    60.0
+                  ],
+                  [
+                    500.0,
+                    60.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_notched_specimen",
+              "data": {
+                "property_name": "Предел выносливости для образца с надрезом",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "1",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    95.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_smooth_specimen",
+              "data": {
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "1",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    195.0
+                  ]
+                ],
+                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
+                "property_unit": "МПа",
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            }
+          ]
+        },
+        {
+          "strength_category": "КП24",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "property_name": "Предел текучести",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "[1]",
+                "comment": "Предел текучести записан с разницей в 29 МПа = 235 (КП24) - 206 [1] ",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    235.0
+                  ],
+                  [
+                    200.0,
+                    245.0
+                  ],
+                  [
+                    300.0,
+                    235.0
+                  ],
+                  [
+                    400.0,
+                    186.0
+                  ],
+                  [
+                    500.0,
+                    155.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "property_name": "Предел прочности",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "",
+                "comment": "",
+                "temperature_value_pairs": [],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "impact_strength",
+              "data": {
+                "property_name": "Ударная вязкость",
+                "property_unit": "Дж/см²",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "",
+                "comment": "",
+                "temperature_value_pairs": [],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_notched_specimen",
+              "data": {
+                "property_name": "Предел выносливости для образца с надрезом",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "1",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    95.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_smooth_specimen",
+              "data": {
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "1",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    195.0
+                  ]
+                ],
+                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
+                "property_unit": "МПа",
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            }
+          ]
+        },
+        {
+          "strength_category": "КП25",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "property_name": "Предел текучести",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "[1]",
+                "comment": "Предел текучести записан с разницей в 39 МПа = 245 (КП24) - 206 [1] ",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    245.0
+                  ],
+                  [
+                    200.0,
+                    255.0
+                  ],
+                  [
+                    300.0,
+                    245.0
+                  ],
+                  [
+                    400.0,
+                    196.0
+                  ],
+                  [
+                    500.0,
+                    165.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "property_name": "Предел прочности",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "",
+                "comment": "",
+                "temperature_value_pairs": [],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "impact_strength",
+              "data": {
+                "property_name": "Ударная вязкость",
+                "property_unit": "Дж/см²",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "",
+                "comment": "",
+                "temperature_value_pairs": [],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_notched_specimen",
+              "data": {
+                "property_name": "Предел выносливости для образца с надрезом",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "1",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    95.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            },
+            {
+              "property_name": "fatigue_limit_for_smooth_specimen",
+              "data": {
+                "property_source": "ГОСТ 14637-89",
+                "property_subsource": "1",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    195.0
+                  ]
+                ],
+                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
+                "property_unit": "МПа",
+                "property_last_updated": "2026-06-26T12:14:10.210109"
+              }
+            }
+          ]
+        }
+      ]
     },
-    "coefficient_thermal_conductivity": {
-      "property_name": "Коэффициент теплопроводности",
-      "property_unit": "Вт/(м·°С)",
-      "property_source": "",
-      "property_subsource": "",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          100.0,
-          55.0
-        ],
-        [
-          200.0,
-          54.0
-        ],
-        [
-          300.0,
-          50.0
-        ],
-        [
-          400.0,
-          45.0
-        ],
-        [
-          500.0,
-          39.0
-        ],
-        [
-          600.0,
-          34.0
-        ],
-        [
-          700.0,
-          30.0
-        ]
-      ],
-      "property_last_updated": "2025-09-11T09:47:41.116687"
-    },
-    "density": {
-      "property_name": "Плотность",
-      "property_unit": "кг/м³",
-      "property_source": "",
-      "property_subsource": "[1]",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          7820.0
-        ],
-        [
-          100.0,
-          7820.0
-        ]
-      ],
-      "property_last_updated": "2025-09-11T09:47:41.116687"
-    },
-    "specific_heat": {
-      "property_name": "Удельная теплоемкость",
-      "property_unit": "Дж/(кг·°С)",
-      "property_source": "",
-      "property_subsource": "",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          460.0
-        ],
-        [
-          100.0,
-          460.0
-        ]
-      ],
-      "property_last_updated": "2025-09-11T09:47:41.116687"
+    {
+      "property_type": "chemical",
+      "properties": [
+        {
+          "property_name": "composition",
+          "data": {
+            "composition_source": "ГОСТ 380 - 2005",
+            "other_elements": [
+              {
+                "element": "C",
+                "unit_value": "%",
+                "min_value": 0.14,
+                "max_value": 0.22
+              },
+              {
+                "element": "Si",
+                "unit_value": "%",
+                "min_value": 0.15,
+                "max_value": 0.3
+              },
+              {
+                "element": "Mn",
+                "unit_value": "%",
+                "min_value": 0.4,
+                "max_value": 0.65
+              },
+              {
+                "element": "Ni",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.05
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.04
+              },
+              {
+                "element": "Cr",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3
+              },
+              {
+                "element": "N",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.008
+              },
+              {
+                "element": "Cu",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3
+              },
+              {
+                "element": "As",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.08
+              }
+            ],
+            "comment": "",
+            "base_element": "Fe",
+            "source_ref_id": "2a2e364c-ed10-4bbd-8871-80465125ce47"
+          }
+        }
+      ]
     }
-  },
-  "mechanical_properties": {
-    "strength_category": [
-      {
-        "value_strength_category": "КП20",
-        "hardness": [],
-        "yield_strength": {
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              206.0
-            ],
-            [
-              200.0,
-              216.0
-            ],
-            [
-              300.0,
-              206.0
-            ],
-            [
-              400.0,
-              157.0
-            ],
-            [
-              500.0,
-              126.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "tensile_strength": {
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              422.0
-            ],
-            [
-              200.0,
-              500.0
-            ],
-            [
-              300.0,
-              490.0
-            ],
-            [
-              400.0,
-              275.0
-            ],
-            [
-              500.0,
-              216.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "impact_strength": {
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "[1]",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              56.0
-            ],
-            [
-              200.0,
-              41.0
-            ],
-            [
-              300.0,
-              43.0
-            ],
-            [
-              400.0,
-              60.0
-            ],
-            [
-              500.0,
-              60.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_notched_specimen": {
-          "property_name": "Предел выносливости для образца с надрезом",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              95.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_smooth_specimen": {
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              195.0
-            ]
-          ],
-          "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        }
-      },
-      {
-        "value_strength_category": "КП23",
-        "hardness": [],
-        "yield_strength": {
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "[5]",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              225.0
-            ],
-            [
-              200.0,
-              235.0
-            ],
-            [
-              300.0,
-              225.0
-            ],
-            [
-              400.0,
-              176.0
-            ],
-            [
-              500.0,
-              145.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "tensile_strength": {
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "[5]",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              422.0
-            ],
-            [
-              200.0,
-              500.0
-            ],
-            [
-              300.0,
-              490.0
-            ],
-            [
-              400.0,
-              275.0
-            ],
-            [
-              500.0,
-              216.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "impact_strength": {
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "[5]",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              56.0
-            ],
-            [
-              200.0,
-              41.0
-            ],
-            [
-              300.0,
-              43.0
-            ],
-            [
-              400.0,
-              60.0
-            ],
-            [
-              500.0,
-              60.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_notched_specimen": {
-          "property_name": "Предел выносливости для образца с надрезом",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              95.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_smooth_specimen": {
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              195.0
-            ]
-          ],
-          "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        }
-      },
-      {
-        "value_strength_category": "КП24",
-        "hardness": [],
-        "yield_strength": {
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "[1]",
-          "comment": "Предел текучести записан с разницей в 29 МПа = 235 (КП24) - 206 [1] ",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              235.0
-            ],
-            [
-              200.0,
-              245.0
-            ],
-            [
-              300.0,
-              235.0
-            ],
-            [
-              400.0,
-              186.0
-            ],
-            [
-              500.0,
-              155.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "tensile_strength": {
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "impact_strength": {
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_notched_specimen": {
-          "property_name": "Предел выносливости для образца с надрезом",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              95.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_smooth_specimen": {
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              195.0
-            ]
-          ],
-          "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        }
-      },
-      {
-        "value_strength_category": "КП25",
-        "hardness": [],
-        "yield_strength": {
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "[1]",
-          "comment": "Предел текучести записан с разницей в 39 МПа = 245 (КП24) - 206 [1] ",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              245.0
-            ],
-            [
-              200.0,
-              255.0
-            ],
-            [
-              300.0,
-              245.0
-            ],
-            [
-              400.0,
-              196.0
-            ],
-            [
-              500.0,
-              165.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "tensile_strength": {
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "impact_strength": {
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_notched_specimen": {
-          "property_name": "Предел выносливости для образца с надрезом",
-          "property_unit": "МПа",
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              95.0
-            ]
-          ],
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        },
-        "fatigue_limit_for_smooth_specimen": {
-          "property_source": "ГОСТ 14637-89",
-          "property_subsource": "1",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              195.0
-            ]
-          ],
-          "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-11T09:47:41.116687"
-        }
-      }
-    ]
-  },
-  "chemical_properties": {
-    "composition": []
-  }
+  ]
 }

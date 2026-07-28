@@ -121,36 +121,60 @@ python main.py
     "comment": "Комментарий"
     // ... другие метаданные
   },
-  "physical_properties": {
-    "density": {
-      "property_name": "Плотность",
-      "temperature_value_pairs": [[20, 7850], [100, 7820]]
-      // ... другие поля свойства
-    }
-  },
-  "mechanical_properties": {
-    "strength_category": [
-      {
-        "value_strength_category": "КП 490",
-        "tensile_strength": {
-          "temperature_value_pairs": [[20, 490], [200, 450]]
+  "property_groups": [
+    {
+      "property_type": "physical",
+      "properties": [
+        {
+          "property_name": "density",
+          "data": {
+            "temperature_value_pairs": [[20, 7850], [100, 7820]],
+            "value_unit": "кг/м3"
+          }
         }
-        // ... другие мех. свойства для этой категории
-      }
-    ]
-  },
-  "chemical_properties": {
-    "composition": [
-      {
-        "composition_source": "ГОСТ 12345-67",
-        "base_element": "Fe",
-        "other_elements": [
-          {"element": "C", "min_value": 0.08, "max_value": 0.12},
-          {"element": "Si", "max_value": 0.35}
-        ]
-      }
-    ]
-  }
+      ]
+    },
+    {
+      "property_type": "mechanical",
+      "strength_groups": [
+        {
+          "strength_category": "КП 490",
+          "properties": [
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "temperature_value_pairs": [[20, 490], [200, 450]],
+                "value_unit": "МПа"
+              }
+            },
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [{"unit_value": "HB", "min_value": 140, "max_value": 180}],
+                "hardness_unit": "HB"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "property_type": "chemical",
+      "properties": [
+        {
+          "property_name": "composition",
+          "data": {
+            "composition_source": "ГОСТ 12345-67",
+            "base_element": "Fe",
+            "other_elements": [
+              {"element": "C", "min_value": 0.08, "max_value": 0.12},
+              {"element": "Si", "max_value": 0.35}
+            ]
+          }
+        }
+      ]
+    }
+  ]
 }
 ```
 
