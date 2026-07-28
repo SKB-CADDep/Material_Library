@@ -56,6 +56,8 @@ export type TemperatureSelectionRow = {
   source: string;
   max_temp?: string | number | null;
   temperature_comment?: string | null;
+  category_index?: number | null;
+  source_ref_id?: string | null;
   values: Record<string, number | string | null>;
 };
 

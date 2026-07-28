@@ -85,6 +85,8 @@ class TemperatureSelectionRow(BaseModel):
     source: str
     max_temp: str | int | float | None = None
     temperature_comment: str | None = None
+    category_index: int | None = None
+    source_ref_id: str | None = None
     values: dict[str, float | str | None]
 
 class TemperatureSelectionRequest(BaseModel):

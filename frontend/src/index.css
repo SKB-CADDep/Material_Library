@@ -289,6 +289,20 @@ select {
     flex-shrink: 0; /* Чтобы label не сжимался */
   }
 
+.form-row label.form-label--fixed {
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    box-sizing: border-box;
+  }
+
+.kp-category-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 640px;
+  }
+
 .form-row .input {
     flex: 1; /* Инпут занимает всё оставшееся место */
     padding: 6px 10px;
@@ -472,10 +486,13 @@ select {
     flex: 1;
     min-height: 0;
     min-width: 0;
+    max-height: min(70vh, calc(100vh - 220px));
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--surface);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .selection-table-scroll {
@@ -1273,15 +1290,27 @@ select {
   gap: 8px;
 }
 
+.toast-host {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 3000;
+  pointer-events: none;
+}
+
+.toast-host .toast-item {
+  pointer-events: auto;
+}
+
 .toast-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 280px;
-  max-width: 450px;
+  min-width: 320px;
+  max-width: 520px;
   animation: slideIn 0.3s ease-out;
   background: #fff;
 }
@@ -1302,13 +1331,13 @@ select {
 }
 
 .toast-icon {
-  font-size: 20px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
 .toast-message {
   flex: 1;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.5;
 }
@@ -1327,10 +1356,10 @@ select {
 
 .toast-ok-button {
   border: none;
-  border-radius: 4px;
-  padding: 4px 14px;
+  border-radius: 6px;
+  padding: 6px 18px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: #fff;
   transition: all 0.2s;
@@ -1367,4 +1396,176 @@ select {
     transform: translateX(0);
     opacity: 1;
   }
+}
+/* Подбор: скроллы как в Tkinter — 1 вертикальный (общий) + 1 горизонтальный (только свойства) */
+.selection-table-container {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.selection-table-viewport {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.selection-table-split {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.selection-table-frozen {
+  flex: none;
+  overflow: hidden;
+  position: relative;
+  z-index: 3;
+  border-right: 2px solid var(--border);
+  box-shadow: 4px 0 8px -4px rgba(36, 41, 48, 0.14);
+  background-color: var(--surface);
+}
+
+/* У frozen-таблицы последняя колонка — граница зоны (глобально th:last-child без border) */
+.selection-table-frozen .data-table th:last-child,
+.selection-table-frozen .data-table td:last-child {
+  border-right: none;
+}
+
+.selection-table-frozen .selection-table--frozen {
+  width: max-content;
+  table-layout: fixed;
+}
+
+.selection-table-scroll-pane {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.selection-table-hscroll-row {
+  display: flex;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background-color: var(--surface);
+}
+
+.selection-table-hscroll-spacer {
+  flex: none;
+  border-right: 2px solid var(--border);
+  box-shadow: 4px 0 8px -4px rgba(36, 41, 48, 0.14);
+  background-color: var(--surface);
+}
+
+.selection-table-hscroll-track {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.selection-table-hscroll-inner {
+  height: 1px;
+}
+
+.selection-table-scroll-pane .selection-table--scroll {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.selection-table-scroll-pane .selection-table--scroll.selection-table--fill-width {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.selection-table-scroll-pane
+  .selection-table--fill-width
+  .selection-table-col--value {
+  min-width: 0;
+  width: auto;
+}
+
+.selection-table-hscroll-row--hidden {
+  display: none;
+}
+
+.selection-table-split .data-table.selection-table.selection-table--fill-width {
+  width: 100%;
+}
+
+.selection-table-viewport .selection-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--bg);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.selection-table-split .data-table.selection-table th,
+.selection-table-split .data-table.selection-table td {
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.selection-table-split .selection-table-col--material {
+  width: 220px;
+  min-width: 220px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selection-table-split .selection-table-col--kp {
+  width: 64px;
+  min-width: 64px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.selection-table-split .selection-table-col--source {
+  width: 140px;
+  min-width: 140px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selection-table-split .selection-table-col--temp {
+  width: 100px;
+  min-width: 100px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.selection-table-split .selection-table-col--value {
+  min-width: 88px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.required-mark {
+  color: var(--danger);
+  font-size: 1em;
+  font-weight: 700;
+  vertical-align: baseline;
+  line-height: 1;
+  margin-left: 0.2em;
+  margin-right: 0.05em;
+  opacity: 0.95;
+  user-select: none;
+}
+
+.form-footnote {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 8px 0 16px;
 }

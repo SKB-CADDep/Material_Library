@@ -9,59 +9,13 @@ import {
   normalizeMaterialFilename,
   validateMaterialDraftForSave,
 } from "../api/materials";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
 import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
 import { MechanicalPropertiesTab } from "./MechaicalPropertiesTab";
 import { ChemicalProperties } from "./ChemicalProperties";
-import toast, { Toaster } from 'react-hot-toast';
-
-const TOAST_DURATIONS = {
-  SUCCESS: 5000,
-  ERROR: 7000,
-  WARNING: 6000,
-} as const;
-
-const showToastWithOK = (
-  message: string,
-  type: 'success' | 'error' | 'warning' = 'success'
-) => {
-  const duration = type === 'error'
-    ? TOAST_DURATIONS.ERROR
-    : type === 'warning'
-      ? TOAST_DURATIONS.WARNING
-      : TOAST_DURATIONS.SUCCESS;
-
-  toast.custom(
-    (t) => {
-      const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️'
-      };
-
-      return (
-        <div className={`toast-item toast-item-${type}`}>
-          <span className="toast-icon">{icons[type]}</span>
-          <span className={`toast-message toast-message-${type}`}>
-            {message}
-          </span>
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className={`toast-ok-button toast-ok-button-${type}`}
-          >
-            ОК
-          </button>
-        </div>
-      );
-    },
-    {
-      duration,
-      position: 'top-right',
-      className: 'custom-toast-wrapper',
-    }
-  );
-};
+import { showToastWithOK } from "../lib/toast";
+import { useEditor } from "../context/EditorContext";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -184,16 +138,13 @@ export function EditorPage() {
     queryKey: ["materials"],
     queryFn: listMaterials,
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { draft, setDraft, selectedId, setSelectedId, isNewMaterial, setIsNewMaterial, resetEditor} = useEditor()
   const detail = useQuery({
     queryKey: ["material", selectedId],
     queryFn: () => getMaterial(selectedId!),
     enabled: selectedId !== null,
   });
-  const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
-  const [saveValidationError, setSaveValidationError] = useState<string | null>(null);
-  const [isNewMaterial, setIsNewMaterial] = useState(false);
-
+  
   useEffect(() => {
     if (isNewMaterial) {
       return;
@@ -203,7 +154,11 @@ export function EditorPage() {
       return;
     }
     if (detail.data) {
-      setDraft(structuredClone(detail.data));
+      setDraft(draft => {
+        if (draft?.material_id === detail.data.material_id) return draft;
+        return structuredClone(detail.data);
+      });
+      
     }
   }, [selectedId, detail.data, isNewMaterial]);
 
@@ -245,7 +200,6 @@ export function EditorPage() {
 
   function handleDraftChange(next: Record<string, unknown>) {
     setDraft(next);
-    setSaveValidationError(null);
     save.reset();
     newSave.reset();
   }
@@ -263,18 +217,15 @@ export function EditorPage() {
     setSelectedId(null);
     setIsNewMaterial(true);
     setDraft(createEmptyMaterialDraft());
-    setSaveValidationError(null);
   }
 
   function runSaveFlow() {
     if (!draft) return;
     const error = validateMaterialDraftForSave(draft);
     if (error) {
-      setSaveValidationError(error);
       showToastWithOK(error, 'warning');
       return;
     }
-    setSaveValidationError(null);
     if (hasFileOnDisk) {
       save.mutate();
       return;
@@ -288,11 +239,9 @@ export function EditorPage() {
     if (!draft) return;
     const error = validateMaterialDraftForSave(draft);
     if (error) {
-      setSaveValidationError(error);
       showToastWithOK(error, 'warning');
       return;
     }
-    setSaveValidationError(null);
     const filename = promptFilename(draft);
     if (!filename) return;
     const body = hasFileOnDisk ? draftCopyAsNewFile(draft) : draft;
@@ -309,7 +258,6 @@ export function EditorPage() {
         return;
       }
       handleCreateNew();
-      setSaveValidationError(null);
       return;
     }
 
@@ -329,18 +277,10 @@ export function EditorPage() {
     if (fresh) {
       setDraft(structuredClone(fresh));
     }
-    setSaveValidationError(null);
   }
 
   return (
     <div className="editor-page">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          className: 'custom-toast-wrapper',
-        }}
-      />
-
       <div className="editor-toolbar">
         <div className="material-select">
           <label htmlFor="material-select">Выберите материал:</label>

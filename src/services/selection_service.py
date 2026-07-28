@@ -133,8 +133,11 @@ class SelectionService:
         source: str,
         max_temp: Any,
         temperature_comment: str | None,
+        *,
+        category_index: int | None = None,
+        source_ref_id: str | None = None,
     ) -> dict[str, Any]:
-        return {
+        row: dict[str, Any] = {
             "material_id": material.data.get("material_id", ""),
             "material_name": material.get_display_name(),
             "strength_category": strength_category,
@@ -143,6 +146,11 @@ class SelectionService:
             "temperature_comment": temperature_comment,
             "values": {},
         }
+        if category_index is not None:
+            row["category_index"] = category_index
+        if source_ref_id:
+            row["source_ref_id"] = source_ref_id
+        return row
 
     def _rows_for_material(
         self,
@@ -158,23 +166,23 @@ class SelectionService:
 
         if prop_type == "hardness":
             return self._hardness_rows(
-                material, cats, max_temp, temperature_comment
+                material, cats, max_temp, temperature_comment, source_manager
             )
 
         if prop_type == "mechanical" and cats:
             rows: list[dict[str, Any]] = []
             for i, cat in enumerate(cats):
-                source_str = material.get_source_info(
-                    Schema.MECHANICAL,
-                    category_idx=i,
-                    source_manager=source_manager,
+                source_str = material.get_category_source_label(
+                    cat, source_manager
                 )
                 row = self._base_row(
                     material,
-                    cat.get(Schema.VAL_STR_CAT, "N/A"),
+                    Material.category_name(cat) or "N/A",
                     source_str,
                     max_temp,
                     temperature_comment,
+                    category_index=i,
+                    source_ref_id=cat.get(Schema.REF_ID) if isinstance(cat, dict) else None,
                 )
                 for prop_key in prop_keys:
                     row["values"][prop_key] = material.get_interpolated_property(
@@ -203,6 +211,7 @@ class SelectionService:
         cats: list[dict[str, Any]],
         max_temp: Any,
         temperature_comment: str | None,
+        source_manager=None,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
 
@@ -218,13 +227,21 @@ class SelectionService:
             rows.append(row)
             return rows
 
-        for cat in cats:
-            strength = cat.get(Schema.VAL_STR_CAT, "N/A")
+        for i, cat in enumerate(cats):
+            strength = Material.category_name(cat) or "N/A"
             hardness_list = cat.get("hardness") or []
+            cat_source = material.get_category_source_label(cat, source_manager)
+            cat_ref = cat.get(Schema.REF_ID) if isinstance(cat, dict) else None
 
             if not hardness_list:
                 row = self._base_row(
-                    material, strength, "-", max_temp, temperature_comment
+                    material,
+                    strength,
+                    cat_source,
+                    max_temp,
+                    temperature_comment,
+                    category_index=i,
+                    source_ref_id=cat_ref,
                 )
                 row["values"] = {
                     "min_value": None,
@@ -239,6 +256,8 @@ class SelectionService:
                 sub = hardness.get("property_subsource")
                 if sub:
                     src = f"{src} ({sub})" if src else f"({sub})"
+                if not src or src == "-":
+                    src = cat_source
 
                 row = self._base_row(
                     material,
@@ -246,6 +265,8 @@ class SelectionService:
                     src or "-",
                     max_temp,
                     temperature_comment,
+                    category_index=i,
+                    source_ref_id=cat_ref,
                 )
                 row["values"] = {
                     "min_value": hardness.get("min_value"),

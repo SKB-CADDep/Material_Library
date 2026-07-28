@@ -13,6 +13,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { RequiredMark } from "../components/RequiredMark";
+import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
@@ -473,7 +475,10 @@ useEffect(() => {
           <div className="property-section-layout">
             <div className="property-section-fields">
               <div className="form-row">
-                <label htmlFor="composition_source">Источник:</label>
+                <label htmlFor="composition_source">
+                  Источник
+                  <RequiredMark />:
+                </label>
                 <select
                   id="composition_source"
                   className="input"
@@ -512,6 +517,7 @@ useEffect(() => {
 ))}
                   </select>
               </div>
+              <RequiredFieldsFootnote />
             </div>
           </div>
           <div className="form-row">
