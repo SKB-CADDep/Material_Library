@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { getSources } from "../api/sources";
-import { useState } from "react";
-import type { SourceItem, SourceResponse } from "../types/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getSources, createSource, updateSource, deleteSource } from "../api/sources";
+import React, { useState, useMemo } from 'react';
+import type { SourceItem, TabType } from "../types/api";
 
 const TAB_CONFIG = {
   property_sources: {
@@ -18,64 +18,384 @@ const TAB_CONFIG = {
   }
 };
 
-type TabType = keyof typeof TAB_CONFIG;
+// Компонент ячейки с сокращением и tooltip
+const TruncatedCell: React.FC<{
+  value: string;
+  maxLength?: number;
+  className?: string;
+}> = ({ value, maxLength = 30, className = '' }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const text = value || '—';
+  const needsTruncation = text.length > maxLength;
+  const displayText = needsTruncation ? text.slice(0, maxLength) + '…' : text;
+
+  if (!value || value.trim() === '') {
+    return <span className="empty-value">—</span>;
+  }
+
+  return (
+    <div
+      className={`truncated-cell ${className}`}
+      onMouseEnter={() => needsTruncation && setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <span className="truncated-text">{displayText}</span>
+      {showTooltip && needsTruncation && (
+        <div className="tooltip">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Тип для режима диалога
+type DialogMode = 'create' | 'edit' | 'delete' | null;
 
 export function SourcesPage() {
-  const result = useQuery({
-    queryKey: ["sources"],
-    queryFn: getSources,
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabType>('property_sources');
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof SourceItem;
+    direction: 'asc' | 'desc';
+  } | null>(null);
+
+  // Единое состояние для диалога
+  const [dialogMode, setDialogMode] = useState<DialogMode>(null);
+  const [selectedItem, setSelectedItem] = useState<SourceItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<{
+    name_source: string;
+    description: string;
+    hyperlink: string;
+  }>({
+    name_source: '',
+    description: '',
+    hyperlink: ''
   });
 
+  // Запрос данных
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ["sources"],
+    queryFn: getSources,
+    retry: false,
+  });
 
-//   console.log('=== ВСЕ ДАННЫЕ result ===');
-//   console.log('result.data:', result.data);
-//   console.log('result.error:', result.error);
-//
-//   // Проверка структуры данных
-//   if (result.data) {
-//     console.log('Ключи в data:', Object.keys(result.data));
-//     console.log('property_sources:', result.data.property_sources);
-//     console.log('strength_sources:', result.data.strength_sources);
-//     console.log('chemical_sources:', result.data.chemical_sources);
-//   }
+  // Мутация создания
+  const createMutation = useMutation({
+    mutationFn: createSource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sources"] });
+      setDialogMode(null);
+    },
+    onError: (error) => {
+      console.error('Ошибка создания:', error);
+    }
+  });
 
+  // Мутация обновления
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; description?: string; hyperlink?: string } }) =>
+      updateSource(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sources"] });
+      setDialogMode(null);
+    },
+    onError: (error) => {
+      console.error('Ошибка обновления:', error);
+    }
+  });
 
-  const [activeTab, setActiveTab] = useState<TabType>('property_sources');
+  // Мутация удаления
+  const deleteMutation = useMutation({
+    mutationFn: deleteSource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sources"] });
+      setDialogMode(null);
+      setSelectedItem(null);
+    },
+    onError: (error) => {
+      console.error('Ошибка удаления:', error);
+    }
+  });
 
-  if (result.isLoading) {
-    return <p className="tab-placeholder">Загрузка...</p>;
-  }
-
-  if (result.isError) {
-    return <p className="tab-placeholder">Ошибка загрузки данных</p>;
-  }
-
-  const data = result.data as SourceResponse;
   const currentTabConfig = TAB_CONFIG[activeTab];
-  const currentData: SourceItem[] = data[currentTabConfig.apiKey] || [];
+  const currentData = data?.[currentTabConfig.apiKey] || [];
+
+  const sortedData = useMemo(() => {
+    if (!sortConfig) {
+      return currentData;
+    }
+
+    const sortKey = sortConfig.key;
+    const direction = sortConfig.direction;
+
+    return [...currentData].sort((a, b) => {
+      const aValue = a[sortKey] || '';
+      const bValue = b[sortKey] || '';
+      const comparison = aValue.toString().localeCompare(bValue.toString(), 'ru', {
+        sensitivity: 'base'
+      });
+      return direction === 'asc' ? comparison : -comparison;
+    });
+  }, [currentData, sortConfig]);
+
+  // Обработчики диалога
+  const openCreateDialog = () => {
+    setDialogMode('create');
+    setSelectedItem(null);
+    setFormData({
+      name_source: '',
+      description: '',
+      hyperlink: ''
+    });
+  };
+
+  const openEditDialog = (item: SourceItem) => {
+    setDialogMode('edit');
+    setSelectedItem(item);
+    setFormData({
+      name_source: item.name_source || '',
+      description: item.description || '',
+      hyperlink: item.hyperlink || ''
+    });
+  };
+
+  const openDeleteDialog = (item: SourceItem) => {
+    setDialogMode('delete');
+    setSelectedItem(item);
+  };
+
+  const closeDialog = () => {
+    setDialogMode(null);
+    setSelectedItem(null);
+    setIsSubmitting(false);
+  };
+
+  const handleFormChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    if (dialogMode === 'create') {
+      createMutation.mutate({
+        name: formData.name_source,
+        description: formData.description,
+        hyperlink: formData.hyperlink,
+        group: activeTab
+      });
+    } else if (dialogMode === 'edit' && selectedItem) {
+      updateMutation.mutate({
+        id: selectedItem.id_source,
+        data: {
+          name: formData.name_source,
+          description: formData.description,
+          hyperlink: formData.hyperlink
+        }
+      });
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!selectedItem) return;
+    setIsSubmitting(true);
+    deleteMutation.mutate(selectedItem.id_source);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="source-page">
+        <header className="page-header">
+          <h1>Работа с источниками</h1>
+        </header>
+        <div className="loading-container">
+          <p className="tab-placeholder">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+    return (
+      <div className="source-page">
+        <header className="page-header">
+          <h1>Работа с источниками</h1>
+        </header>
+        <div className="error-container">
+          <div className="error-card">
+            <div className="error-icon">⚠️</div>
+            <h2>Ошибка загрузки данных</h2>
+            <p className="error-message">{errorMessage}</p>
+            <button className="retry-button" onClick={() => refetch()}>
+              🔄 Повторить
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="source-page">
+        <header className="page-header">
+          <h1>Работа с источниками</h1>
+        </header>
+        <div className="error-container">
+          <div className="error-card">
+            <div className="error-icon">📭</div>
+            <h2>Данные не получены</h2>
+            <button className="retry-button" onClick={() => refetch()}>
+              🔄 Повторить
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSort = (key: keyof SourceItem) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const getSortIndicator = (key: keyof SourceItem) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <span className="sort-indicator">↕</span>;
+    }
+    return (
+      <span className={`sort-indicator active`}>
+        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+      </span>
+    );
+  };
 
   return (
     <div className="source-page">
-      {/* 1. ЗАГОЛОВОК СТРАНИЦЫ */}
+      {/* ============================================================ */}
+      {/* ============== ДИАЛОГ В САМОМ НАЧАЛЕ КОМПОНЕНТА ============= */}
+      {/* ============================================================ */}
+      {dialogMode && (
+        <div className="dialog-overlay" onClick={closeDialog}>
+          <div className="dialog-content dialog-large" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3>
+                {dialogMode === 'create' && '➕ Добавление источника'}
+                {dialogMode === 'edit' && '✏️ Редактирование источника'}
+                {dialogMode === 'delete' && '🗑️ Подтверждение удаления'}
+              </h3>
+              <button className="dialog-close" onClick={closeDialog}>×</button>
+            </div>
+
+            {dialogMode === 'create' || dialogMode === 'edit' ? (
+              <form onSubmit={handleFormSubmit}>
+                <div className="dialog-body">
+                  <div className="form-group">
+                    <label htmlFor="name_source">Наименование <span className="required">*</span></label>
+                    <input
+                      id="name_source"
+                      type="text"
+                      className="form-input"
+                      value={formData.name_source}
+                      onChange={(e) => handleFormChange('name_source', e.target.value)}
+                      placeholder="Введите наименование"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="description">Описание</label>
+                    <textarea
+                      id="description"
+                      className="form-textarea"
+                      value={formData.description}
+                      onChange={(e) => handleFormChange('description', e.target.value)}
+                      placeholder="Введите описание"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="hyperlink">Ссылка</label>
+                    <input
+                      id="hyperlink"
+                      type="url"
+                      className="form-input"
+                      value={formData.hyperlink}
+                      onChange={(e) => handleFormChange('hyperlink', e.target.value)}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                </div>
+                <div className="dialog-footer">
+                  <button type="button" className="btn btn-secondary" onClick={closeDialog} disabled={isSubmitting}>
+                    Отмена
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                    {isSubmitting ? 'Сохранение...' : dialogMode === 'create' ? 'Создать' : 'Сохранить'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className="dialog-body">
+                  <p>Вы уверены, что хотите удалить запись <strong>«{selectedItem?.name_source || 'без названия'}»</strong>?</p>
+                  <p className="dialog-warning">Это действие невозможно отменить.</p>
+                </div>
+                <div className="dialog-footer">
+                  <button className="btn btn-secondary" onClick={closeDialog} disabled={isSubmitting}>
+                    Отмена
+                  </button>
+                  <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={isSubmitting}>
+                    {isSubmitting ? 'Удаление...' : 'Удалить'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* ================ ОСНОВНОЕ СОДЕРЖИМОЕ СТРАНИЦЫ =============== */}
+      {/* ============================================================ */}
+
       <header className="page-header">
         <h1>Работа с источниками</h1>
+        <div className="page-header-actions">
+          <button className="btn btn-primary" onClick={openCreateDialog}>
+            + Добавить источник
+          </button>
+        </div>
         <div className="sources-stats">
           <div className="stat-item">
             <span className="stat-label">{TAB_CONFIG.property_sources.label}:</span>
-            <span className="stat-value">{data.property_sources.length}</span>
+            <span className="stat-value">{data.property_sources?.length || 0}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">{TAB_CONFIG.strength_sources.label}:</span>
-            <span className="stat-value">{data.strength_sources.length}</span>
+            <span className="stat-value">{data.strength_sources?.length || 0}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">{TAB_CONFIG.chemical_sources.label}:</span>
-            <span className="stat-value">{data.chemical_sources.length}</span>
+            <span className="stat-value">{data.chemical_sources?.length || 0}</span>
           </div>
         </div>
       </header>
 
-      {/* 2. ВКЛАДКИ */}
       <nav className="nested-tabs" role="tablist">
         {Object.entries(TAB_CONFIG).map(([key, config]) => {
           const count = data[config.apiKey]?.length || 0;
@@ -95,46 +415,85 @@ export function SourcesPage() {
         })}
       </nav>
 
-      {/* 3. ПАНЕЛЬ С ТАБЛИЦЕЙ */}
       <section className="tab-content">
         <div className="table-panel">
           <div className="table-wrapper">
             <div className="property-section-fields">
-              {currentData.length === 0 ? (
+              {sortedData.length === 0 ? (
                 <p className="tab-placeholder">Нет данных для отображения</p>
               ) : (
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '50px' }}>#</th>
-                      <th style={{ width: '80px' }}>ID</th>
-                      <th>Наименование</th>
-                      <th>Описание</th>
-                      <th>Ссылка</th>
-                      <th>Кто изменил</th>
-                      <th>Дата изменения</th>
-                      <th>Кто создал</th>
-                      <th>Дата создания</th>
+                      <th className="col-index">#</th>
+                      <th className="sortable col-name">
+                        <span
+                          className="sort-label"
+                          onClick={() => handleSort('name_source')}
+                          title="Сортировать по имени"
+                        >
+                          Наименование {getSortIndicator('name_source')}
+                        </span>
+                      </th>
+                      <th className="col-description">Описание</th>
+                      <th className="col-link">Ссылка</th>
+                      <th className="col-user">Кто изменил</th>
+                      <th className="col-date">Дата изм.</th>
+                      <th className="col-user">Кто создал</th>
+                      <th className="col-date">Дата созд.</th>
+                      <th className="col-actions">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentData.map((source, index) => (
+                    {sortedData.map((source, index) => (
                       <tr key={source.id_source}>
-                        <td style={{ textAlign: 'center' }}>{index + 1}</td>
-                        <td style={{ textAlign: 'center' }}>{source.id_source}</td>
-                        <td>{source.name_source || '—'}</td>
-                        <td>{source.description || '—'}</td>
-                        <td>
+                        <td className="col-index">{index + 1}</td>
+                        <td className="col-name">
+                          <TruncatedCell value={source.name_source} maxLength={25} />
+                        </td>
+                        <td className="col-description">
+                          <TruncatedCell value={source.description} maxLength={30} />
+                        </td>
+                        <td className="col-link">
                           {source.hyperlink ? (
-                            <a href={source.hyperlink} target="_blank" rel="noopener noreferrer">
-                              Открыть
+                            <a
+                              href={source.hyperlink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="link-cell"
+                            >
+                              <TruncatedCell value={source.hyperlink} maxLength={20} />
                             </a>
                           ) : '—'}
                         </td>
-                        <td>{source.user_name_change || '—'}</td>
-                        <td>{source.data_change || '—'}</td>
-                        <td>{source.user_name_found || '—'}</td>
-                        <td>{source.data_found || '—'}</td>
+                        <td className="col-user">
+                          <TruncatedCell value={source.user_name_change || ''} maxLength={15} />
+                        </td>
+                        <td className="col-date">
+                          <TruncatedCell value={source.data_change || ''} maxLength={10} />
+                        </td>
+                        <td className="col-user">
+                          <TruncatedCell value={source.user_name_found || ''} maxLength={15} />
+                        </td>
+                        <td className="col-date">
+                          <TruncatedCell value={source.data_found || ''} maxLength={10} />
+                        </td>
+                        <td className="col-actions">
+                          <button
+                            className="action-btn edit-btn"
+                            onClick={() => openEditDialog(source)}
+                            title="Редактировать"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="action-btn delete-btn"
+                            onClick={() => openDeleteDialog(source)}
+                            title="Удалить"
+                          >
+                            🗑️
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -147,3 +506,5 @@ export function SourcesPage() {
     </div>
   );
 }
+
+export default SourcesPage;
