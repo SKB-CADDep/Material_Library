@@ -8,17 +8,21 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "",
+      "classification_category": "Конструкционная высокопрочная высоколегированная",
       "classification_class": "",
       "classification_subclass": ""
     }
   },
-  "physical_properties": {},
+  "physical_properties": {
+    "properties": []
+  },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "КП68",
-        "hardness": []
+        "hardness": [],
+        "properties": [],
+        "hardness_unit": "HB"
       }
     ]
   },
@@ -95,7 +99,8 @@
             "min_value": 0.0,
             "max_value": 0.25
           }
-        ]
+        ],
+        "source_ref_id": null
       },
       {
         "composition_source": "ТУ 108.1028-81",
@@ -105,70 +110,71 @@
         "other_elements": [
           {
             "element": "C",
+            "unit_value": "%",
             "min_value": 0.21,
             "max_value": 0.29,
-            "unit_value": "%",
-            "min_value_tolerance": 0.2,
-            "max_value_tolerance": 0.3
+            "min_value_tolerance": "0.2",
+            "max_value_tolerance": "0.3"
           },
           {
             "element": "Si",
+            "unit_value": "%",
             "min_value": 0.0,
             "max_value": 0.37,
-            "unit_value": "%",
-            "max_value_tolerance": 0.4
+            "max_value_tolerance": "0.4"
           },
           {
             "element": "Mn",
+            "unit_value": "%",
             "min_value": 0.25,
-            "max_value": 0.55,
-            "unit_value": "%"
+            "max_value": 0.55
           },
           {
             "element": "S",
+            "unit_value": "%",
             "min_value": 0.0,
             "max_value": 0.015,
-            "unit_value": "%",
-            "max_value_tolerance": 0.016
+            "max_value_tolerance": "0.016"
           },
           {
             "element": "P",
+            "unit_value": "%",
             "min_value": 0.0,
             "max_value": 0.015,
-            "unit_value": "%",
-            "max_value_tolerance": 0.016
+            "max_value_tolerance": "0.016"
           },
           {
             "element": "Cr",
+            "unit_value": "%",
             "min_value": 1.6,
-            "max_value": 1.9,
-            "unit_value": "%"
+            "max_value": 1.9
           },
           {
             "element": "Ni",
+            "unit_value": "%",
             "min_value": 3.4,
-            "max_value": 3.7,
-            "unit_value": "%"
+            "max_value": 3.7
           },
           {
             "element": "Mo",
+            "unit_value": "%",
             "min_value": 0.35,
-            "max_value": 0.6,
-            "unit_value": "%"
+            "max_value": 0.6
           },
           {
             "element": "V",
+            "unit_value": "%",
             "min_value": 0.08,
-            "max_value": 0.15,
-            "unit_value": "%"
+            "max_value": 0.15
           },
           {
             "element": "Cu",
+            "unit_value": "%",
             "min_value": 0.0,
-            "max_value": 0.25,
-            "unit_value": "%"
+            "max_value": 0.25
           }
-        ]
+        ],
+        "source_ref_id": null
       }
     ]
   }

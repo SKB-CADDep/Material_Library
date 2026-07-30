@@ -8,234 +8,183 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "",
+      "classification_category": "Титан технический",
       "classification_class": "",
       "classification_subclass": ""
     }
   },
   "physical_properties": {
-    "modulus_elasticity": {
-      "property_name": "Модуль упругости",
-      "property_unit": "МПа",
-      "property_source": "ОСТ 1 90173-75",
-      "property_subsource": "11",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          108000.0
+    "properties": [
+      {
+        "property_name": "modulus_elasticity",
+        "temperature_value_pairs": [
+          [20.0, 108000.0],
+          [100.0, 102000.0],
+          [200.0, 96000.0]
         ],
-        [
-          100.0,
-          102000.0
+        "value_unit": "МПа",
+        "comment": "",
+        "source_ref_id": "21e5498f-65cc-464a-9e4e-210c6d7ce45a",
+        "property_subsource": "ОСТ 108.020.132-85 Турбины паровые стационарные. Нормы расчета на прочность корпусов цилиндров и клапанов"
+      },
+      {
+        "property_name": "coefficient_linear_expansion",
+        "temperature_value_pairs": [
+          [100.0, 8.2],
+          [200.0, 8.6],
+          [300.0, 8.8],
+          [400.0, 9.1],
+          [500.0, 9.3],
+          [600.0, 9.5]
         ],
-        [
-          200.0,
-          96000.0
-        ]
-      ],
-      "property_last_updated": "2025-07-16T08:12:25.616717"
-    },
-    "coefficient_linear_expansion": {
-      "property_name": "Коэффициент линейного расширения",
-      "property_unit": "1/°С",
-      "property_source": "ОСТ 1 90173-75",
-      "property_subsource": "13",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          100.0,
-          8.2
+        "value_unit": "1/С",
+        "comment": "",
+        "source_ref_id": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
+        "property_subsource": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с."
+      },
+      {
+        "property_name": "coefficient_thermal_conductivity",
+        "temperature_value_pairs": [
+          [20.0, 19.3],
+          [100.0, 18.9],
+          [200.0, 18.4],
+          [300.0, 18.0],
+          [400.0, 18.0],
+          [500.0, 18.0]
         ],
-        [
-          200.0,
-          8.6
+        "value_unit": "Вт/(м*С)",
+        "comment": "",
+        "source_ref_id": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
+        "property_subsource": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с."
+      },
+      {
+        "property_name": "density",
+        "temperature_value_pairs": [
+          [20.0, 4500.0],
+          [100.0, 4500.0]
         ],
-        [
-          300.0,
-          8.8
+        "value_unit": "кг/м3",
+        "comment": "",
+        "source_ref_id": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
+        "property_subsource": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с."
+      },
+      {
+        "property_name": "specific_heat",
+        "temperature_value_pairs": [
+          [100.0, 503.0],
+          [200.0, 545.0],
+          [300.0, 566.0],
+          [400.0, 587.0],
+          [500.0, 628.0],
+          [600.0, 670.0]
         ],
-        [
-          400.0,
-          9.1
-        ],
-        [
-          500.0,
-          9.3
-        ],
-        [
-          600.0,
-          9.5
-        ]
-      ],
-      "property_last_updated": "2025-07-16T08:12:25.616717"
-    },
-    "coefficient_thermal_conductivity": {
-      "property_name": "Коэффициент теплопроводности",
-      "property_unit": "Вт/(м·°С)",
-      "property_source": "ОСТ 1 90173-75",
-      "property_subsource": "13",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          19.3
-        ],
-        [
-          100.0,
-          18.9
-        ],
-        [
-          200.0,
-          18.4
-        ],
-        [
-          300.0,
-          18.0
-        ],
-        [
-          400.0,
-          18.0
-        ],
-        [
-          500.0,
-          18.0
-        ]
-      ],
-      "property_last_updated": "2025-07-16T08:12:25.616717"
-    },
-    "density": {
-      "property_name": "Плотность",
-      "property_unit": "кг/м³",
-      "property_source": "ОСТ 1 90173-75",
-      "property_subsource": "13",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          4500.0
-        ],
-        [
-          100.0,
-          4500.0
-        ]
-      ],
-      "property_last_updated": "2025-07-16T08:12:25.616717"
-    },
-    "specific_heat": {
-      "property_name": "Удельная теплоемкость",
-      "property_unit": "Дж/(кг·°С)",
-      "property_source": "ОСТ 1 90173-75",
-      "property_subsource": "13",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          100.0,
-          503.0
-        ],
-        [
-          200.0,
-          545.0
-        ],
-        [
-          300.0,
-          566.0
-        ],
-        [
-          400.0,
-          587.0
-        ],
-        [
-          500.0,
-          628.0
-        ],
-        [
-          600.0,
-          670.0
-        ]
-      ],
-      "property_last_updated": "2025-07-16T08:12:25.616717"
-    }
+        "value_unit": "Дж/(кг*С)",
+        "comment": "",
+        "source_ref_id": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
+        "property_subsource": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с."
+      }
+    ]
   },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "-",
         "hardness": [],
-        "yield_strength": {
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_source": "ОСТ 1 90173-75",
-          "property_subsource": "13",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              -253.0,
-              1079.0
+        "properties": [
+          {
+            "property_name": "yield_strength",
+            "temperature_value_pairs": [
+              [-253.0, 1079.0],
+              [-196.0, 735.0],
+              [20.0, 343.0],
+              [200.0, 206.0]
             ],
-            [
-              -196.0,
-              735.0
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
+            "property_subsource": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с."
+          },
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [
+              [-253.0, 1180.0],
+              [-196.0, 951.0],
+              [20.0, 392.0],
+              [200.0, 294.0]
             ],
-            [
-              20.0,
-              343.0
-            ],
-            [
-              200.0,
-              206.0
-            ]
-          ],
-          "property_last_updated": "2025-07-16T08:12:25.616717"
-        },
-        "tensile_strength": {
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_source": "ОСТ 1 90173-75",
-          "property_subsource": "13",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              -253.0,
-              1180.0
-            ],
-            [
-              -196.0,
-              951.0
-            ],
-            [
-              20.0,
-              392.0
-            ],
-            [
-              200.0,
-              294.0
-            ]
-          ],
-          "property_last_updated": "2025-07-16T08:12:25.616717"
-        },
-        "fatigue_limit_for_notched_specimen": {
-          "property_name": "Предел выносливости для образца с надрезом",
-          "property_unit": "МПа",
-          "property_source": "ОСТ 1 90173-75",
-          "property_subsource": "1",
-          "comment": "*Пределы выносливости посмотреть в 1 источнике\n",
-          "temperature_value_pairs": [],
-          "property_last_updated": "2025-07-16T08:12:25.616717"
-        },
-        "fatigue_limit_for_smooth_specimen": {
-          "property_source": "ОСТ 1 90173-75",
-          "property_subsource": "1",
-          "comment": "*Пределы выносливости посмотреть в 1 источнике\n",
-          "temperature_value_pairs": [],
-          "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-07-16T08:12:25.616717"
-        }
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
+            "property_subsource": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с."
+          },
+          {
+            "property_name": "fatigue_limit_for_notched_specimen",
+            "temperature_value_pairs": [],
+            "value_unit": "МПа",
+            "comment": "*Пределы выносливости посмотреть в 1 источнике",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          },
+          {
+            "property_name": "fatigue_limit_for_smooth_specimen",
+            "temperature_value_pairs": [],
+            "value_unit": "МПа",
+            "comment": "*Пределы выносливости посмотреть в 1 источнике",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        ],
+        "hardness_unit": "HB"
       }
     ]
   },
   "chemical_properties": {
-    "composition": []
+    "composition": [
+      {
+        "composition_source": "ГОСТ 19807 - 91",
+        "composition_subsource": "",
+        "comment": "",
+        "base_element": "Ti",
+        "other_elements": [
+          {
+            "element": "Fe",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.25
+          },
+          {
+            "element": "C",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.07
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.1
+          },
+          {
+            "element": "N",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.04
+          },
+          {
+            "element": "O",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.2
+          },
+          {
+            "element": "H",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.01
+          }
+        ],
+        "source_ref_id": "3794a778-a210-47ad-b600-eb2af0e16484"
+      }
+    ]
   }
 }

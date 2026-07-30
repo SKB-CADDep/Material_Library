@@ -17,258 +17,137 @@
     }
   },
   "physical_properties": {
-    "modulus_elasticity": {
-      "property_source": "",
-      "property_subsource": "10",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          205000.0
+    "properties": [
+      {
+        "property_name": "modulus_elasticity",
+        "temperature_value_pairs": [
+          [20.0, 205000.0],
+          [100.0, 202000.0],
+          [200.0, 197000.0],
+          [300.0, 190000.0],
+          [400.0, 181000.0],
+          [450.0, 180000.0],
+          [500.0, 173000.0],
+          [550.0, 170000.0],
+          [600.0, 165000.0]
         ],
-        [
-          100.0,
-          202000.0
+        "value_unit": "МПа",
+        "comment": "",
+        "source_ref_id": "f814001d-169c-46ad-a28a-9d49a9c6e320",
+        "property_subsource": "ГОСТ 20700-75"
+      },
+      {
+        "property_name": "coefficient_linear_expansion",
+        "temperature_value_pairs": [
+          [100.0, 15.3],
+          [200.0, 15.9],
+          [300.0, 16.5],
+          [400.0, 16.9],
+          [500.0, 17.3],
+          [600.0, 17.7],
+          [700.0, 18.2]
         ],
-        [
-          200.0,
-          197000.0
-        ],
-        [
-          300.0,
-          190000.0
-        ],
-        [
-          400.0,
-          181000.0
-        ],
-        [
-          450.0,
-          180000.0
-        ],
-        [
-          500.0,
-          173000.0
-        ],
-        [
-          550.0,
-          170000.0
-        ],
-        [
-          600.0,
-          165000.0
-        ]
-      ],
-      "property_name": "Модуль упругости",
-      "property_unit": "МПа",
-      "property_last_updated": "2026-02-02T11:38:51.949072"
-    },
-    "coefficient_linear_expansion": {
-      "property_source": "",
-      "property_subsource": "10",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          100.0,
-          15.3
-        ],
-        [
-          200.0,
-          15.9
-        ],
-        [
-          300.0,
-          16.5
-        ],
-        [
-          400.0,
-          16.9
-        ],
-        [
-          500.0,
-          17.3
-        ],
-        [
-          600.0,
-          17.7
-        ],
-        [
-          700.0,
-          18.2
-        ]
-      ],
-      "property_name": "Коэффициент линейного расширения",
-      "property_unit": "1/°С",
-      "property_last_updated": "2026-02-02T11:38:51.949072"
-    }
+        "value_unit": "1/С",
+        "comment": "",
+        "source_ref_id": "f814001d-169c-46ad-a28a-9d49a9c6e320",
+        "property_subsource": "ГОСТ 20700-75"
+      }
+    ]
   },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "-",
         "hardness": [],
-        "yield_strength": {
-          "property_source": "",
-          "property_subsource": "5",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              275.0
+        "properties": [
+          {
+            "property_name": "yield_strength",
+            "temperature_value_pairs": [
+              [20.0, 275.0],
+              [300.0, 200.0],
+              [400.0, 175.0],
+              [500.0, 175.0],
+              [600.0, 175.0],
+              [700.0, 160.0]
             ],
-            [
-              300.0,
-              200.0
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "b4902a77-2c88-4637-b989-692363e7041c",
+            "property_subsource": "Сорокин В.Г. Марочник сталей и сплавов.М.:Машиностроение, 1980, 640 с."
+          },
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [
+              [20.0, 610.0],
+              [300.0, 450.0],
+              [400.0, 440.0],
+              [500.0, 440.0],
+              [600.0, 390.0],
+              [700.0, 270.0]
             ],
-            [
-              400.0,
-              175.0
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "b4902a77-2c88-4637-b989-692363e7041c",
+            "property_subsource": "Сорокин В.Г. Марочник сталей и сплавов.М.:Машиностроение, 1980, 640 с."
+          },
+          {
+            "property_name": "impact_strength",
+            "temperature_value_pairs": [
+              [20.0, 245.0],
+              [400.0, 313.0],
+              [500.0, 363.0],
+              [600.0, 353.0],
+              [700.0, 333.0]
             ],
-            [
-              500.0,
-              175.0
+            "value_unit": "Дж/см2",
+            "comment": "",
+            "source_ref_id": "b4902a77-2c88-4637-b989-692363e7041c",
+            "property_subsource": "Сорокин В.Г. Марочник сталей и сплавов.М.:Машиностроение, 1980, 640 с."
+          },
+          {
+            "property_name": "tensile_strength_limit_10_thousands_hours",
+            "temperature_value_pairs": [
+              [600.0, 147.0],
+              [650.0, 78.0]
             ],
-            [
-              600.0,
-              175.0
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "b4902a77-2c88-4637-b989-692363e7041c",
+            "property_subsource": "Сорокин В.Г. Марочник сталей и сплавов.М.:Машиностроение, 1980, 640 с."
+          },
+          {
+            "property_name": "tensile_strength_limit_100_thousands_hours",
+            "temperature_value_pairs": [
+              [600.0, 108.0]
             ],
-            [
-              700.0,
-              160.0
-            ]
-          ],
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        },
-        "tensile_strength": {
-          "property_source": "",
-          "property_subsource": "5",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              610.0
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "b4902a77-2c88-4637-b989-692363e7041c",
+            "property_subsource": "Сорокин В.Г. Марочник сталей и сплавов.М.:Машиностроение, 1980, 640 с."
+          },
+          {
+            "property_name": "tensile_strength_limit_200_thousands_hours",
+            "temperature_value_pairs": [
+              [500.0, 186.0]
             ],
-            [
-              300.0,
-              450.0
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "3c1cbc63-2e1b-45c6-bee0-01b551c02633",
+            "property_subsource": "ПНАЭ Г-7-002-86"
+          },
+          {
+            "property_name": "сreep_strain_rate_1_100_thousands_hours",
+            "temperature_value_pairs": [
+              [600.0, 74.0],
+              [650.0, 29.0]
             ],
-            [
-              400.0,
-              440.0
-            ],
-            [
-              500.0,
-              440.0
-            ],
-            [
-              600.0,
-              390.0
-            ],
-            [
-              700.0,
-              270.0
-            ]
-          ],
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        },
-        "impact_strength": {
-          "property_source": "",
-          "property_subsource": "5",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              245.0
-            ],
-            [
-              400.0,
-              313.0
-            ],
-            [
-              500.0,
-              363.0
-            ],
-            [
-              600.0,
-              353.0
-            ],
-            [
-              700.0,
-              333.0
-            ]
-          ],
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        },
-        "tensile_strength_limit_10_thousands_hours": {
-          "property_source": "",
-          "property_subsource": "5",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              600.0,
-              147.0
-            ],
-            [
-              650.0,
-              78.0
-            ]
-          ],
-          "property_name": "Предел длит. прочности за 10 тыс.ч",
-          "property_unit": "МПа",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        },
-        "tensile_strength_limit_100_thousands_hours": {
-          "property_source": "",
-          "property_subsource": "5",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              600.0,
-              108.0
-            ]
-          ],
-          "property_name": "Предел длит. прочности за 100 тыс.ч",
-          "property_unit": "МПа",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        },
-        "tensile_strength_limit_200_thousands_hours": {
-          "property_source": "",
-          "property_subsource": "11",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              500.0,
-              186.0
-            ]
-          ],
-          "property_name": "Предел длит. прочности за 200 тыс.ч",
-          "property_unit": "МПа",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        },
-        "сreep_strain_rate_1_100_thousands_hours": {
-          "property_source": "",
-          "property_subsource": "5",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              600.0,
-              74.0
-            ],
-            [
-              650.0,
-              29.0
-            ]
-          ],
-          "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
-          "property_unit": "МПа",
-          "property_last_updated": "2026-02-02T11:38:51.949072"
-        }
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "b4902a77-2c88-4637-b989-692363e7041c",
+            "property_subsource": "Сорокин В.Г. Марочник сталей и сплавов.М.:Машиностроение, 1980, 640 с."
+          }
+        ],
+        "hardness_unit": "HB"
       }
     ]
   },
@@ -276,22 +155,28 @@
     "composition": [
       {
         "composition_source": "ГОСТ  5632-2014",
+        "composition_subsource": "",
+        "comment": "Ti по ГОСТ через формулу 5*С",
+        "base_element": "Fe",
         "other_elements": [
           {
             "element": "C",
             "unit_value": "%",
+            "min_value": null,
             "max_value": 0.08,
             "max_value_tolerance": "0,9"
           },
           {
             "element": "Si",
             "unit_value": "%",
+            "min_value": null,
             "max_value": 0.8,
             "max_value_tolerance": "0,85"
           },
           {
             "element": "Mn",
             "unit_value": "%",
+            "min_value": null,
             "max_value": 2.0,
             "max_value_tolerance": "2,05"
           },
@@ -314,6 +199,7 @@
           {
             "element": "Ti",
             "unit_value": "%",
+            "min_value": null,
             "max_value": 0.7,
             "min_value_tolerance": "5*С-0,1",
             "max_value_tolerance": "0,75"
@@ -321,19 +207,19 @@
           {
             "element": "S",
             "unit_value": "%",
+            "min_value": null,
             "max_value": 0.02,
             "max_value_tolerance": "0,025"
           },
           {
             "element": "P",
             "unit_value": "%",
+            "min_value": null,
             "max_value": 0.04,
             "max_value_tolerance": "0,045"
           }
         ],
-        "composition_subsource": "",
-        "comment": "Ti по ГОСТ через формулу 5*С",
-        "base_element": "Fe"
+        "source_ref_id": null
       }
     ]
   }

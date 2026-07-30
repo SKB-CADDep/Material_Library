@@ -122,20 +122,27 @@ python main.py
     // ... другие метаданные
   },
   "physical_properties": {
-    "density": {
-      "property_name": "Плотность",
-      "temperature_value_pairs": [[20, 7850], [100, 7820]]
-      // ... другие поля свойства
-    }
+    "properties": [
+      {
+        "property_name": "density",
+        "temperature_value_pairs": [[20, 7850], [100, 7820]],
+        "value_unit": "кг/м3"
+      }
+    ]
   },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "КП 490",
-        "tensile_strength": {
-          "temperature_value_pairs": [[20, 490], [200, 450]]
-        }
-        // ... другие мех. свойства для этой категории
+        "hardness": {"unit_value": "HB", "min_value": 140, "max_value": 180},
+        "hardness_unit": "HB",
+        "properties": [
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [[20, 490], [200, 450]],
+            "value_unit": "МПа"
+          }
+        ]
       }
     ]
   },

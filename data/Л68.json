@@ -8,116 +8,93 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "",
+      "classification_category": "Латунь, обрабатываемая давлением",
       "classification_class": "",
       "classification_subclass": ""
     }
   },
   "physical_properties": {
-    "modulus_elasticity": {
-      "property_source": "ГОСТ 1019-47",
-      "property_subsource": "2",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          7000.0
-        ]
-      ],
-      "property_name": "Модуль упругости",
-      "property_unit": "МПа",
-      "property_last_updated": "2025-08-19T08:46:38.516150"
-    },
-    "coefficient_linear_expansion": {
-      "property_source": "ГОСТ 1019-47",
-      "property_subsource": "2",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          300.0,
-          19.9
-        ]
-      ],
-      "property_name": "Коэффициент линейного расширения",
-      "property_unit": "1/°С",
-      "property_last_updated": "2025-08-19T08:46:38.516150"
-    },
-    "coefficient_thermal_conductivity": {
-      "property_source": "ГОСТ 1019-47",
-      "property_subsource": "2",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          0.28
-        ]
-      ],
-      "property_name": "Коэффициент теплопроводности",
-      "property_unit": "Вт/(м·°С)",
-      "property_last_updated": "2025-08-19T08:46:38.516150"
-    },
-    "density": {
-      "property_source": "ГОСТ 1019-47",
-      "property_subsource": "2",
-      "comment": "",
-      "temperature_value_pairs": [
-        [
-          20.0,
-          8500.0
-        ]
-      ],
-      "property_name": "Плотность",
-      "property_unit": "кг/м³",
-      "property_last_updated": "2025-08-19T08:46:38.516150"
-    }
+    "properties": [
+      {
+        "property_name": "modulus_elasticity",
+        "temperature_value_pairs": [
+          [20.0, 7000.0]
+        ],
+        "value_unit": "МПа",
+        "comment": "",
+        "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+        "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+      },
+      {
+        "property_name": "coefficient_linear_expansion",
+        "temperature_value_pairs": [
+          [300.0, 19.9]
+        ],
+        "value_unit": "1/С",
+        "comment": "",
+        "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+        "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+      },
+      {
+        "property_name": "coefficient_thermal_conductivity",
+        "temperature_value_pairs": [
+          [20.0, 0.28]
+        ],
+        "value_unit": "Вт/(м*С)",
+        "comment": "",
+        "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+        "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+      },
+      {
+        "property_name": "density",
+        "temperature_value_pairs": [
+          [20.0, 8500.0]
+        ],
+        "value_unit": "кг/м3",
+        "comment": "",
+        "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+        "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+      }
+    ]
   },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "-",
         "hardness": [],
-        "yield_strength": {
-          "property_source": "ГОСТ 1019-47",
-          "property_subsource": "2",
-          "comment": "мягкое состояние",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              10.0
-            ]
-          ],
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-08-19T08:46:38.516150"
-        },
-        "tensile_strength": {
-          "property_source": "ГОСТ 1019-47",
-          "property_subsource": "2",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              270.6
-            ]
-          ],
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-08-19T08:46:38.516150"
-        },
-        "impact_strength": {
-          "property_source": "ГОСТ 1019-47",
-          "property_subsource": "2",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              69.7
-            ]
-          ],
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_last_updated": "2025-08-19T08:46:38.516150"
-        }
+        "properties": [
+          {
+            "property_name": "yield_strength",
+            "temperature_value_pairs": [
+              [20.0, 10.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "мягкое состояние",
+            "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+            "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+          },
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [
+              [20.0, 270.6]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+            "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+          },
+          {
+            "property_name": "impact_strength",
+            "temperature_value_pairs": [
+              [20.0, 69.7]
+            ],
+            "value_unit": "Дж/см2",
+            "comment": "",
+            "source_ref_id": null,
+            "property_subsource": "2"
+          }
+        ],
+        "hardness_unit": "HB"
       }
     ]
   },
@@ -125,6 +102,9 @@
     "composition": [
       {
         "composition_source": "ГОСТ 15527-2004",
+        "composition_subsource": "1",
+        "comment": "Внести цинк; для изделий специального назначения см.хим.состав по ГОСТ 15527-2004 примечание 1. Содержание примесей по ГОСТ 2004 года указано некорректно",
+        "base_element": "Cu",
         "other_elements": [
           {
             "element": "Cu",
@@ -165,7 +145,8 @@
           {
             "element": "Zn",
             "unit_value": "%",
-            "min_value": 32.853
+            "min_value": 32.853,
+            "max_value": null
           },
           {
             "element": "Ni",
@@ -174,9 +155,7 @@
             "max_value": 0.3
           }
         ],
-        "composition_subsource": "1",
-        "comment": "Внести цинк; для изделий специального назначения см.хим.состав по ГОСТ 15527-2004 примечание 1. Содержание примесей по ГОСТ 2004 года указано некорректно",
-        "base_element": "Cu"
+        "source_ref_id": null
       }
     ]
   }

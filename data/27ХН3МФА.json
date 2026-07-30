@@ -8,105 +8,101 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "",
+      "classification_category": "Конструкционная высокопрочная высоколегированная",
       "classification_class": "",
       "classification_subclass": ""
     }
   },
-  "physical_properties": {},
+  "physical_properties": {
+    "properties": []
+  },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "КП65",
         "hardness": [],
-        "yield_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              638.0
-            ]
-          ],
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-08T15:56:43.325437"
-        },
-        "tensile_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              765.0
-            ]
-          ],
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-08T15:56:43.325437"
-        },
-        "impact_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              44.0
-            ]
-          ],
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_last_updated": "2025-09-08T15:56:43.325437"
-        }
+        "properties": [
+          {
+            "property_name": "yield_strength",
+            "temperature_value_pairs": [
+              [20.0, 638.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": null,
+            "property_subsource": null
+          },
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [
+              [20.0, 765.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": null,
+            "property_subsource": null
+          },
+          {
+            "property_name": "impact_strength",
+            "temperature_value_pairs": [
+              [20.0, 44.0]
+            ],
+            "value_unit": "Дж/см2",
+            "comment": "",
+            "source_ref_id": null,
+            "property_subsource": null
+          }
+        ],
+        "hardness_unit": "HB"
       },
       {
         "value_strength_category": "КП68",
         "hardness": [],
-        "yield_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              667.0
-            ]
-          ],
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-08T15:56:43.325437"
-        },
-        "tensile_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              834.0
-            ]
-          ],
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-08T15:56:43.325437"
-        },
-        "impact_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              59.0
-            ]
-          ],
-          "property_name": "Ударная вязкость",
-          "property_unit": "Дж/см²",
-          "property_last_updated": "2025-09-08T15:56:43.325437"
-        }
+        "properties": [
+          {
+            "property_name": "yield_strength",
+            "temperature_value_pairs": [
+              [20.0, 667.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "property_subsource": "",
+            "metadata": {
+              "property_name_ru": "Предел текучести",
+              "property_source": "",
+              "property_last_updated": "2026-06-24T08:37:57.515600"
+            }
+          },
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [
+              [20.0, 834.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "property_subsource": "",
+            "metadata": {
+              "property_name_ru": "Предел прочности",
+              "property_source": "",
+              "property_last_updated": "2026-06-24T08:37:57.515600"
+            }
+          },
+          {
+            "property_name": "impact_strength",
+            "temperature_value_pairs": [
+              [20.0, 59.0]
+            ],
+            "value_unit": "Дж/см²",
+            "comment": "",
+            "property_subsource": "",
+            "metadata": {
+              "property_name_ru": "Ударная вязкость",
+              "property_source": "",
+              "property_last_updated": "2026-06-24T08:37:57.515600"
+            }
+          }
+        ],
+        "hardness_unit": "HB"
       }
     ]
   },

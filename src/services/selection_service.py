@@ -220,7 +220,7 @@ class SelectionService:
 
         for cat in cats:
             strength = cat.get(Schema.VAL_STR_CAT, "N/A")
-            hardness_list = cat.get("hardness") or []
+            hardness_list = Material.get_hardness_entries(cat)
 
             if not hardness_list:
                 row = self._base_row(

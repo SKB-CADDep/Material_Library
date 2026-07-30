@@ -8,57 +8,45 @@
     ],
     "comment": "Физ.свойства по 30ХН2МФА (так использовали в ТМТ-118308)\t\n\t\t\t\t\nИспользовать данные с осторожностью.",
     "classification": {
-      "classification_category": "",
+      "classification_category": "Для изготовления слитков",
       "classification_class": "",
       "classification_subclass": ""
     }
   },
-  "physical_properties": {},
+  "physical_properties": {
+    "properties": []
+  },
   "mechanical_properties": {
     "strength_category": [
       {
         "value_strength_category": "КП78",
         "hardness": [],
-        "yield_strength": {
-          "property_name": "Предел текучести",
-          "property_unit": "МПа",
-          "property_source": "ТУ 108.1343-85",
-          "property_subsource": "8",
-          "comment": "**Падение мех.свойств с ростом температуры аналогично 38ХН3МФА (потому что \"одна группа сталей\")\t\t\t\t\t\t\t\t\n",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              765.0
+        "properties": [
+          {
+            "property_name": "yield_strength",
+            "temperature_value_pairs": [
+              [20.0, 765.0],
+              [450.0, 627.0],
+              [500.0, 558.0],
+              [550.0, 488.0]
             ],
-            [
-              450.0,
-              627.0
+            "value_unit": "МПа",
+            "comment": "**Падение мех.свойств с ростом температуры аналогично 38ХН3МФА (потому что \"одна группа сталей\")",
+            "source_ref_id": "96e2420f-b17a-4e3a-9aa3-c527061a87b1",
+            "property_subsource": "РТМ 108.021.103-85 Детали паровых стационарных турбин. Расчёт на малоцикловую усталость."
+          },
+          {
+            "property_name": "tensile_strength",
+            "temperature_value_pairs": [
+              [20.0, 834.0]
             ],
-            [
-              500.0,
-              558.0
-            ],
-            [
-              550.0,
-              488.0
-            ]
-          ],
-          "property_last_updated": "2025-09-08T15:54:47.978339"
-        },
-        "tensile_strength": {
-          "property_source": "",
-          "property_subsource": "",
-          "comment": "",
-          "temperature_value_pairs": [
-            [
-              20.0,
-              834.0
-            ]
-          ],
-          "property_name": "Предел прочности",
-          "property_unit": "МПа",
-          "property_last_updated": "2025-09-08T15:54:47.978339"
-        }
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": null,
+            "property_subsource": null
+          }
+        ],
+        "hardness_unit": "HB"
       }
     ]
   },

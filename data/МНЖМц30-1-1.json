@@ -1,0 +1,89 @@
+{
+  "material_id": "42a6b413-19ad-4896-b3e3-2912a863b249",
+  "metadata": {
+    "name_material_standard": "МНЖМц30-1-1",
+    "name_material_alternative": [],
+    "application_area": [
+      "Трубки конденсатора"
+    ],
+    "comment": "",
+    "classification": {
+      "classification_category": "Медно-никелевый сплав",
+      "classification_class": "",
+      "classification_subclass": ""
+    }
+  },
+  "physical_properties": {
+    "properties": []
+  },
+  "mechanical_properties": {
+    "strength_category": []
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 492 - 2006",
+        "composition_subsource": "",
+        "comment": "",
+        "base_element": "Cu",
+        "other_elements": [
+          {
+            "element": "Fe",
+            "unit_value": "%",
+            "min_value": 0.5,
+            "max_value": 1.0
+          },
+          {
+            "element": "C",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.15
+          },
+          {
+            "element": "Mn",
+            "unit_value": "%",
+            "min_value": 0.5,
+            "max_value": 1.0
+          },
+          {
+            "element": "S",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.01
+          },
+          {
+            "element": "P",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.01
+          },
+          {
+            "element": "Pb",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "Zn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.5
+          },
+          {
+            "element": "Ni + Сo",
+            "unit_value": "%",
+            "min_value": 29.0,
+            "max_value": 33.0
+          }
+        ],
+        "source_ref_id": "a68841a0-0d73-44e9-ac65-72ac9dff8565"
+      }
+    ]
+  }
+}
