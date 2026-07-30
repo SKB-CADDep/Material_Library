@@ -14,12 +14,6 @@ export function UnitSelect({ id, unitType, value, onChange }: UnitSelectProps) {
     queryFn: () => getUnits(unitType),
   });
 
-  const options = unitsQuery.data?.units ?? [];
-  const selected =
-    value && options.includes(value)
-      ? value
-      : (unitsQuery.data?.system_unit ?? "");
-
   if (unitsQuery.isLoading) {
     return <select id={id} className="input" disabled value="" />;
   }
@@ -32,6 +26,13 @@ export function UnitSelect({ id, unitType, value, onChange }: UnitSelectProps) {
     );
   }
 
+  const units = unitsQuery.data?.units ?? [];
+  const labels = unitsQuery.data?.display_labels ?? {};
+  const selected =
+    value && units.includes(value)
+      ? value
+      : (unitsQuery.data?.system_unit ?? "");
+
   return (
     <select
       id={id}
@@ -39,9 +40,9 @@ export function UnitSelect({ id, unitType, value, onChange }: UnitSelectProps) {
       value={selected}
       onChange={(event) => onChange(event.target.value)}
     >
-      {options.map((unit) => (
+      {units.map((unit) => (
         <option key={unit} value={unit}>
-          {unit}
+          {labels[unit] ?? unit}
         </option>
       ))}
     </select>

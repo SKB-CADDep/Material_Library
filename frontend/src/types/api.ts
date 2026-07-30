@@ -38,6 +38,7 @@ filename: string
     unit_type: string
     system_unit: string
     units: string[]
+    display_labels: Record<string, string>
   }
 
   export type PropType = "physical" | "mechanical" | "hardness";

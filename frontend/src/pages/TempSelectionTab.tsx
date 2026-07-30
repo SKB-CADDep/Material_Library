@@ -14,6 +14,7 @@ const PROP_TYPE_OPTIONS = [
 
 type PropType = (typeof PROP_TYPE_OPTIONS)[number]["value"];
 
+
 export function TempSelectionTab() {
   const { workspace } = useWorkspace();
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);

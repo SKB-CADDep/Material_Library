@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { formatCellValue } from "../lib/formatCellValue";
+import { TempCommentIndicator } from "./TempCommentIndicator";
 import type {
   TemperatureSelectionColumn,
   TemperatureSelectionRow,
@@ -49,6 +50,14 @@ type SelectionTableProps = {
   scrollColumns: Pick<TemperatureSelectionColumn, "key" | "label">[];
   rows: TemperatureSelectionRow[];
 };
+
+
+function hasTemperatureComment(row:TemperatureSelectionRow): boolean{
+  if ((row.temperature_comment ?? "").trim()){
+    return true
+  }
+  return false
+}
 
 function getFrozenCellValue(
   row: TemperatureSelectionRow,
@@ -213,7 +222,19 @@ export function SelectionTable({ scrollColumns, rows }: SelectionTableProps) {
                             : undefined
                         }
                       >
-                        {getFrozenCellValue(row, col.key)}
+                        {col.key === "max_temp" ? (
+                          !hasTemperatureComment(row) ? (formatCellValue(row.max_temp)) : (
+                          <span className="temp-comment-cell">
+                            <span className="temp-comment-cell__value">
+                              {formatCellValue(row.max_temp)}
+                            </span>
+                            <TempCommentIndicator
+                              comment={(row.temperature_comment ?? "").trim()}
+                            />
+                          </span>
+                        )): (
+                        
+                        getFrozenCellValue(row, col.key))}
                       </td>
                     ))}
                   </tr>

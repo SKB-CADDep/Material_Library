@@ -45,6 +45,11 @@ class UnitManager:
             return list(UnitManager.data[type_name]["factors"].keys())
         return []
 
+    @staticmethod
+    def get_display_labels(type_name: str) -> dict[str, str]:
+        cfg = UnitManager.data.get(type_name, {})
+        return cfg.get("display_labels", {})
+
     # --- ЛОГИКА ИНТЕРПОЛЯЦИИ ТВЕРДОСТИ (ИСПРАВЛЕННАЯ) ---
 
 

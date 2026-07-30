@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSources } from "../api/sources";
 import {
@@ -17,6 +17,8 @@ import {
   resolvePropertySourceName,
 } from "./PropertySourceSelect.tsx";
 import { chartValueLabel, yLabelWithUnit } from "./chartLabels.ts";
+import { useUnitLabels } from "../hooks/useUnitLabels";
+import { computeNiceAxisFromValues, formatTickLabel } from "../utils/chartTicks.ts";
 
 const PHYSICAL_Y_LABELS = {
   modulus_elasticity: "E, МПа",
@@ -57,10 +59,25 @@ type TemperatureGraphProps = {
   yLabel?: string;
 };
 
+
 function TemperatureGraph({ data, yLabel = "Значение" }: TemperatureGraphProps) {
-  if (data.length === 0) {
+  const axes = useMemo(() => {
+    if (data.length === 0) {
+      return null;
+    }
+    const x = computeNiceAxisFromValues(data.map((point) => point.temperature));
+    const y = computeNiceAxisFromValues(data.map((point) => point.value));
+    if (!x || !y) {
+      return null;
+    }
+    return { x, y };
+  }, [data]);
+
+  if (!axes) {
     return <p className="tab-placeholder">Нет данных для графика</p>;
   }
+
+  const { x, y } = axes;
 
   return (
     <ResponsiveContainer width="100%" height={400}>
@@ -68,14 +85,18 @@ function TemperatureGraph({ data, yLabel = "Значение" }: TemperatureGrap
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           type="number"
-          domain={["dataMin", "dataMax"]}
+          domain={x.domain}
           dataKey="temperature"
           label={{ value: "T, °C", position: "insideBottom", offset: -5 }}
+          ticks={x.ticks}
+          tickFormatter={formatTickLabel}
         />
         <YAxis
           width={72}
-          domain={["dataMin", "dataMax"]}
+          domain={y.domain}
           label={{ value: yLabel, angle: -90, position: "insideLeft" }}
+          ticks={y.ticks}
+          tickFormatter={formatTickLabel}
         />
         <Tooltip
           formatter={(value) => [value, chartValueLabel(yLabel)]}
@@ -91,6 +112,27 @@ function TemperatureGraph({ data, yLabel = "Значение" }: TemperatureGrap
         />
       </LineChart>
     </ResponsiveContainer>
+  );
+}
+
+function PhysicalTemperatureGraph({
+  unitType,
+  yLabel,
+  valueUnit,
+  pairs,
+}: {
+  unitType: string;
+  yLabel: string;
+  valueUnit?: string;
+  pairs?: Array<[number, number]>;
+}) {
+  const { labels } = useUnitLabels(unitType);
+
+  return (
+    <TemperatureGraph
+      data={toChartData(pairs)}
+      yLabel={yLabelWithUnit(yLabel, valueUnit, labels)}
+    />
   );
 }
 
@@ -475,14 +517,11 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
             </div>
             <div className="property-section-chart">
-              <TemperatureGraph
-                data={toChartData(
-                  physical_properties.modulus_elasticity?.temperature_value_pairs,
-                )}
-                yLabel={yLabelWithUnit(
-                  PHYSICAL_Y_LABELS.modulus_elasticity,
-                  physical_properties.modulus_elasticity?.value_unit,
-                )}
+              <PhysicalTemperatureGraph
+                unitType="Модуль упругости"
+                yLabel={PHYSICAL_Y_LABELS.modulus_elasticity}
+                valueUnit={physical_properties.modulus_elasticity?.value_unit}
+                pairs={physical_properties.modulus_elasticity?.temperature_value_pairs}
               />
             </div>
           </div>
@@ -636,14 +675,16 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
             </div>
             <div className="property-section-chart">
-              <TemperatureGraph
-                data={toChartData(
-                  physical_properties.coefficient_linear_expansion?.temperature_value_pairs,
-                )}
-                yLabel={yLabelWithUnit(
-                  PHYSICAL_Y_LABELS.coefficient_linear_expansion,
-                  physical_properties.coefficient_linear_expansion?.value_unit,
-                )}
+              <PhysicalTemperatureGraph
+                unitType="Коэффициент линейного расширения"
+                yLabel={PHYSICAL_Y_LABELS.coefficient_linear_expansion}
+                valueUnit={
+                  physical_properties.coefficient_linear_expansion?.value_unit
+                }
+                pairs={
+                  physical_properties.coefficient_linear_expansion
+                    ?.temperature_value_pairs
+                }
               />
             </div>
           </div>
@@ -803,15 +844,16 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
             </div>
             <div className="property-section-chart">
-              <TemperatureGraph
-                data={toChartData(
+              <PhysicalTemperatureGraph
+                unitType="Теплопроводность"
+                yLabel={PHYSICAL_Y_LABELS.coefficient_thermal_conductivity}
+                valueUnit={
+                  physical_properties.coefficient_thermal_conductivity?.value_unit
+                }
+                pairs={
                   physical_properties.coefficient_thermal_conductivity
-                    ?.temperature_value_pairs,
-                )}
-                yLabel={yLabelWithUnit(
-                  PHYSICAL_Y_LABELS.coefficient_thermal_conductivity,
-                  physical_properties.coefficient_thermal_conductivity?.value_unit,
-                )}
+                    ?.temperature_value_pairs
+                }
               />
             </div>
           </div>
@@ -960,12 +1002,11 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
             </div>
             <div className="property-section-chart">
-              <TemperatureGraph
-                data={toChartData(physical_properties.density?.temperature_value_pairs)}
-                yLabel={yLabelWithUnit(
-                  PHYSICAL_Y_LABELS.density,
-                  physical_properties.density?.value_unit,
-                )}
+              <PhysicalTemperatureGraph
+                unitType="Плотность"
+                yLabel={PHYSICAL_Y_LABELS.density}
+                valueUnit={physical_properties.density?.value_unit}
+                pairs={physical_properties.density?.temperature_value_pairs}
               />
             </div>
           </div>
@@ -1115,14 +1156,11 @@ export function PhysicalPropertiesTab({ material, onDraftChange }: PhysicalPrope
               />
             </div>
             <div className="property-section-chart">
-              <TemperatureGraph
-                data={toChartData(
-                  physical_properties.specific_heat?.temperature_value_pairs,
-                )}
-                yLabel={yLabelWithUnit(
-                  PHYSICAL_Y_LABELS.specific_heat,
-                  physical_properties.specific_heat?.value_unit,
-                )}
+              <PhysicalTemperatureGraph
+                unitType="Удельная теплоемкость"
+                yLabel={PHYSICAL_Y_LABELS.specific_heat}
+                valueUnit={physical_properties.specific_heat?.value_unit}
+                pairs={physical_properties.specific_heat?.temperature_value_pairs}
               />
             </div>
           </div>

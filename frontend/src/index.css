@@ -464,7 +464,21 @@ select {
     width: 72px;
   }
 
-  /* Вкладка «Подбор по температуре»: toolbar + таблица на всю ширину */
+  .selection-control--material select {
+    width: min(480px, 40vw);
+    min-width: 240px;
+  }
+
+  .selection-control--category select {
+    width: min(360px, 32vw);
+    min-width: 220px;
+  }
+
+
+  .selection-controls .selection-control--material {
+    flex: 0 1 auto;
+  }
+
   .temp-selection-tab {
     display: flex;
     flex-direction: column;
@@ -1422,7 +1436,7 @@ select {
 
 .selection-table-frozen {
   flex: none;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   z-index: 3;
   border-right: 2px solid var(--border);
@@ -1568,4 +1582,122 @@ select {
   font-size: 13px;
   color: var(--text-muted);
   margin: 8px 0 16px;
+}
+
+/* Задача 11: комментарий к tприм — ⓘ + tooltip в таблице подбора */
+.selection-table-legend {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.temp-comment-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.temp-comment-cell__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.temp-comment-indicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  cursor: help;
+  outline: none;
+}
+
+.temp-comment-indicator:focus-visible {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+.temp-comment-icon {
+  display: block;
+}
+
+.temp-comment-indicator--legend {
+  cursor: default;
+}
+
+.temp-comment-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  left: auto;
+  transform: translateY(-50%);
+  z-index: 50;
+  width: max-content;
+  min-width: 0;
+  max-width: 260px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 4px 16px rgba(36, 41, 48, 0.16);
+  pointer-events: none;
+  transition: opacity 0.15s ease 0.2s, visibility 0s linear 0.35s;
+}
+
+.temp-comment-tooltip::before {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: var(--border);
+}
+
+.temp-comment-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  margin-left: -1px;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-left-color: var(--surface);
+}
+
+.temp-comment-indicator:hover .temp-comment-tooltip,
+.temp-comment-indicator:focus-visible .temp-comment-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0.2s, 0s;
+}
+
+.selection-table-frozen tbody tr:has(.temp-comment-indicator:hover),
+.selection-table-frozen tbody tr:has(.temp-comment-indicator:focus-visible) {
+  position: relative;
+  z-index: 4;
+}
+
+.selection-table-frozen .selection-table-col--temp {
+  overflow: visible;
+}
+
+.selection-table-split .selection-table-col--temp {
+  width: 112px;
+  min-width: 112px;
 }

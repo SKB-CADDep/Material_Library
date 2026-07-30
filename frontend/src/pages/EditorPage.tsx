@@ -172,6 +172,7 @@ export function EditorPage() {
       const id = variables.body.material_id as string;
       queryClient.setQueryData(["material", id], variables.body);
       queryClient.invalidateQueries({ queryKey: ["materials"] });
+      queryClient.invalidateQueries({ queryKey: ["selection"] });
       setIsNewMaterial(false);
       setSelectedId(id);
       setDraft(structuredClone(variables.body));
@@ -188,6 +189,7 @@ export function EditorPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["materials"] });
       queryClient.invalidateQueries({ queryKey: ["material", selectedId] });
+      queryClient.invalidateQueries({ queryKey: ["selection"] });
 
       showToastWithOK(`Материал "${data.filename}" успешно сохранён`, 'success');
     },

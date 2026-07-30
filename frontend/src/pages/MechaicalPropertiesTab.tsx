@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -23,6 +23,8 @@ import {
 } from "../lib/strengthCategory";
 import { RequiredMark } from "../components/RequiredMark";
 import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
+import { useUnitLabels } from "../hooks/useUnitLabels";
+import { computeNiceAxisFromValues, formatTickLabel } from "../utils/chartTicks";
 type MechanicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
@@ -185,6 +187,7 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
     .map(([temperature, value]) => ({ temperature, value }));
 }
 
+
 function TemperatureGraph({
   data,
   yLabel = "Значение",
@@ -192,9 +195,23 @@ function TemperatureGraph({
   data: ChartPoint[];
   yLabel?: string;
 }) {
-  if (data.length === 0) {
+  const axes = useMemo(() => {
+    if (data.length === 0) {
+      return null;
+    }
+    const x = computeNiceAxisFromValues(data.map((point) => point.temperature));
+    const y = computeNiceAxisFromValues(data.map((point) => point.value));
+    if (!x || !y) {
+      return null;
+    }
+    return { x, y };
+  }, [data]);
+
+  if (!axes) {
     return <p className="tab-placeholder">Нет данных для графика</p>;
   }
+
+  const { x, y } = axes;
 
   return (
     <ResponsiveContainer width="100%" height={400}>
@@ -205,14 +222,18 @@ function TemperatureGraph({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           type="number"
-          domain={["dataMin", "dataMax"]}
+          domain={x.domain}
           dataKey="temperature"
           label={{ value: "T, °C", position: "insideBottom", offset: -5 }}
+          ticks={x.ticks}
+          tickFormatter={formatTickLabel}
         />
         <YAxis
           width={72}
-          domain={["dataMin", "dataMax"]}
+          domain={y.domain}
           label={{ value: yLabel, angle: -90, position: "insideLeft" }}
+          ticks={y.ticks}
+          tickFormatter={formatTickLabel}
         />
         <Tooltip
           formatter={(value) => [value, chartValueLabel(yLabel)]}
@@ -239,6 +260,22 @@ type TemperatureValueTableProps = {
   onAddRow?: () => void;
   onDeleteRow?: () => void;
 };
+function MechTemperatureGraph({
+  prop,
+  data,
+}: {
+  prop: MechPropertyConfig;
+  data: PropertyData | undefined;
+}) {
+  const { labels } = useUnitLabels(prop.unitType);
+
+  return (
+    <TemperatureGraph
+      data={toChartData(data?.temperature_value_pairs)}
+      yLabel={yLabelWithUnit(prop.yLabel, data?.value_unit, labels)}
+    />
+  );
+}
 function TemperatureValueTable({
   pairs,
   onChangeValue,
@@ -790,10 +827,7 @@ export function MechanicalPropertiesTab({
                   />
                 </div>
                 <div className="property-section-chart">
-                  <TemperatureGraph
-                    data={toChartData(data?.temperature_value_pairs)}
-                    yLabel={yLabelWithUnit(prop.yLabel, data?.value_unit)}
-                  />
+                  <MechTemperatureGraph prop={prop} data={data} />
                 </div>
               </div>
             </fieldset>

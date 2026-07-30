@@ -28,6 +28,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     queryClient.setQueryData(["workspace"], ws);
     // материалы перезагрузятся — инвалидируем список
     await queryClient.invalidateQueries({ queryKey: ["materials"] });
+    await queryClient.invalidateQueries({ queryKey: ["selection"] });
   };
 
   const value: WorkspaceContextValue = {
