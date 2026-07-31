@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from src.core.math.interpolation import MathUtils
 from src.core.models.material import Material
 from src.core.schema_keys import Schema
 from src.services.material_repository import MaterialRepository
@@ -89,7 +90,11 @@ class SelectionService:
                 if prop_type == "hardness"
                 else self._properties.get_meta(key)
             )
-            symbol = meta.get("symbol") or meta.get("name", key)
+            symbol = (
+                meta.get("display_symbol")
+                or meta.get("symbol")
+                or meta.get("name", key)
+            )
             unit = meta.get("unit", "")
             label = f"{symbol}, {unit}" if unit else symbol
             columns.append(
@@ -276,3 +281,233 @@ class SelectionService:
                 rows.append(row)
 
         return rows
+
+    
+    def _get_value_with_mode(self, material, prop_key, temp, cat_idx=None, allow_extrapolation=False):
+        """
+        Возвращает кортеж (value, mode) для заданного свойства:
+        - value: float или None;
+        - mode: "exact" (точное совпадение точки),
+                "interp" (линейная интерполяция внутри диапазона),
+                "approx" (линейная экстраполяция по двум ближайшим точкам),
+                либо None, если значение не может быть определено.
+        """
+        data_container = None
+
+        if self._properties.is_physical(prop_key):
+            data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+        elif self._properties.is_mechanical(prop_key):
+            cats = material.get_strength_categories()
+            if cat_idx is not None and 0 <= cat_idx < len(cats):
+                data_container = cats[cat_idx].get(prop_key)
+        else:
+            return None, None
+
+        if not data_container:
+            return None, None
+
+        pairs = data_container.get(Schema.TEMP_PAIRS, [])
+        if not pairs:
+            return None, None
+
+        points = []
+        for t_raw, v_raw in pairs:
+            t_val = MathUtils.safe_float(t_raw)
+            v_val = MathUtils.safe_float(v_raw)
+            if t_val is not None and v_val is not None:
+                points.append((t_val, v_val))
+
+        if not points:
+            return None, None
+
+        points.sort(key=lambda p: p[0])
+        xs = [p[0] for p in points]
+        min_x, max_x = xs[0], xs[-1]
+
+        # 1. Точное совпадение
+        for x, y in points:
+            if x == temp:
+                return y, "exact"
+
+        # 2. Внутри диапазона — интерполяция
+        if min_x < temp < max_x:
+            for i in range(len(points) - 1):
+                x1, y1 = points[i]
+                x2, y2 = points[i + 1]
+                if x1 <= temp <= x2:
+                    if x2 == x1:
+                        return y1, "interp"
+                    val = y1 + (temp - x1) * (y2 - y1) / (x2 - x1)
+                    return val, "interp"
+            return None, None
+
+        # 3. Вне диапазона
+        if not allow_extrapolation:
+            return None, None
+
+        # 3.1. Если всего одна точка — повторяем её как экстраполяцию
+        if len(points) == 1:
+            return points[0][1], "approx"
+
+        # 3.2. Две ближайшие точки для экстраполяции
+        if temp < min_x:
+            p1, p2 = points[0], points[1]
+        else:
+            p1, p2 = points[-2], points[-1]
+
+        x1, y1 = p1
+        x2, y2 = p2
+        if x2 == x1:
+            return y1, "approx"
+
+        val = y1 + (temp - x1) * (y2 - y1) / (x2 - x1)
+        return val, "approx"
+
+    def _get_property_container(
+        self,
+        material: Material,
+        prop_key: str,
+        cat_idx: int | None = None,
+    ) -> dict[str, Any] | None:
+        if self._properties.is_physical(prop_key):
+            return material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+        if self._properties.is_mechanical(prop_key):
+            cats = material.get_strength_categories()
+            if cat_idx is not None and 0 <= cat_idx < len(cats):
+                return cats[cat_idx].get(prop_key)
+        return None
+
+    def _get_scalar_value(
+        self,
+        material: Material,
+        prop_key: str,
+        cat_idx: int | None = None,
+    ) -> float | None:
+        """Скалярные свойства (δ, ψ, угол): одно значение без привязки к T."""
+        data_container = self._get_property_container(material, prop_key, cat_idx)
+        if not data_container:
+            return None
+
+        pairs = data_container.get(Schema.TEMP_PAIRS, [])
+        for _, v_raw in pairs:
+            v_val = MathUtils.safe_float(v_raw)
+            if v_val is not None:
+                return v_val
+        return None
+
+    def _build_calculation_columns(self) -> list[dict[str, Any]]:
+        columns: list[dict[str, Any]] = []
+        for key in self._properties.all_keys():
+            meta = self._properties.get_meta(key)
+            symbol = self._properties.get_display_symbol(key)
+            unit = meta.get("unit", "")
+            label = f"{symbol}, {unit}" if unit else symbol
+            columns.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "unit": unit,
+                    "unit_type": meta.get("unit_type"),
+                    "temperature_dependent": self._properties.supports_temperature(key),
+                }
+            )
+        return columns
+
+    def single_calculation(
+        self,
+        repository: MaterialRepository,
+        material_id: str,
+        category_index: int,
+        custom_temperatures: list[float] | None = None,
+    ) -> dict[str, Any]:
+        """Расчёт отдельно. Паритет с SingleCalculationTab (main.py)."""
+        material = repository.get_by_id(material_id)
+        if material is None:
+            raise ValueError(f"Материал не найден: {material_id}")
+
+        cats = material.get_strength_categories()
+        if cats:
+            if category_index < 0 or category_index >= len(cats):
+                raise ValueError(f"Некорректный category_index: {category_index}")
+            cat_idx_arg: int | None = category_index
+        else:
+            cat_idx_arg = None
+
+        all_keys = self._properties.all_keys()
+        temp_keys = [k for k in all_keys if self._properties.supports_temperature(k)]
+        scalar_keys = [k for k in all_keys if not self._properties.supports_temperature(k)]
+
+        all_temps: set[float] = set()
+        for pk in temp_keys:
+            data = self._get_property_container(material, pk, cat_idx_arg)
+            if not data:
+                continue
+            for t_raw, _ in data.get(Schema.TEMP_PAIRS, []):
+                t_val = MathUtils.safe_float(t_raw)
+                if t_val is not None:
+                    all_temps.add(t_val)
+
+        scalar_values = {
+            pk: self._get_scalar_value(material, pk, cat_idx_arg)
+            for pk in scalar_keys
+        }
+
+        db_rows: list[dict[str, Any]] = []
+        sorted_temps = sorted(all_temps)
+
+        if not sorted_temps and any(v is not None for v in scalar_values.values()):
+            values: dict[str, dict[str, Any]] = {}
+            for prop_key in scalar_keys:
+                values[prop_key] = {
+                    "value": scalar_values.get(prop_key),
+                    "mode": "scalar",
+                }
+            db_rows.append({"temperature": "—", "values": values})
+
+        for t in sorted_temps:
+            values = {}
+            for prop_key in temp_keys:
+                value, mode = self._get_value_with_mode(
+                    material,
+                    prop_key,
+                    t,
+                    cat_idx=cat_idx_arg,
+                    allow_extrapolation=False,
+                )
+                values[prop_key] = {"value": value, "mode": mode}
+            for prop_key in scalar_keys:
+                values[prop_key] = {
+                    "value": scalar_values.get(prop_key),
+                    "mode": "scalar",
+                }
+            db_rows.append({"temperature": t, "values": values})
+
+        custom_rows: list[dict[str, Any]] = []
+        for temp in custom_temperatures or []:
+            t_val = MathUtils.safe_float(temp)
+            if t_val is None:
+                continue
+            values = {}
+            for prop_key in temp_keys:
+                value, mode = self._get_value_with_mode(
+                    material,
+                    prop_key,
+                    t_val,
+                    cat_idx=cat_idx_arg,
+                    allow_extrapolation=True,
+                )
+                values[prop_key] = {"value": value, "mode": mode}
+            for prop_key in scalar_keys:
+                values[prop_key] = {
+                    "value": self._get_scalar_value(material, prop_key, cat_idx_arg),
+                    "mode": "scalar",
+                }
+            custom_rows.append({"temperature": t_val, "values": values})
+
+        return {
+            "material_id": material_id,
+            "category_index": category_index,
+            "columns": self._build_calculation_columns(),
+            "db_rows": db_rows,
+            "custom_rows": custom_rows,
+        }

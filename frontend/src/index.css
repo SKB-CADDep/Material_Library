@@ -291,7 +291,7 @@ select {
 
 .form-row label {
     min-width: 200px; /* Фиксированная ширина для всех label */
-    text-align: right;
+    text-align: left;
     font-size: 14px;
     color: var(--text);
     flex-shrink: 0; /* Чтобы label не сжимался */
@@ -1062,7 +1062,46 @@ select {
   }
 
   .general-form {
-    max-width: 1200px;
+    width: 100%;
+    max-width: none
+  }
+
+  .general-form .form-row {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 6px 8px;
+    align-items: center;
+  }
+  
+  .general-form .form-row label {
+    min-width: unset;
+    width: auto;
+    text-align: left;
+  }
+  
+  .general-form .form-row > select,
+  .general-form .form-row > input.input,
+  .general-form .form-row > input[type="text"],
+  .general-form .form-row > input[type="number"],
+  .general-form .form-row > textarea {
+    min-width: 0;
+    width: 100%;
+  }
+  .general-form .form-row-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  
+  .general-form .form-row-inline > select,
+  .general-form .form-row-inline > .input {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .general-form .form-row-inline > .table-control-btn {
+    flex: none;
   }
 
   .form-stack {

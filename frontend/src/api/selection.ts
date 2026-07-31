@@ -2,6 +2,8 @@ import { api } from "./client";
 import type {
   TemperatureSelectionRequest,
   TemperatureSelectionResponse,
+  SingleCalculationRequest,
+  SingleCalculationResponse
 } from "../types/api";
 
 export async function postTemperatureSelection(
@@ -9,6 +11,16 @@ export async function postTemperatureSelection(
 ): Promise<TemperatureSelectionResponse> {
   const { data } = await api.post<TemperatureSelectionResponse>(
     "/selection/temperature",
+    body,
+  );
+  return data;
+}
+
+export async function postSingleCalculation(
+  body: SingleCalculationRequest,
+): Promise<SingleCalculationResponse> {
+  const { data } = await api.post<SingleCalculationResponse>(
+    "/selection/calculate",
     body,
   );
   return data;

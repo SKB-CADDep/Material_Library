@@ -34,12 +34,15 @@ ok: boolean
 filename: string
 }
 
+  export type UnitFactor = number | "offset_k" | "offset_f";
+
   export type UnitResponse = {
-    unit_type: string
-    system_unit: string
-    units: string[]
-    display_labels: Record<string, string>
-  }
+    unit_type: string;
+    system_unit: string;
+    units: string[];
+    display_labels: Record<string, string>;
+    factors: Record<string, UnitFactor>;
+  };
 
   export type PropType = "physical" | "mechanical" | "hardness";
 
@@ -76,3 +79,35 @@ export type TemperatureSelectionResponse = {
   columns: TemperatureSelectionColumn[];
   rows: TemperatureSelectionRow[];
 };
+
+export type CalculationCell = {
+  value: number | null;
+  mode: string | null
+}
+
+export type SingleCalculationColumn = {
+  key: string;
+  label: string;
+  unit: string;
+  unit_type?: string | null;
+  temperature_dependent: boolean
+}
+
+export type SingleCalculationRow = {
+  temperature: number | string;
+  values: Record<string, CalculationCell>
+};
+
+export type SingleCalculationRequest = {
+  material_id: string;
+  category_index: number;
+  custom_temperatures?: number[]
+}
+
+export type SingleCalculationResponse = {
+    material_id: string;
+    category_index: number;
+    columns: SingleCalculationColumn[];
+    db_rows: SingleCalculationRow[];
+    custom_rows: SingleCalculationRow[]
+}

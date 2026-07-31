@@ -476,6 +476,7 @@ export function MechanicalPropertiesTab({
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="strength_category_select">Категория прочности:</label>
+          <div className="form-row-inline">
           <select
             id="strength_category_select"
             className="input"
@@ -494,6 +495,7 @@ export function MechanicalPropertiesTab({
                 </option>
               ),
             )}
+      
           </select>
           {(mechanical_properties.strength_category?.length ?? 0) === 0 && (
             <p className="tab-placeholder tab-placeholder--inline">
@@ -550,6 +552,8 @@ export function MechanicalPropertiesTab({
             −
           </button>
         </div>
+        </div>
+      
         <fieldset className="form-section">
           <div className="property-section-fields kp-category-fields">
             <div className="form-row">
