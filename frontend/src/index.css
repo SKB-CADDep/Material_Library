@@ -1887,3 +1887,33 @@ select {
   border-color: var(--border);
   transform: none;
 }
+
+/* Контейнер для обрезанного текста */
+.truncated-cell {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  cursor: default;
+}
+
+.truncated-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tooltip {
+  position: fixed;
+  padding: 8px 12px;
+  background: #333;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 400px;
+  word-wrap: break-word;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: tooltipFade 0.15s ease;
+}

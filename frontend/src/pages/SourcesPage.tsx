@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSources, createSource, updateSource, deleteSource } from "../api/sources";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { SourceItem, TabType } from "../types/api";
 
 const TAB_CONFIG = {
@@ -18,13 +18,16 @@ const TAB_CONFIG = {
   }
 };
 
-// Компонент ячейки с сокращением и tooltip
+// ==================== КАСТОМНЫЙ TOOLTIP С ПОЗИЦИОНИРОВАНИЕМ ====================
 const TruncatedCell: React.FC<{
   value: string;
   maxLength?: number;
   className?: string;
 }> = ({ value, maxLength = 30, className = '' }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const cellRef = useRef<HTMLDivElement>(null);
+
   const text = value || '—';
   const needsTruncation = text.length > maxLength;
   const displayText = needsTruncation ? text.slice(0, maxLength) + '…' : text;
@@ -33,15 +36,56 @@ const TruncatedCell: React.FC<{
     return <span className="empty-value">—</span>;
   }
 
+  const updatePosition = () => {
+    const rect = cellRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPosition({
+        top: rect.top - 8,
+        left: rect.left + rect.width / 2
+      });
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (!needsTruncation) return;
+    updatePosition();
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  useEffect(() => {
+    if (!showTooltip) return;
+
+    const handleUpdate = () => updatePosition();
+    window.addEventListener('scroll', handleUpdate);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [showTooltip]);
+
   return (
     <div
+      ref={cellRef}
       className={`truncated-cell ${className}`}
-      onMouseEnter={() => needsTruncation && setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <span className="truncated-text">{displayText}</span>
       {showTooltip && needsTruncation && (
-        <div className="tooltip">
+        <div
+          className="tooltip"
+          style={{
+            top: position.top,
+            left: position.left,
+            transform: 'translateX(-50%) translateY(-100%)'
+          }}
+        >
           {text}
         </div>
       )}
@@ -49,7 +93,6 @@ const TruncatedCell: React.FC<{
   );
 };
 
-// Тип для режима диалога
 type DialogMode = 'create' | 'edit' | 'delete' | null;
 
 export function SourcesPage() {
@@ -60,7 +103,6 @@ export function SourcesPage() {
     direction: 'asc' | 'desc';
   } | null>(null);
 
-  // Единое состояние для диалога
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedItem, setSelectedItem] = useState<SourceItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +116,6 @@ export function SourcesPage() {
     hyperlink: ''
   });
 
-  // Запрос данных
   const {
     data,
     isLoading,
@@ -87,7 +128,6 @@ export function SourcesPage() {
     retry: false,
   });
 
-  // Мутация создания
   const createMutation = useMutation({
     mutationFn: createSource,
     onSuccess: () => {
@@ -99,7 +139,6 @@ export function SourcesPage() {
     }
   });
 
-  // Мутация обновления
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: { name?: string; description?: string; hyperlink?: string } }) =>
       updateSource(id, data),
@@ -112,7 +151,6 @@ export function SourcesPage() {
     }
   });
 
-  // Мутация удаления
   const deleteMutation = useMutation({
     mutationFn: deleteSource,
     onSuccess: () => {
@@ -146,7 +184,6 @@ export function SourcesPage() {
     });
   }, [currentData, sortConfig]);
 
-  // Обработчики диалога
   const openCreateDialog = () => {
     setDialogMode('create');
     setSelectedItem(null);
@@ -449,10 +486,16 @@ export function SourcesPage() {
                       <tr key={source.id_source}>
                         <td className="col-index">{index + 1}</td>
                         <td className="col-name">
-                          <TruncatedCell value={source.name_source} maxLength={25} />
+                          <TruncatedCell
+                            value={source.name_source}
+                            maxLength={25}
+                          />
                         </td>
                         <td className="col-description">
-                          <TruncatedCell value={source.description} maxLength={30} />
+                          <TruncatedCell
+                            value={source.description}
+                            maxLength={30}
+                          />
                         </td>
                         <td className="col-link">
                           {source.hyperlink ? (
@@ -462,21 +505,36 @@ export function SourcesPage() {
                               rel="noopener noreferrer"
                               className="link-cell"
                             >
-                              <TruncatedCell value={source.hyperlink} maxLength={20} />
+                              <TruncatedCell
+                                value={source.hyperlink}
+                                maxLength={20}
+                              />
                             </a>
                           ) : '—'}
                         </td>
                         <td className="col-user">
-                          <TruncatedCell value={source.user_name_change || ''} maxLength={15} />
+                          <TruncatedCell
+                            value={source.user_name_change || ''}
+                            maxLength={15}
+                          />
                         </td>
                         <td className="col-date">
-                          <TruncatedCell value={source.data_change || ''} maxLength={10} />
+                          <TruncatedCell
+                            value={source.data_change || ''}
+                            maxLength={10}
+                          />
                         </td>
                         <td className="col-user">
-                          <TruncatedCell value={source.user_name_found || ''} maxLength={15} />
+                          <TruncatedCell
+                            value={source.user_name_found || ''}
+                            maxLength={15}
+                          />
                         </td>
                         <td className="col-date">
-                          <TruncatedCell value={source.data_found || ''} maxLength={10} />
+                          <TruncatedCell
+                            value={source.data_found || ''}
+                            maxLength={10}
+                          />
                         </td>
                         <td className="col-actions">
                           <button
