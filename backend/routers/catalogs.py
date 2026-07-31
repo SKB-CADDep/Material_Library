@@ -29,6 +29,14 @@ def get_unit(unit_type:str, state: AppState=Depends(get_state)):
         raise HTTPException(status_code=404, detail="Единицы не найдены")
     system_unit = UnitManager.get_system_unit(unit_type)
     display_labels = UnitManager.get_display_labels(unit_type)
-    return UnitResponse(unit_type=unit_type, system_unit=system_unit, units=units, display_labels=display_labels)
+    cfg = UnitManager.data.get(unit_type, {})
+    factors = cfg.get("factors", {})
+    return UnitResponse(
+        unit_type=unit_type,
+        system_unit=system_unit,
+        units=units,
+        display_labels=display_labels,
+        factors=factors,
+    )
     
 

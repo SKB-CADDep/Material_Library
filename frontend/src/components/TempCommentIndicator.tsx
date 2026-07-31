@@ -1,13 +1,19 @@
 type TempCommentIndicatorProps = {
   comment: string;
+  ariaLabel?: string;
+  className?: string;
 };
 
-export function TempCommentIndicator({ comment }: TempCommentIndicatorProps) {
+export function TempCommentIndicator({
+  comment,
+  ariaLabel = "Есть комментарий к температуре применения",
+  className,
+}: TempCommentIndicatorProps) {
   return (
     <span
-      className="temp-comment-indicator"
+      className={["temp-comment-indicator", className].filter(Boolean).join(" ")}
       tabIndex={0}
-      aria-label="Есть комментарий к температуре применения"
+      aria-label={ariaLabel}
     >
       <svg
         className="temp-comment-icon"

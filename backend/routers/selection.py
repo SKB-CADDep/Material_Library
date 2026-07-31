@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.dependencies import AppState, get_repository, get_state
 from backend.schemas import (
     AshbyOptionsResponse,
     AshbyRequest,
     AshbyResponse,
+    SingleCalculationRequest,
+    SingleCalculationResponse,
     TemperatureSelectionRequest,
     TemperatureSelectionResponse,
 )
@@ -68,3 +71,23 @@ def post_ashby_diagram(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/selection/calculate",
+    response_model=SingleCalculationResponse,
+)
+def post_single_calculation(
+    body: SingleCalculationRequest,
+    repo=Depends(get_repository),
+    service: SelectionService = Depends(get_selection_service),
+):
+    try:
+        return service.single_calculation(
+            repo,
+            body.material_id,
+            body.category_index,
+            custom_temperatures=body.custom_temperatures,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

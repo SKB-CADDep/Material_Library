@@ -79,6 +79,7 @@
     "fatigue_limit_for_smooth_specimen": {
         "name": "Предел выносливости (гладкий образец, N=10e7)",
         "symbol": "σ_-1_smooth",
+        "display_symbol": "σ-1 гладкий, N=10e7",
         "unit": "МПа",
         "unit_type": "Предел выносливости",
         "temperature_dependent": true
@@ -86,6 +87,7 @@
     "fatigue_limit_for_notched_specimen": {
         "name": "Предел выносливости (образец с надрезом, N=10e7)",
         "symbol": "σ_-1_notched",
+        "display_symbol": "σ-1 с надрезом, N=10e7",
         "unit": "МПа",
         "unit_type": "Предел выносливости",
         "temperature_dependent": true
@@ -107,6 +109,7 @@
     "angle_of_bend":{
         "name": "Угол изгиба",
         "symbol": "β",
+        "display_symbol": "Угол изгиба",
         "unit": "°",
         "unit_type": "Угол",
         "temperature_dependent": false

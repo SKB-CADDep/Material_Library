@@ -393,6 +393,7 @@ useEffect(() => {
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="composition_source_select">Набор состава:</label>
+          <div className="form-row-inline">
           <select
             id="composition_source_select"
             className="input"
@@ -467,6 +468,7 @@ useEffect(() => {
           >
             −
           </button>
+        </div>
         </div>
       </div>
       <div className="form-stack">

@@ -30,6 +30,10 @@ class PropertiesCatalog:
         else:
             return meta
 
+    def get_display_symbol(self, key: str) -> str:
+        meta = self.get_meta(key)
+        return meta.get("display_symbol") or meta.get("symbol") or meta.get("name", key)
+
     def supports_temperature(self, key):
         meta = self.get_meta(key)
         return meta.get("temperature_dependent", True)
