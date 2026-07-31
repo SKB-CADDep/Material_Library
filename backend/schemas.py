@@ -101,3 +101,55 @@ class TemperatureSelectionResponse(BaseModel):
     area: str | None = None
     columns: list[TemperatureSelectionColumn]
     rows: list[TemperatureSelectionRow]
+
+
+class AshbyAxisOption(BaseModel):
+    key: str
+    label: str
+    unit: str = ""
+    unit_type: str | None = None
+    kind: Literal["temperature", "physical", "mechanical"]
+
+
+class AshbyOptionsResponse(BaseModel):
+    axes: list[AshbyAxisOption]
+    classes: list[str]
+
+
+class AshbyRequest(BaseModel):
+    x_prop: str
+    y_prop: str
+    class_names: list[str]
+    areas: list[str] | None = None
+
+
+class AshbyPoint(BaseModel):
+    x: float
+    y: float
+
+
+class AshbySeries(BaseModel):
+    id: str
+    label: str
+    class_name: str
+    color: str
+    points: list[AshbyPoint]
+
+
+class AshbyHull(BaseModel):
+    class_name: str
+    color: str
+    points: list[AshbyPoint]
+
+
+class AshbyAxisMeta(BaseModel):
+    key: str
+    label: str
+    unit: str = ""
+
+
+class AshbyResponse(BaseModel):
+    x_axis: AshbyAxisMeta
+    y_axis: AshbyAxisMeta
+    series: list[AshbySeries]
+    hulls: list[AshbyHull]

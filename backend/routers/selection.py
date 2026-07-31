@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.dependencies import AppState, get_repository, get_state
 from backend.schemas import (
+    AshbyOptionsResponse,
+    AshbyRequest,
+    AshbyResponse,
     TemperatureSelectionRequest,
     TemperatureSelectionResponse,
 )
@@ -32,3 +35,36 @@ def post_temperature_selection(
         area=body.area,
         areas=body.areas,
     )
+
+
+@router.get(
+    "/selection/ashby/options",
+    response_model=AshbyOptionsResponse,
+)
+def get_ashby_options(
+    areas: list[str] | None = Query(None),
+    repo=Depends(get_repository),
+    service: SelectionService = Depends(get_selection_service),
+):
+    return service.ashby_options(repo, areas=areas)
+
+
+@router.post(
+    "/selection/ashby",
+    response_model=AshbyResponse,
+)
+def post_ashby_diagram(
+    body: AshbyRequest,
+    repo=Depends(get_repository),
+    service: SelectionService = Depends(get_selection_service),
+):
+    try:
+        return service.ashby_diagram(
+            repo,
+            body.x_prop,
+            body.y_prop,
+            body.class_names,
+            areas=body.areas,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

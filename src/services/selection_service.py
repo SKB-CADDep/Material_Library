@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import colorsys
 from typing import Any, Literal
 
+from src.core.math.interpolation import MathUtils
 from src.core.models.material import Material
 from src.core.schema_keys import Schema
 from src.services.material_repository import MaterialRepository
@@ -30,9 +32,18 @@ HARDNESS_COLUMNS: dict[str, dict[str, str]] = {
     },
 }
 
+_TEMPERATURE_AXIS = {
+    "key": "temperature",
+    "name": "Температура",
+    "symbol": "T",
+    "unit": "°С",
+    "unit_type": "Температура",
+    "kind": "temperature",
+}
+
 
 class SelectionService:
-    """Подбор материалов. Паритет с TempSelectionTab (main.py)."""
+    """Подбор материалов. Паритет с TempSelectionTab / AshbyDiagramTab (main.py)."""
 
     def __init__(self, properties: PropertiesCatalog):
         self._properties = properties
@@ -276,3 +287,300 @@ class SelectionService:
                 rows.append(row)
 
         return rows
+
+    # --- Диаграмма Эшби (паритет AshbyDiagramTab) ---
+
+    def ashby_options(
+        self,
+        repository: MaterialRepository,
+        areas: list[str] | None = None,
+    ) -> dict[str, Any]:
+        classes: set[str] = set()
+        for material in repository.materials:
+            if not self._matches_area(material, None, areas):
+                continue
+            class_name = self._classification_class(material)
+            if class_name:
+                classes.add(class_name)
+
+        return {
+            "axes": self._ashby_axes(),
+            "classes": sorted(classes),
+        }
+
+    def ashby_diagram(
+        self,
+        repository: MaterialRepository,
+        x_prop: str,
+        y_prop: str,
+        class_names: list[str],
+        areas: list[str] | None = None,
+    ) -> dict[str, Any]:
+        if not class_names:
+            raise ValueError("class_names не должен быть пустым")
+        if x_prop == y_prop:
+            raise ValueError("Оси X и Y должны отличаться")
+        allowed = self._ashby_prop_keys()
+        if x_prop not in allowed or y_prop not in allowed:
+            raise ValueError("Неизвестный ключ свойства оси")
+
+        selected_classes = list(dict.fromkeys(class_names))
+        class_color = {
+            name: self._series_color(i) for i, name in enumerate(selected_classes)
+        }
+        selected_set = set(selected_classes)
+
+        x_is_mech = self._properties.is_mechanical(x_prop)
+        y_is_mech = self._properties.is_mechanical(y_prop)
+        series: list[dict[str, Any]] = []
+        class_points: dict[str, list[tuple[float, float]]] = {
+            name: [] for name in selected_classes
+        }
+
+        for material in repository.materials:
+            if not self._matches_area(material, None, areas):
+                continue
+            class_name = self._classification_class(material)
+            if class_name not in selected_set:
+                continue
+
+            color = class_color[class_name]
+            material_id = material.data.get("material_id", "") or material.filename
+            cats = material.get_strength_categories()
+
+            if x_is_mech or y_is_mech:
+                for cat_idx, cat in enumerate(cats):
+                    cat_name = (
+                        cat.get(Schema.VAL_STR_CAT, "")
+                        if isinstance(cat, dict)
+                        else ""
+                    )
+                    label = f"{material.get_display_name()} {cat_name}".strip()
+                    points = self._ashby_series_points(
+                        material, cat_idx, x_prop, y_prop
+                    )
+                    if not points:
+                        continue
+                    class_points[class_name].extend(
+                        (p["x"], p["y"]) for p in points
+                    )
+                    series.append(
+                        {
+                            "id": f"{material_id}:{cat_idx}",
+                            "label": label,
+                            "class_name": class_name,
+                            "color": color,
+                            "points": points,
+                        }
+                    )
+            else:
+                points = self._ashby_series_points(material, None, x_prop, y_prop)
+                if not points:
+                    continue
+                class_points[class_name].extend((p["x"], p["y"]) for p in points)
+                series.append(
+                    {
+                        "id": material_id,
+                        "label": material.get_display_name(),
+                        "class_name": class_name,
+                        "color": color,
+                        "points": points,
+                    }
+                )
+
+        hulls: list[dict[str, Any]] = []
+        for class_name in selected_classes:
+            hull = self._compute_convex_hull(class_points[class_name])
+            if len(hull) < 3:
+                continue
+            closed = list(hull) + [hull[0]]
+            hulls.append(
+                {
+                    "class_name": class_name,
+                    "color": class_color[class_name],
+                    "points": [{"x": x, "y": y} for x, y in closed],
+                }
+            )
+
+        return {
+            "x_axis": self._ashby_axis_meta(x_prop),
+            "y_axis": self._ashby_axis_meta(y_prop),
+            "series": series,
+            "hulls": hulls,
+        }
+
+    def _ashby_prop_keys(self) -> set[str]:
+        return {"temperature", *self._properties.all_keys()}
+
+    def _ashby_axes(self) -> list[dict[str, Any]]:
+        axes = [
+            {
+                "key": _TEMPERATURE_AXIS["key"],
+                "label": self._axis_label(
+                    _TEMPERATURE_AXIS["name"],
+                    _TEMPERATURE_AXIS["symbol"],
+                ),
+                "unit": _TEMPERATURE_AXIS["unit"],
+                "unit_type": _TEMPERATURE_AXIS["unit_type"],
+                "kind": "temperature",
+            }
+        ]
+        for key in self._properties.physical_keys():
+            meta = self._properties.get_meta(key)
+            axes.append(
+                {
+                    "key": key,
+                    "label": self._axis_label(
+                        meta.get("name", key), meta.get("symbol", "")
+                    ),
+                    "unit": meta.get("unit", ""),
+                    "unit_type": meta.get("unit_type"),
+                    "kind": "physical",
+                }
+            )
+        for key in self._properties.mechanical_keys():
+            meta = self._properties.get_meta(key)
+            axes.append(
+                {
+                    "key": key,
+                    "label": self._axis_label(
+                        meta.get("name", key), meta.get("symbol", "")
+                    ),
+                    "unit": meta.get("unit", ""),
+                    "unit_type": meta.get("unit_type"),
+                    "kind": "mechanical",
+                }
+            )
+        return axes
+
+    def _ashby_axis_meta(self, prop_key: str) -> dict[str, Any]:
+        if prop_key == "temperature":
+            return {
+                "key": "temperature",
+                "label": _TEMPERATURE_AXIS["name"],
+                "unit": _TEMPERATURE_AXIS["unit"],
+            }
+        meta = self._properties.get_meta(prop_key)
+        return {
+            "key": prop_key,
+            "label": meta.get("name", prop_key),
+            "unit": meta.get("unit", ""),
+        }
+
+    @staticmethod
+    def _axis_label(name: str, symbol: str) -> str:
+        symbol = (symbol or "").strip()
+        return f"{name} ({symbol})" if symbol else name
+
+    @staticmethod
+    def _classification_class(material: Material) -> str:
+        return (
+            material.data.get(Schema.METADATA, {})
+            .get("classification", {})
+            .get("classification_class", "")
+            or ""
+        ).strip()
+
+    def _ashby_series_points(
+        self,
+        material: Material,
+        cat_idx: int | None,
+        x_prop: str,
+        y_prop: str,
+    ) -> list[dict[str, float]]:
+        temps: set[float] = set()
+        for prop_key in (x_prop, y_prop):
+            if prop_key == "temperature":
+                continue
+            for t_raw, _ in self._temp_pairs(material, prop_key, cat_idx):
+                t_val = MathUtils.safe_float(t_raw)
+                if t_val is not None:
+                    temps.add(t_val)
+
+        if not temps:
+            return []
+
+        points: list[dict[str, float]] = []
+        for temp in sorted(temps):
+            x_val = self._ashby_axis_value(material, cat_idx, x_prop, temp)
+            y_val = self._ashby_axis_value(material, cat_idx, y_prop, temp)
+            if x_val is not None and y_val is not None:
+                points.append({"x": float(x_val), "y": float(y_val)})
+        return points
+
+    def _temp_pairs(
+        self,
+        material: Material,
+        prop_key: str,
+        cat_idx: int | None,
+    ) -> list:
+        if self._properties.is_physical(prop_key):
+            prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
+            if isinstance(prop_data, dict):
+                return prop_data.get(Schema.TEMP_PAIRS, []) or []
+            return []
+
+        if self._properties.is_mechanical(prop_key) and cat_idx is not None:
+            cats = material.get_strength_categories()
+            if 0 <= cat_idx < len(cats):
+                prop_data = cats[cat_idx].get(prop_key, {})
+                if isinstance(prop_data, dict):
+                    return prop_data.get(Schema.TEMP_PAIRS, []) or []
+        return []
+
+    def _ashby_axis_value(
+        self,
+        material: Material,
+        cat_idx: int | None,
+        prop_key: str,
+        temp: float,
+    ) -> float | None:
+        if prop_key == "temperature":
+            return temp
+        if self._properties.is_physical(prop_key):
+            return material.get_interpolated_property(prop_key, temp)
+        if self._properties.is_mechanical(prop_key):
+            if cat_idx is None:
+                return None
+            return material.get_interpolated_property(
+                prop_key, temp, category_idx=cat_idx
+            )
+        return None
+
+    @staticmethod
+    def _compute_convex_hull(
+        points: list[tuple[float, float]],
+    ) -> list[tuple[float, float]]:
+        """Выпуклая оболочка методом монотонной цепи (Andrew)."""
+        unique = sorted(set(points))
+        if len(unique) <= 1:
+            return unique
+
+        def cross(
+            o: tuple[float, float],
+            a: tuple[float, float],
+            b: tuple[float, float],
+        ) -> float:
+            return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+        lower: list[tuple[float, float]] = []
+        for p in unique:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+
+        upper: list[tuple[float, float]] = []
+        for p in reversed(unique):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+
+        return lower[:-1] + upper[:-1]
+
+    @staticmethod
+    def _series_color(index: int) -> str:
+        """HSV-цвет по golden ratio — стабильно различаются при >10 классах."""
+        golden_ratio_conjugate = 0.618033988749895
+        h = (index * golden_ratio_conjugate) % 1.0
+        r, g, b = colorsys.hsv_to_rgb(h, 0.9, 0.9)
+        return "#{:02x}{:02x}{:02x}".format(int(r * 255), int(g * 255), int(b * 255))
