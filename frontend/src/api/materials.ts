@@ -1,12 +1,13 @@
 import { api } from "./client";
 import type { MaterialSummary, MaterialSaveResponse} from "../types/api";
+import {
+  categoryDisplayName,
+  hasCategorySource,
+  type StrengthCategoryFields,
+} from "../lib/strengthCategory";
 
 type MechanicalPropsSlice = {
-  strength_category?: {
-    value_strength_category?: string;
-    source_strength_category?: string | null;
-    source_ref_id?: string | null;
-  }[];
+  strength_category?: StrengthCategoryFields[];
 };
 
 type ChemicalPropsSlice = {
@@ -15,16 +16,6 @@ type ChemicalPropsSlice = {
   }[];
 };
 
-function hasKpSource(cat: {
-  source_strength_category?: string | null;
-  source_ref_id?: string | null;
-}): boolean {
-  return (
-    Boolean((cat.source_strength_category ?? "").trim()) ||
-    Boolean((cat.source_ref_id ?? "").trim())
-  );
-}
-
 export function validateMaterialDraftForSave(
   body: Record<string, unknown>
 ): string | null {
@@ -32,13 +23,12 @@ export function validateMaterialDraftForSave(
     (body.mechanical_properties as MechanicalPropsSlice | undefined)
       ?.strength_category ?? [];
   if (categories.length === 0) {
-    return "Добавьте категорию прочности и укажите источник КП";
+    return "Добавьте категорию прочности и укажите источник (НТД) для КП";
   }
   for (const [i, cat] of categories.entries()) {
-    if (!hasKpSource(cat)) {
-      const name =
-        (cat.value_strength_category ?? "").trim() || `КП #${i + 1}`;
-      return `Укажите источник КП для категории «${name}»`;
+    if (!hasCategorySource(cat)) {
+      const label = categoryDisplayName(cat, i);
+      return `Укажите источник (НТД) для категории прочности «${label}»`;
     }
   }
 

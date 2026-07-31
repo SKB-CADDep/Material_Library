@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -11,13 +11,20 @@ import {
 import { UnitSelect } from "./UnitSelect";
 import { getSources } from "../api/sources";
 import { useQuery } from "@tanstack/react-query";
-import type { SourceItem } from "../types/api";
 import {
   PropertySourceSelect,
   isOrphanSource,
   resolvePropertySourceName,
 } from "./PropertySourceSelect";
 import { chartValueLabel, yLabelWithUnit } from "./chartLabels";
+import {
+  formatCategoryOptionLabel,
+  resolveCategorySourceName,
+} from "../lib/strengthCategory";
+import { RequiredMark } from "../components/RequiredMark";
+import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
+import { useUnitLabels } from "../hooks/useUnitLabels";
+import { computeNiceAxisFromValues, formatTickLabel } from "../utils/chartTicks";
 type MechanicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
@@ -40,18 +47,6 @@ type StrengthCategory = {
   source_strength_category?: string | null;
   source_ref_id?: string | null;
 };
-
-/** Имя источника КП: строковое поле или резолв source_ref_id через strength_sources. */
-function resolveKpSourceName(
-  cat: StrengthCategory | undefined,
-  sources: SourceItem[],
-): string {
-  const byName = (cat?.source_strength_category ?? "").trim();
-  if (byName) return byName;
-  const refId = String(cat?.source_ref_id ?? "").trim();
-  if (!refId) return "";
-  return sources.find((src) => src.id_source === refId)?.name_source ?? refId;
-}
 
 type MechanicalProperties = {
   strength_category?: StrengthCategory[];
@@ -192,6 +187,7 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
     .map(([temperature, value]) => ({ temperature, value }));
 }
 
+
 function TemperatureGraph({
   data,
   yLabel = "Значение",
@@ -199,9 +195,23 @@ function TemperatureGraph({
   data: ChartPoint[];
   yLabel?: string;
 }) {
-  if (data.length === 0) {
+  const axes = useMemo(() => {
+    if (data.length === 0) {
+      return null;
+    }
+    const x = computeNiceAxisFromValues(data.map((point) => point.temperature));
+    const y = computeNiceAxisFromValues(data.map((point) => point.value));
+    if (!x || !y) {
+      return null;
+    }
+    return { x, y };
+  }, [data]);
+
+  if (!axes) {
     return <p className="tab-placeholder">Нет данных для графика</p>;
   }
+
+  const { x, y } = axes;
 
   return (
     <ResponsiveContainer width="100%" height={400}>
@@ -212,14 +222,18 @@ function TemperatureGraph({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           type="number"
-          domain={["dataMin", "dataMax"]}
+          domain={x.domain}
           dataKey="temperature"
           label={{ value: "T, °C", position: "insideBottom", offset: -5 }}
+          ticks={x.ticks}
+          tickFormatter={formatTickLabel}
         />
         <YAxis
           width={72}
-          domain={["dataMin", "dataMax"]}
+          domain={y.domain}
           label={{ value: yLabel, angle: -90, position: "insideLeft" }}
+          ticks={y.ticks}
+          tickFormatter={formatTickLabel}
         />
         <Tooltip
           formatter={(value) => [value, chartValueLabel(yLabel)]}
@@ -246,6 +260,22 @@ type TemperatureValueTableProps = {
   onAddRow?: () => void;
   onDeleteRow?: () => void;
 };
+function MechTemperatureGraph({
+  prop,
+  data,
+}: {
+  prop: MechPropertyConfig;
+  data: PropertyData | undefined;
+}) {
+  const { labels } = useUnitLabels(prop.unitType);
+
+  return (
+    <TemperatureGraph
+      data={toChartData(data?.temperature_value_pairs)}
+      yLabel={yLabelWithUnit(prop.yLabel, data?.value_unit, labels)}
+    />
+  );
+}
 function TemperatureValueTable({
   pairs,
   onChangeValue,
@@ -417,7 +447,7 @@ export function MechanicalPropertiesTab({
   const mechanical_properties = (material?.mechanical_properties ??
     {}) as MechanicalProperties;
   const category = mechanical_properties.strength_category?.[categoryIndex];
-  const currentSource = resolveKpSourceName(category, mechanicalSources);
+  const currentSource = resolveCategorySourceName(category, mechanicalSources);
   const sourceNames = mechanicalSources.map((src) => src.name_source);
   const showOrphan =
     currentSource !== "" && !sourceNames.includes(currentSource);
@@ -460,7 +490,7 @@ export function MechanicalPropertiesTab({
             {(mechanical_properties.strength_category ?? []).map(
               (cat, index) => (
                 <option key={index} value={index}>
-                  {cat.value_strength_category ?? `КП #${index + 1}`}
+                  {formatCategoryOptionLabel(cat, index, mechanicalSources)}
                 </option>
               ),
             )}
@@ -521,39 +551,42 @@ export function MechanicalPropertiesTab({
           </button>
         </div>
         <fieldset className="form-section">
-        <div className="property-section-layout">
-            <div className="property-section-fields">
-              <div className="form-row">
-              <label htmlFor="name_strength_select">
-                  Название КП:
-                </label>
-                <input
-                  id="name_strength_select"
-                  type="text"
-                  value={
-                    mechanical_properties?.strength_category?.[categoryIndex]?.value_strength_category ?? ""
-                  }
-                  className="input"
-                  onChange={(event) => {
-                    const text = event.target.value;
-                    onDraftChange({
-                      ...material,
-                      mechanical_properties: {
-                        ...mechanical_properties,
-                        strength_category: mechanical_properties.strength_category?.map(
+          <div className="property-section-fields kp-category-fields">
+            <div className="form-row">
+              <label htmlFor="name_strength_select" className="form-label--fixed">
+                Название КП:
+              </label>
+              <input
+                id="name_strength_select"
+                type="text"
+                value={
+                  mechanical_properties?.strength_category?.[categoryIndex]
+                    ?.value_strength_category ?? ""
+                }
+                className="input"
+                onChange={(event) => {
+                  const text = event.target.value;
+                  onDraftChange({
+                    ...material,
+                    mechanical_properties: {
+                      ...mechanical_properties,
+                      strength_category:
+                        mechanical_properties.strength_category?.map(
                           (cat, idx) =>
                             idx === categoryIndex
                               ? { ...cat, value_strength_category: text }
-                              : cat
+                              : cat,
                         ) ?? [{ value_strength_category: text }],
-                      },
-                    });
-                  }}
-                />
-              </div>
+                    },
+                  });
+                }}
+              />
             </div>
             <div className="form-row">
-              <label htmlFor="source_strength_select">Источник КП:</label>
+              <label htmlFor="source_strength_select" className="form-label--fixed">
+                Источник КП
+                <RequiredMark />:
+              </label>
               <select
                 id="source_strength_select"
                 className="input"
@@ -606,6 +639,7 @@ export function MechanicalPropertiesTab({
                 ))}
               </select>
             </div>
+            <RequiredFieldsFootnote />
           </div>
         </fieldset>
         {TEMPERATURE_MECH_PROPERTIES.map((prop) => {
@@ -793,10 +827,7 @@ export function MechanicalPropertiesTab({
                   />
                 </div>
                 <div className="property-section-chart">
-                  <TemperatureGraph
-                    data={toChartData(data?.temperature_value_pairs)}
-                    yLabel={yLabelWithUnit(prop.yLabel, data?.value_unit)}
-                  />
+                  <MechTemperatureGraph prop={prop} data={data} />
                 </div>
               </div>
             </fieldset>

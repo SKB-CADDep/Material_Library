@@ -5,6 +5,7 @@ import { OpenWorkspaceScreen } from "./components/Layout/OpenWorkSpaceScreen";
 import { SelectionPage } from "./pages/SelectionPage";
 import { EditorPage } from "./pages/EditorPage";
 import { SourcesPage } from "./pages/SourcesPage";
+import { EditorProvider } from "./context/EditorContext";
 
 function AppRoutes() {
   const { isOpen, isLoading } = useWorkspace();
@@ -28,7 +29,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <WorkspaceProvider>
+        <EditorProvider>
         <AppRoutes />
+        </EditorProvider>
       </WorkspaceProvider>
     </BrowserRouter>
   );
