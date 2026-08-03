@@ -101,3 +101,33 @@ class TemperatureSelectionResponse(BaseModel):
     area: str | None = None
     columns: list[TemperatureSelectionColumn]
     rows: list[TemperatureSelectionRow]
+
+
+class CalculationCell(BaseModel):
+    value: float | None = None
+    mode: Literal["exact", "interp", "approx", "scalar"] | None = None
+
+class SingleCalculationColumn(BaseModel):
+    key: str
+    label: str
+    display_symbol: str = ""
+    unit: str = ""
+    unit_type: str | None = None
+    temperature_dependent: bool = True
+
+class SingleCalculationRow(BaseModel):
+    temperature: float | str
+    values: dict[str, CalculationCell]
+
+class SingleCalculationRequest(BaseModel):
+    material_id: str
+    category_index: int
+    custom_temperatures: list[float] = []
+
+class SingleCalculationResponse(BaseModel):
+    material_id: str
+    category_index: int
+    columns: list[SingleCalculationColumn]
+    db_rows: list[SingleCalculationRow]
+    custom_rows: list[SingleCalculationRow] = []
+
