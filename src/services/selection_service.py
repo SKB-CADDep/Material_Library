@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import colorsys
 from typing import Any, Literal
 
-from src.core.math.interpolation import MathUtils
 from src.core.models.material import Material
 from src.core.schema_keys import Schema
 from src.services.material_repository import MaterialRepository
@@ -32,18 +30,9 @@ HARDNESS_COLUMNS: dict[str, dict[str, str]] = {
     },
 }
 
-_TEMPERATURE_AXIS = {
-    "key": "temperature",
-    "name": "Температура",
-    "symbol": "T",
-    "unit": "°С",
-    "unit_type": "Температура",
-    "kind": "temperature",
-}
-
 
 class SelectionService:
-    """Подбор материалов. Паритет с TempSelectionTab / AshbyDiagramTab (main.py)."""
+    """Подбор материалов. Паритет с TempSelectionTab (main.py)."""
 
     def __init__(self, properties: PropertiesCatalog):
         self._properties = properties
