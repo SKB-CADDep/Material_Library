@@ -112,6 +112,7 @@ class CalculationCell(BaseModel):
 class SingleCalculationColumn(BaseModel):
     key: str
     label: str
+    display_symbol: str = ""
     unit: str = ""
     unit_type: str | None = None
     temperature_dependent: bool = True
