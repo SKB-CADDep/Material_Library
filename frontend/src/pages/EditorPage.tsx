@@ -138,7 +138,7 @@ export function EditorPage() {
     queryKey: ["materials"],
     queryFn: listMaterials,
   });
-  const { draft, setDraft, selectedId, setSelectedId, isNewMaterial, setIsNewMaterial, resetEditor} = useEditor()
+  const { draft, setDraft, selectedId, setSelectedId, isNewMaterial, setIsNewMaterial } = useEditor()
   const detail = useQuery({
     queryKey: ["material", selectedId],
     queryFn: () => getMaterial(selectedId!),

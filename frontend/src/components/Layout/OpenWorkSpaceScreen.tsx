@@ -21,8 +21,8 @@ export function OpenWorkspaceScreen() {
   };
 
   return (
-    <div className="open-workspace panel">
-      <h1>Откройте директорию</h1>
+    <div className="open-workspace open-workspace--manual panel">
+      <h1>Откройте папку</h1>
       <p>Укажите папку с JSON-файлами материалов</p>
       <input
         value={path}

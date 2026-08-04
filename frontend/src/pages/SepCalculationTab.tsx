@@ -1,23 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { CalculationTable } from "../components/CalculationTable";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { listMaterials, getMaterial } from "../api/materials";
-import { formatCategoryOptionLabel } from "../lib/strengthCategory";
+import {
+  buildStrengthCategoryNtdOptions,
+  indicesForStrengthCategoryName,
+  uniqueStrengthCategoryNames,
+} from "../lib/strengthCategory";
+import {
+  formatCalculationTemperature,
+  isDuplicateCalculationTemperature,
+  parseCalculationTemperature,
+} from "../lib/calculationTemperature";
 import { getSources } from "../api/sources";
 import { postSingleCalculation } from "../api/selection";
 import { CalculationColumnMenu } from "../components/CalculationColumnMenu";
+import { CalculationTableLegend } from "../components/CalculationTableLegend";
 import { useColumnUnitConfigs } from "../hooks/useColumnUnitConfigs";
 import { buildColumnAcceptance } from "../lib/columnAcceptance";
 import { mergeColumnUnits } from "../lib/columnUnits";
 import { buildColumnComments } from "../lib/columnComments";
+import { buildColumnSourceRefs } from "../lib/calculationColumnSources";
+import { buildSourcesNavigatePath } from "../lib/sourcesNavigation";
 import {
   filterVisibleColumns,
   mergeColumnVisibility,
 } from "../lib/columnVisibility";
-import { AcceptanceIndicator } from "../components/AcceptanceIndicator";
-import { TempCommentIndicator } from "../components/TempCommentIndicator";
 
 type StrengthCategory = {
   value_strength_category?: string;
@@ -31,23 +42,21 @@ type MechanicalProperties = {
   strength_category?: StrengthCategory[];
 };
 
-function parseTemperature(value: string): number | null {
-  const normalized = value.trim().replace(",", ".");
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 export function SepCalculationTab() {
+  const navigate = useNavigate();
   const { workspace } = useWorkspace();
   const areaOptions = workspace?.application_areas ?? [];
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedCategoryName, setSelectedCategoryName] = useState("");
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [customTemps, setCustomTemps] = useState<number[]>([]);
   const [calcTempInput, setCalcTempInput] = useState("");
   const [calcTempError, setCalcTempError] = useState<string | null>(null);
   const [selectedCustomRowIndex, setSelectedCustomRowIndex] = useState<
+    number | null
+  >(null);
+  const [scrollToCustomRowIndex, setScrollToCustomRowIndex] = useState<
     number | null
   >(null);
   const [columnVisibility, setColumnVisibility] = useState<
@@ -67,10 +76,24 @@ export function SepCalculationTab() {
   const material = result.data ?? [];
   const sourcesQuery = useQuery({ queryKey: ["sources"], queryFn: getSources });
   const mechanicalSources = sourcesQuery.data?.strength_sources ?? [];
+  const propertySources = sourcesQuery.data?.property_sources ?? [];
   const mechanical_properties = (detail.data?.mechanical_properties ??
     {}) as MechanicalProperties;
   const categories = mechanical_properties.strength_category ?? [];
   const hasCategories = categories.length > 0;
+  const categoryNames = useMemo(
+    () => uniqueStrengthCategoryNames(categories),
+    [categories],
+  );
+  const ntdOptions = useMemo(
+    () =>
+      buildStrengthCategoryNtdOptions(
+        categories,
+        selectedCategoryName,
+        mechanicalSources,
+      ),
+    [categories, selectedCategoryName, mechanicalSources],
+  );
   const categoryPlaceholder = !selectedId
     ? "— выберите материал —"
     : "Нет категорий прочности";
@@ -80,6 +103,7 @@ export function SepCalculationTab() {
     setCalcTempInput("");
     setCalcTempError(null);
     setSelectedCustomRowIndex(null);
+    setScrollToCustomRowIndex(null);
   }, [selectedId, categoryIndex]);
 
   const sepCalculate = useQuery({
@@ -96,7 +120,9 @@ export function SepCalculationTab() {
   const columns = sepCalculate.data?.columns ?? [];
   const rows = sepCalculate.data?.db_rows ?? [];
   const customRows = sepCalculate.data?.custom_rows ?? [];
-  const { configs: unitConfigs } = useColumnUnitConfigs(columns);
+  const { configs: unitConfigs } = useColumnUnitConfigs(columns, {
+    includeTemperature: true,
+  });
 
   useEffect(() => {
     const cols = sepCalculate.data?.columns ?? [];
@@ -133,8 +159,21 @@ export function SepCalculationTab() {
     [columns, categories, categoryIndex],
   );
 
+  const columnSourceRefs = useMemo(
+    () =>
+      buildColumnSourceRefs(
+        columns,
+        detail.data?.physical_properties as Record<string, unknown> | undefined,
+        categories[categoryIndex] as Record<string, unknown> | undefined,
+        propertySources,
+        mechanicalSources,
+      ),
+    [columns, detail.data, categories, categoryIndex, propertySources, mechanicalSources],
+  );
+
   const hasColumnComments = Object.keys(columnComments).length > 0;
   const hasColumnAcceptance = columnAcceptance.size > 0;
+  const hasColumnSourceRefs = Object.keys(columnSourceRefs).length > 0;
 
   const filteredMaterials = useMemo(() => {
     if (selectedAreas.length === 0) return material;
@@ -158,8 +197,40 @@ export function SepCalculationTab() {
   }, [filteredMaterials]);
 
   useEffect(() => {
-    setCategoryIndex(0);
-  }, [selectedId]);
+    if (!selectedId || categories.length === 0) {
+      setSelectedCategoryName("");
+      setCategoryIndex(0);
+      return;
+    }
+
+    setSelectedCategoryName((prev) => {
+      const names = uniqueStrengthCategoryNames(categories);
+      return names.includes(prev) ? prev : (names[0] ?? "");
+    });
+  }, [selectedId, categories]);
+
+  useEffect(() => {
+    if (!selectedCategoryName || categories.length === 0) {
+      return;
+    }
+
+    const indices = indicesForStrengthCategoryName(
+      categories,
+      selectedCategoryName,
+    );
+    setCategoryIndex((prev) =>
+      indices.includes(prev) ? prev : (indices[0] ?? 0),
+    );
+  }, [categories, selectedCategoryName]);
+
+  useEffect(() => {
+    if (ntdOptions.length === 0) {
+      return;
+    }
+    if (!ntdOptions.some((option) => option.index === categoryIndex)) {
+      setCategoryIndex(ntdOptions[0].index);
+    }
+  }, [ntdOptions, categoryIndex]);
 
   useEffect(() => {
     if (
@@ -170,16 +241,32 @@ export function SepCalculationTab() {
     }
   }, [customTemps.length, selectedCustomRowIndex]);
 
+  useEffect(() => {
+    if (sepCalculate.isError) {
+      setScrollToCustomRowIndex(null);
+    }
+  }, [sepCalculate.isError]);
+
   function addCustomCalculation() {
-    const temp = parseTemperature(calcTempInput);
+    const temp = parseCalculationTemperature(calcTempInput);
     if (temp === null) {
       setCalcTempError("Некорректная температура");
       return;
     }
+
+    if (isDuplicateCalculationTemperature(temp, customTemps, rows)) {
+      setCalcTempError(
+        `Температура ${formatCalculationTemperature(temp)} °C уже есть в таблице`,
+      );
+      return;
+    }
+
+    const newIndex = customTemps.length;
     setCalcTempError(null);
     setCustomTemps((prev) => [...prev, temp]);
     setCalcTempInput("");
-    setSelectedCustomRowIndex(null);
+    setSelectedCustomRowIndex(newIndex);
+    setScrollToCustomRowIndex(newIndex);
   }
 
   function removeSelectedCustomRow() {
@@ -229,7 +316,6 @@ export function SepCalculationTab() {
             value={selectedId ?? ""}
             onChange={(event) => {
               setSelectedId(event.target.value || null);
-              setCategoryIndex(0);
             }}
           >
             <option value="">— не выбран —</option>
@@ -245,16 +331,43 @@ export function SepCalculationTab() {
           <select
             id="strength_category_select"
             className="input"
-            value={hasCategories ? categoryIndex : ""}
-            onChange={(e) => setCategoryIndex(Number(e.target.value))}
+            value={hasCategories ? selectedCategoryName : ""}
+            onChange={(event) => {
+              const name = event.target.value;
+              setSelectedCategoryName(name);
+              const indices = indicesForStrengthCategoryName(categories, name);
+              setCategoryIndex(indices[0] ?? 0);
+            }}
             disabled={!hasCategories}
           >
             {!hasCategories && (
               <option value="">{categoryPlaceholder}</option>
             )}
-            {categories.map((cat, index) => (
-              <option key={index} value={index}>
-                {formatCategoryOptionLabel(cat, index, mechanicalSources)}
+            {categoryNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="selection-control selection-control--ntd">
+          <label htmlFor="strength_category_ntd_select">НТД:</label>
+          <select
+            id="strength_category_ntd_select"
+            className="input"
+            value={hasCategories ? categoryIndex : ""}
+            onChange={(event) => setCategoryIndex(Number(event.target.value))}
+            disabled={!hasCategories || ntdOptions.length <= 1}
+            title={
+              ntdOptions.length <= 1
+                ? "Для выбранной КП доступен один источник"
+                : undefined
+            }
+          >
+            {!hasCategories && <option value="">—</option>}
+            {ntdOptions.map((option) => (
+              <option key={option.index} value={option.index}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -290,6 +403,8 @@ export function SepCalculationTab() {
               <CalculationColumnMenu
                 columns={columns}
                 visibility={columnVisibility}
+                columnUnits={columnUnits}
+                unitConfigs={unitConfigs}
                 onChange={setColumnVisibility}
                 disabled={columnMenuDisabled}
               />
@@ -306,58 +421,27 @@ export function SepCalculationTab() {
               <CalculationColumnMenu
                 columns={columns}
                 visibility={columnVisibility}
+                columnUnits={columnUnits}
+                unitConfigs={unitConfigs}
                 onChange={setColumnVisibility}
                 disabled={columnMenuDisabled}
               />
-              <div className="calculation-table-legend">
-              <span className="calculation-table-legend__item">
-                <span className="calculation-table-legend__sample calculation-table-legend__sample--exact">
-                  330.0
-                </span>
-                из БД
-              </span>
-              <span className="calculation-table-legend__item">
-                <span className="calculation-table-legend__sample calculation-table-legend__sample--interp">
-                  (330.0)
-                </span>
-                интерполяция
-              </span>
-              <span className="calculation-table-legend__item">
-                <span className="calculation-table-legend__sample calculation-table-legend__sample--approx">
-                  [330.0]
-                </span>
-                экстраполяция
-              </span>
-              {hasColumnAcceptance && (
-                <span className="calculation-table-legend__item">
-                  <AcceptanceIndicator className="acceptance-indicator--legend" />
-                  сдаточная
-                </span>
-              )}
-              {hasColumnComments && (
-                <span className="calculation-table-legend__item">
-                  <TempCommentIndicator
-                    comment="Комментарий к свойству"
-                    ariaLabel="Пример индикатора комментария к свойству"
-                    className="temp-comment-indicator--legend"
-                  />
-                  комментарий
-                </span>
-              )}
-              <span
-                className="calculation-table-legend__separator"
-                aria-hidden="true"
+              <CalculationTableLegend
+                showAcceptance={hasColumnAcceptance}
+                showComments={hasColumnComments}
+                showSourceRefs={hasColumnSourceRefs}
               />
-              <span className="calculation-table-legend__item calculation-table-legend__item--hint">
-                ПКМ по заголовку — смена ед. изм.
-              </span>
-            </div>
             </div>
             <CalculationTable
               columns={visibleColumns}
               dbRows={rows}
               customRows={customRows}
               columnComments={columnComments}
+              columnSourceRefs={columnSourceRefs}
+              onSourceRefClick={(ref) => {
+                if (!ref.sourceId) return;
+                navigate(buildSourcesNavigatePath(ref));
+              }}
               columnAcceptance={columnAcceptance}
               columnUnits={columnUnits}
               unitConfigs={unitConfigs}
@@ -366,6 +450,8 @@ export function SepCalculationTab() {
               }
               selectedCustomRowIndex={selectedCustomRowIndex}
               onCustomRowClick={setSelectedCustomRowIndex}
+              scrollToCustomRowIndex={scrollToCustomRowIndex}
+              onScrollToCustomRowComplete={() => setScrollToCustomRowIndex(null)}
             />
           </div>
         )}
