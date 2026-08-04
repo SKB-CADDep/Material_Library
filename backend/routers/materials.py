@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.dependencies import AppState, get_state, get_repository, open_workspace
 from backend.schemas import WorkspaceResponse, WorkspaceOpenRequest, MaterialSummary, MaterialSaveResponse
 from pathlib import Path
+from src.core.models.material import Material
 
 router = APIRouter(tags=["Materials"])
 
@@ -48,5 +49,13 @@ def put_material_by_id(material_id:str, body:dict, repo= Depends(get_repository)
     if material is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
     material.data = body
+    repo.save_material(material)
+    return MaterialSaveResponse(ok=True, filename=material.filename)
+
+@router.post("/materials", response_model=MaterialSaveResponse)
+def post_new_material(body:dict, filename:str, repo=Depends(get_repository)):
+    path = Path(repo.work_dir) / filename
+    material = Material(data=body)
+    material.filepath = str(path)
     repo.save_material(material)
     return MaterialSaveResponse(ok=True, filename=material.filename)

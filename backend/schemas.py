@@ -40,6 +40,7 @@ class HardnessColumnsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     workspace: str | None
+    materials_dir: str | None = None
 
 class SourceCreateRequest(BaseModel):
     group: Literal["property_sources", "strength_sources", "chemical_sources"]
@@ -66,3 +67,70 @@ class SourceItem(BaseModel):
 class PropertiesResponse(BaseModel):
     physical: dict[str, dict]
     mechanical: dict[str, dict]
+
+class UnitResponse(BaseModel):
+    unit_type: str
+    system_unit: str
+    units: list[str]
+    display_labels: dict[str, str] = {}
+    factors: dict[str, float | str] = {}
+
+class TemperatureSelectionColumn(BaseModel):
+    key: str
+    label: str
+    unit: str = ""
+    unit_type: str | None = None
+
+class TemperatureSelectionRow(BaseModel):
+    material_id: str
+    material_name: str
+    strength_category: str
+    source: str
+    max_temp: str | int | float | None = None
+    temperature_comment: str | None = None
+    category_index: int | None = None
+    source_ref_id: str | None = None
+    values: dict[str, float | str | None]
+
+class TemperatureSelectionRequest(BaseModel):
+    prop_type: Literal["physical", "mechanical", "hardness"]
+    area: str | None = None
+    areas: list[str] | None = None
+    temperature: float = 20.0
+
+class TemperatureSelectionResponse(BaseModel):
+    prop_type: Literal["physical", "mechanical", "hardness"]
+    temperature: float
+    area: str | None = None
+    columns: list[TemperatureSelectionColumn]
+    rows: list[TemperatureSelectionRow]
+
+
+class CalculationCell(BaseModel):
+    value: float | None = None
+    mode: Literal["exact", "interp", "approx", "scalar"] | None = None
+
+class SingleCalculationColumn(BaseModel):
+    key: str
+    label: str
+    display_symbol: str = ""
+    unit: str = ""
+    unit_type: str | None = None
+    temperature_dependent: bool = True
+
+class SingleCalculationRow(BaseModel):
+    temperature: float | str
+    values: dict[str, CalculationCell]
+
+class SingleCalculationRequest(BaseModel):
+    material_id: str
+    category_index: int
+    custom_temperatures: list[float] = []
+
+class SingleCalculationResponse(BaseModel):
+    material_id: str
+    category_index: int
+    columns: list[SingleCalculationColumn]
+    db_rows: list[SingleCalculationRow]
+    custom_rows: list[SingleCalculationRow] = []
+

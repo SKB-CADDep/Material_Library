@@ -2,14 +2,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from backend.dependencies import get_app_state
+from backend.dependencies import get_app_state, try_auto_open_workspace
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import health, materials, catalogs, sources
+from backend.routers import health, materials, catalogs, sources, selection
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     state = get_app_state()
+    try_auto_open_workspace(state)
     app.state.app_state = state
     yield
 
@@ -27,3 +28,4 @@ app.include_router(health.router, prefix="/api")
 app.include_router(materials.router, prefix="/api")
 app.include_router(catalogs.router, prefix="/api")
 app.include_router(sources.router, prefix="/api")
+app.include_router(selection.router, prefix="/api")

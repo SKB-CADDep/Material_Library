@@ -3,7 +3,7 @@
     {
       "id_source": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
       "name_source": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил.",
-      "description": "Требуется скан",
+      "description": "Требуется  скан",
       "hyperlink": "",
       "user_name_found": "pyagavrilov",
       "data_found": "2026-02-25 13:27:45",
@@ -37,8 +37,8 @@
       "hyperlink": "",
       "user_name_found": "pyagavrilov",
       "data_found": "2026-02-25 14:04:09",
-      "user_name_change": "24",
-      "data_change": "2026-06-18 07:07:19"
+      "user_name_change": "ekaleksandrova",
+      "data_change": "2026-05-08 09:35:41"
     },
     {
       "id_source": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
@@ -119,86 +119,6 @@
       "data_found": "2026-05-06 14:44:59",
       "user_name_change": "",
       "data_change": ""
-    },
-    {
-      "id_source": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
-      "name_source": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с.",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:12:43",
-      "user_name_change": "24",
-      "data_change": "2026-06-18 11:53:26"
-    },
-    {
-      "id_source": "de6b9f9b-0666-4c7f-b4c2-b102bbcf31e7",
-      "name_source": "С.Г. Глазунов, С.Ф. Важенин, Г.Д. Зюков, Батырев, Я.Л. Ратнер. Применение титана в народном хозяйстве. Киев: Техника, 1975. - 200 с.",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:16:49",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "741257d0-9a80-4ca0-820b-76ea6f909d2f",
-      "name_source": "BS EN 10302:2002 Creep resisting steels, nickel and cobalt alloys.",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:18:58",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "301d86ed-c476-4304-be5c-2362d7f01dce",
-      "name_source": "ТМТ-118308 Температурные перемещения ротора и статора турбины Т-295/335-23,5",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:20:42",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "18b79a23-ae3c-4b17-b77a-7d31fe14f5aa",
-      "name_source": "РТМ 108.020.16-83 Расчет температурных полей роторов и корпусов паровых тубин",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:21:53",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "21e5498f-65cc-464a-9e4e-210c6d7ce45a",
-      "name_source": "ОСТ 108.020.132-85 Турбины паровые стационарные. Нормы расчета на прочность корпусов цилиндров и клапанов",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:23:49",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "08ff83ff-a6a3-4160-99ba-2a5e33d423e5",
-      "name_source": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч.3 вып.16",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:26:18",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "8e711ab4-ca1c-493c-af74-b8bb2ea889a9",
-      "name_source": "Паспорт на сталь марки 12Х13 (НПО \"ЦКТИ\")",
-      "description": "Требуется скан",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-18 07:27:52",
-      "user_name_change": "",
-      "data_change": ""
     }
   ],
   "strength_sources": [
@@ -261,36 +181,6 @@
       "data_found": "2026-05-08 09:36:31",
       "user_name_change": "",
       "data_change": ""
-    },
-    {
-      "id_source": "fc19e5ba-ec82-4c3c-aced-5f40809c3c96",
-      "name_source": "ГОСТ 5520-79",
-      "description": "Прокат листовой из углеродистой, низколегированной и легированной стали для котлов и сосудов, работающих под давлением",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-26 07:58:40",
-      "user_name_change": "24",
-      "data_change": "2026-06-26 07:59:02"
-    },
-    {
-      "id_source": "1e7500b7-751d-45ec-ac0d-8010595ca34a",
-      "name_source": "ГОСТ 25054-81",
-      "description": "Поковки коррозионно-стойких сталей и сплавов",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-26 09:57:14",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "2117f17f-befb-4ac5-8f65-61ef6306961f",
-      "name_source": "ОСТ 108.961.02-79",
-      "description": "Отливки из углеродистых и легированных сталей для деталей паровых стационарных турбин с гарантированными характеристиками прочности при высоких температурах. Технические условия",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-30 11:45:31",
-      "user_name_change": "24",
-      "data_change": "2026-06-30 11:45:44"
     }
   ],
   "chemical_sources": [
@@ -311,106 +201,6 @@
       "hyperlink": "normacs://normacs.ru/115P1?dob=46054.000069&dol=46098.743009#P0006",
       "user_name_found": "ekaleksandrova",
       "data_found": "2026-03-17 17:50:40",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "68ca4ead-30f4-427c-a6d6-cadf32717b79",
-      "name_source": "ГОСТ 1050-2013",
-      "description": "Металлопродукция из нелегированных конструкционых качественныхи спциальных сталей",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-19 08:06:04",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "f25318cf-5971-4b02-9bcd-2e9da2c28b15",
-      "name_source": "ГОСТ 4784 - 97",
-      "description": "Алюминий и сплавы алюминиевые деформируемые",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 08:41:54",
-      "user_name_change": "24",
-      "data_change": "2026-06-23 08:42:46"
-    },
-    {
-      "id_source": "3794a778-a210-47ad-b600-eb2af0e16484",
-      "name_source": "ГОСТ 19807 - 91",
-      "description": "Титан и сплавы титановые деформируемые",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 09:04:27",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "b3bb13b7-1fd8-487c-ad7e-163320fbb4f9",
-      "name_source": "ГОСТ 859 - 2001",
-      "description": "Медь. Марки",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 09:28:58",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "a68841a0-0d73-44e9-ac65-72ac9dff8565",
-      "name_source": "ГОСТ 492 - 2006",
-      "description": "Никель, сплавы никелевые и медно-никелевые, обрабатываемые давлением",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 09:43:05",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "414c9f07-8174-4fd0-94fd-f67ab8e46b54",
-      "name_source": "ГОСТ 19281 - 2014",
-      "description": "Прокат повышенной прочности",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 10:04:23",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "cd565f11-4277-4ff3-8919-e598b608ae0c",
-      "name_source": "ГОСТ 5520 - 79",
-      "description": "Прокат листовой из углеродистой низколегированной и легированной стали для котлов и сосудов, работающих под давлением. Технические условия",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 13:16:59",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "dca45a49-fba8-40f5-8190-112d7f576957",
-      "name_source": "ГОСТ 4543 - 2016",
-      "description": "Металлопродукция из конструкционной легированной стали",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-23 14:15:34",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "2a9d8a03-d67e-47fe-b4e8-949f5593f9ee",
-      "name_source": "ГОСТ 977 - 88",
-      "description": "Отливки стальные",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-24 07:34:03",
-      "user_name_change": "",
-      "data_change": ""
-    },
-    {
-      "id_source": "2a2e364c-ed10-4bbd-8871-80465125ce47",
-      "name_source": "ГОСТ 380 - 2005",
-      "description": "Сталь углеродистая обыкновенного качества",
-      "hyperlink": "",
-      "user_name_found": "24",
-      "data_found": "2026-06-26 12:10:08",
       "user_name_change": "",
       "data_change": ""
     }
