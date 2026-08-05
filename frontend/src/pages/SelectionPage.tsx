@@ -1,5 +1,6 @@
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
 import { TempSelectionTab } from "./TempSelectionTab";
+import { SepCalculationTab } from "./SepCalculationTab";
 
 function selectionSubtabClass({ isActive }: { isActive: boolean }) {
     return isActive ? "editor-subtab active" : "editor-subtab";
@@ -36,15 +37,11 @@ export function SelectionPage() {
                 }
             />
 
-            <Route
+            <Route 
                 path="calc"
                 element={
-                    <>
-                        <h2>
-                            Расчёт отдельно
-                        </h2>
-                    </>
-                   }
+                   <SepCalculationTab/>
+                }
             />
 
             <Route
