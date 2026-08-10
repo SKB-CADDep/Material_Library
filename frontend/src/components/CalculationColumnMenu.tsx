@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { SingleCalculationColumn } from "../types/api";
+import type { SingleCalculationColumn, UnitResponse } from "../types/api";
 import { calculationColumnMenuLabel } from "../lib/calculationColumnHeader";
 import {
   filterVisibleColumns,
@@ -17,6 +17,8 @@ type PanelPosition = {
 type CalculationColumnMenuProps = {
   columns: SingleCalculationColumn[];
   visibility: Record<string, boolean>;
+  columnUnits?: Record<string, string>;
+  unitConfigs?: Record<string, UnitResponse>;
   onChange: (next: Record<string, boolean>) => void;
   disabled?: boolean;
 };
@@ -24,6 +26,8 @@ type CalculationColumnMenuProps = {
 export function CalculationColumnMenu({
   columns,
   visibility,
+  columnUnits = {},
+  unitConfigs = {},
   onChange,
   disabled = false,
 }: CalculationColumnMenuProps) {
@@ -133,7 +137,11 @@ export function CalculationColumnMenu({
                       onChange(toggleColumnVisibility(visibility, col.key))
                     }
                   />{" "}
-                  {calculationColumnMenuLabel(col)}
+                  {calculationColumnMenuLabel(
+                    col,
+                    columnUnits[col.key] ?? col.unit,
+                    col.unit_type ? unitConfigs[col.unit_type] : undefined,
+                  )}
                 </label>
               ))}
             </div>

@@ -40,6 +40,7 @@ class HardnessColumnsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     workspace: str | None
+    materials_dir: str | None = None
 
 class SourceCreateRequest(BaseModel):
     group: Literal["property_sources", "strength_sources", "chemical_sources"]

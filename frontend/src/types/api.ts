@@ -4,6 +4,14 @@ export type WorkspaceResponse = {
     application_areas: string[];
 };
 
+export type HealthResponse = {
+  status: string;
+  workspace: string | null;
+  materials_dir: string | null;
+};
+
+export type WorkspacePlaceholderMode = "manual" | "waiting";
+
 export type MaterialSummary = {
 id: string;
 name: string;
@@ -12,7 +20,7 @@ filename: string;
 };
 
 export interface SourceItem {
-  id_source?: string;
+  id_source: string;
   name_source: string;
   description: string;
   hyperlink: string;
@@ -22,19 +30,19 @@ export interface SourceItem {
   data_found: string;
 }
 
-export type SourceResponse = {
+export type SourcesResponse = {
   property_sources: SourceItem[];
   strength_sources: SourceItem[];
   chemical_sources: SourceItem[];
 };
 
-/** Alias для совместимости с api/sources.ts */
-export type SourcesResponse = SourceResponse;
-
 export type TabType =
   | "property_sources"
   | "strength_sources"
   | "chemical_sources";
+
+
+export type SourcesTabType = TabType;
 
 
 export type MaterialSaveResponse = {
@@ -96,6 +104,7 @@ export type CalculationCell = {
 export type SingleCalculationColumn = {
   key: string;
   label: string;
+  display_symbol?: string;
   unit: string;
   unit_type?: string | null;
   temperature_dependent: boolean

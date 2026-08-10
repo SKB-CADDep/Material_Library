@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSources, createSource, updateSource, deleteSource } from "../api/sources";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from "react-router-dom";
 import type { SourceItem, TabType } from "../types/api";
 
 const TAB_CONFIG = {
@@ -26,7 +27,7 @@ const TruncatedCell: React.FC<{
 }> = ({ value, maxLength = 30, className = '' }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
-  const cellRef = useRef<HTMLDivElement>(null);
+  const cellRef = useRef<HTMLSpanElement>(null);
 
   const text = value || '—';
   const needsTruncation = text.length > maxLength;
@@ -70,7 +71,7 @@ const TruncatedCell: React.FC<{
   }, [showTooltip]);
 
   return (
-    <div
+    <span
       ref={cellRef}
       className={`truncated-cell ${className}`}
       onMouseEnter={handleMouseEnter}
@@ -89,7 +90,7 @@ const TruncatedCell: React.FC<{
           {text}
         </div>
       )}
-    </div>
+    </span>
   );
 };
 
@@ -97,7 +98,15 @@ type DialogMode = 'create' | 'edit' | 'delete' | null;
 
 export function SourcesPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabType>('property_sources');
+  const [searchParams] = useSearchParams();
+  const highlightSourceId = searchParams.get("source");
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (tabParam && tabParam in TAB_CONFIG) {
+      return tabParam as TabType;
+    }
+    return "property_sources";
+  });
   const [sortConfig, setSortConfig] = useState<{
     key: keyof SourceItem;
     direction: 'asc' | 'desc';
@@ -183,6 +192,21 @@ export function SourcesPage() {
       return direction === 'asc' ? comparison : -comparison;
     });
   }, [currentData, sortConfig]);
+
+  useEffect(() => {
+    if (tabParam && tabParam in TAB_CONFIG) {
+      setActiveTab(tabParam as TabType);
+    }
+  }, [tabParam]);
+
+  useEffect(() => {
+    if (!highlightSourceId || sortedData.length === 0) {
+      return;
+    }
+
+    const row = document.getElementById(`source-row-${highlightSourceId}`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlightSourceId, sortedData, activeTab]);
 
   const openCreateDialog = () => {
     setDialogMode('create');
@@ -483,7 +507,15 @@ export function SourcesPage() {
                   </thead>
                   <tbody>
                     {sortedData.map((source, index) => (
-                      <tr key={source.id_source}>
+                      <tr
+                        key={source.id_source}
+                        id={`source-row-${source.id_source}`}
+                        className={
+                          highlightSourceId === source.id_source
+                            ? "source-row--highlight"
+                            : undefined
+                        }
+                      >
                         <td className="col-index">{index + 1}</td>
                         <td className="col-name">
                           <TruncatedCell

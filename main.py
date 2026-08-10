@@ -75,26 +75,9 @@ HARDNESS = HardnessTable()
 
 # Константа для сравнения списков (для логов)
 LIST_ITEM_KEYS = {
-    (Schema.MECHANICAL, Schema.STRENGTH_CAT): Schema.VAL_STR_CAT,
-    (Schema.CHEMICAL, Schema.COMPOSITION): "composition_source",
-    (Schema.CHEMICAL, Schema.COMPOSITION, "other_elements"): "element"
+    (Schema.PROPERTY_GROUPS,): Schema.PROPERTY_TYPE,
+    (Schema.MECHANICAL, Schema.STRENGTH_CAT): Schema.VAL_STR_CAT,  # legacy
 }
-
-
-# ======================================================================================
-# БЛОК 2: УТИЛИТЫ
-# ======================================================================================
-
-def get_username():
-    try:
-        return os.getlogin()
-    except Exception:
-        return os.environ.get("USERNAME", "unknown_user")
-
-
-def read_text_from_file(filename):
-    embedded = {"app_list.txt": APP_TEXT, "instruction_list.txt": INSTR_TEXT, "change_list.txt": CHANGELOG_TEXT}
-    return embedded.get(filename, f"ОШИБКА: Не удалось прочитать '{filename}'")
 
 
 def find_changes(old_data, new_data):
@@ -102,6 +85,25 @@ def find_changes(old_data, new_data):
     Главная функция для поиска изменений. Подготавливает данные и вызывает рекурсивный хелпер.
     Возвращает структурированный список изменений.
     """
+
+    def list_item_key_for_path(path):
+        key = LIST_ITEM_KEYS.get(tuple(path))
+        if key:
+            return key
+        if not path:
+            return None
+        last = str(path[-1])
+        if last == Schema.PROPERTIES:
+            return Schema.PROP_NAME
+        if last == Schema.STRENGTH_GROUPS:
+            return Schema.STRENGTH_CAT
+        if last == "other_elements":
+            return "element"
+        if last == Schema.HARDNESS_VALUES:
+            return None
+        if last == Schema.COMPOSITION:
+            return "composition_source"
+        return None
 
     def find_changes_recursive(d1, d2, path):
         changes = []
@@ -118,7 +120,7 @@ def find_changes(old_data, new_data):
                 elif val1 != val2:
                     changes.extend(find_changes_recursive(val1, val2, new_path))
         elif isinstance(d1, list) and isinstance(d2, list):
-            unique_key_name = LIST_ITEM_KEYS.get(tuple(path))
+            unique_key_name = list_item_key_for_path(path)
             is_list_of_dicts_with_key = (unique_key_name and
                                          all(isinstance(item, dict) and unique_key_name in item for item in d1 + d2))
             if is_list_of_dicts_with_key:
@@ -145,6 +147,22 @@ def find_changes(old_data, new_data):
     return find_changes_recursive(copy.deepcopy(old_data), copy.deepcopy(new_data), [])
 
 
+# ======================================================================================
+# БЛОК 2: УТИЛИТЫ
+# ======================================================================================
+
+def get_username():
+    try:
+        return os.getlogin()
+    except Exception:
+        return os.environ.get("USERNAME", "unknown_user")
+
+
+def read_text_from_file(filename):
+    embedded = {"app_list.txt": APP_TEXT, "instruction_list.txt": INSTR_TEXT, "change_list.txt": CHANGELOG_TEXT}
+    return embedded.get(filename, f"ОШИБКА: Не удалось прочитать '{filename}'")
+
+
 # Порядок вкладок редактора для аудита (отдельная строка JSON на каждую с изменениями)
 EDITOR_AUDIT_TAB_ORDER = (
     "Общие данные",
@@ -162,6 +180,24 @@ def _audit_editor_tab_for_path(path):
     root = str(path[0])
     if root == Schema.METADATA:
         return "Общие данные"
+    if root == Schema.PROPERTY_GROUPS:
+        joined = " ".join(str(x) for x in path)
+        if f"{Schema.PROPERTY_TYPE}[{Schema.TYPE_PHYSICAL}]" in joined or "property_groups[physical]" in joined:
+            return "Физические свойства"
+        if f"{Schema.PROPERTY_TYPE}[{Schema.TYPE_MECHANICAL}]" in joined or "property_groups[mechanical]" in joined:
+            return "Механические свойства"
+        if f"{Schema.PROPERTY_TYPE}[{Schema.TYPE_CHEMICAL}]" in joined or "property_groups[chemical]" in joined:
+            return "Химический состав"
+        # fallback по вхождениям типов в сегментах
+        for seg in path:
+            s = str(seg)
+            if Schema.TYPE_PHYSICAL in s:
+                return "Физические свойства"
+            if Schema.TYPE_MECHANICAL in s or Schema.STRENGTH_GROUPS in s:
+                return "Механические свойства"
+            if Schema.TYPE_CHEMICAL in s or Schema.COMPOSITION in s:
+                return "Химический состав"
+        return "Прочее"
     if root == Schema.PHYSICAL:
         return "Физические свойства"
     if root == Schema.MECHANICAL:
@@ -205,17 +241,36 @@ def _audit_metadata_human_label(segments):
     return f"Общие данные: {k0}"
 
 
+def _audit_prop_name_from_segment(seg):
+    s = str(seg)
+    for prefix in (f"{Schema.PROPERTIES}[", f"{Schema.STRENGTH_GROUPS}[", f"{Schema.PROPERTY_GROUPS}["):
+        if s.startswith(prefix) and s.endswith("]"):
+            return s[len(prefix):-1]
+    return None
+
+
 def _audit_physical_human_label(segments):
     for seg in segments:
         sk = str(seg)
-        if PROPERTIES.is_physical(sk):
-            return PROPERTIES.get_meta(sk)["name"]
+        prop_id = _audit_prop_name_from_segment(sk) or sk
+        if prop_id.startswith(f"{Schema.PROP_NAME}=") or False:
+            pass
+        # properties[density] → density; или сегмент data после properties[density]
+        if PROPERTIES.is_physical(prop_id):
+            return PROPERTIES.get_meta(prop_id)["name"]
+        if sk.startswith(f"{Schema.PROPERTIES}[") and sk.endswith("]"):
+            pid = sk[len(f"{Schema.PROPERTIES}["):-1]
+            if PROPERTIES.is_physical(pid):
+                return PROPERTIES.get_meta(pid)["name"]
     return "Физическое свойство"
 
 
 _MECH_CAT_FIELD_LABELS = {
+    Schema.HARDNESS_UNIT: "Единица твердости (КП)",
     "hardness_unit": "Единица твердости (КП)",
+    Schema.STRENGTH_CAT: "Наименование категории прочности",
     Schema.VAL_STR_CAT: "Наименование категории прочности",
+    Schema.HARDNESS: "Твердость",
 }
 
 
@@ -223,13 +278,17 @@ def _audit_mechanical_human_label(segments):
     kp = None
     for seg in segments:
         s = str(seg)
+        if s.startswith(f"{Schema.STRENGTH_GROUPS}[") and s.endswith("]"):
+            kp = s[len(f"{Schema.STRENGTH_GROUPS}["):-1]
         if s.startswith(f"{Schema.STRENGTH_CAT}[") and s.endswith("]"):
             kp = s[len(f"{Schema.STRENGTH_CAT}["):-1]
     for seg in segments:
         s = str(seg)
-        if PROPERTIES.is_mechanical(s):
-            prop_key = s
-            name = PROPERTIES.get_meta(prop_key)["name"]
+        prop_id = s
+        if s.startswith(f"{Schema.PROPERTIES}[") and s.endswith("]"):
+            prop_id = s[len(f"{Schema.PROPERTIES}["):-1]
+        if prop_id == Schema.HARDNESS or PROPERTIES.is_mechanical(prop_id):
+            name = "Твердость" if prop_id == Schema.HARDNESS else PROPERTIES.get_meta(prop_id)["name"]
             if kp is not None and str(kp).strip() not in ("", "-1", "-"):
                 return f"КП «{kp}»: {name}"
             return name
@@ -269,6 +328,15 @@ def _audit_human_field_label(path):
     p0 = str(path[0])
     if p0 == Schema.METADATA:
         return _audit_metadata_human_label(path[1:])
+    if p0 == Schema.PROPERTY_GROUPS:
+        joined = " ".join(str(x) for x in path)
+        if Schema.TYPE_PHYSICAL in joined or "property_groups[physical]" in joined:
+            return _audit_physical_human_label(path[1:])
+        if Schema.TYPE_MECHANICAL in joined or Schema.STRENGTH_GROUPS in joined or "property_groups[mechanical]" in joined:
+            return _audit_mechanical_human_label(path[1:])
+        if Schema.TYPE_CHEMICAL in joined or "property_groups[chemical]" in joined:
+            return _audit_chemical_human_label(path[1:])
+        return _audit_physical_human_label(path[1:])
     if p0 == Schema.PHYSICAL:
         return _audit_physical_human_label(path[1:])
     if p0 == Schema.MECHANICAL:
@@ -746,21 +814,21 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
                 # Логика твердости сложная, оставляем ручной перебор, но через константы
                 if cats:
                     for cat in cats:
-                        h_list = cat.get("hardness", [])
+                        h_list = Material.get_hardness_entries(cat)
                         if h_list:
                             for h in h_list:
                                 src = h.get("property_source", "") + (
                                     f" ({h.get('property_subsource')})" if h.get("property_subsource") else "")
                                 self.treeview_data.append({
                                     "material_name": mat.get_display_name(), "obj": mat,
-                                    "strength_category": cat.get(Schema.VAL_STR_CAT, "N/A"),
+                                    "strength_category": Material.category_name(cat) or "N/A",
                                     "source": src or "-", "max_temp": max_app_temp,
                                     "min_value": h.get("min_value"), "max_value": h.get("max_value"),
                                     "unit_value": h.get("unit_value", "-")
                                 })
                         else:
                             self.treeview_data.append({"material_name": mat.get_display_name(),
-                                                       "strength_category": cat.get(Schema.VAL_STR_CAT), "source": "-",
+                                                       "strength_category": Material.category_name(cat), "source": "-",
                                                        "max_temp": max_app_temp, "min_value": None})
                 else:
                     self.treeview_data.append(
@@ -774,7 +842,7 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
                                                          category_idx=i, source_manager=self.app_data.source_manager)
                         row = {
                             "material_name": mat.get_display_name(), "obj": mat,
-                            "strength_category": cat.get(Schema.VAL_STR_CAT, "N/A"),
+                            "strength_category": Material.category_name(cat) or "N/A",
                             "source": source_str, "max_temp": max_app_temp
                         }
                         for prop_key in prop_map:
@@ -1077,8 +1145,8 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
         if not material:
             return
 
-        cats = material.data.get("mechanical_properties", {}).get("strength_category", [])
-        cat_names = [c.get("value_strength_category", "Без названия") for c in cats]
+        cats = material.get_strength_categories()
+        cat_names = [Material.category_name(c) or "Без названия" for c in cats]
 
         self.category_combo.config(values=cat_names)
         if cat_names:
@@ -1108,11 +1176,11 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
         # Определяем, откуда брать пары температур для свойства
         if PROPERTIES.is_physical(prop_key):
-            data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+            data_container = material.get_physical_data(prop_key)
         elif PROPERTIES.is_mechanical(prop_key):
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
-                data_container = cats[cat_idx].get(prop_key)
+                data_container = Material.get_category_prop_data(cats[cat_idx], prop_key)
         else:
             return None, None
 
@@ -1178,11 +1246,11 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
 
     def _get_property_container(self, material, prop_key, cat_idx=None):
         if PROPERTIES.is_physical(prop_key):
-            return material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+            return material.get_physical_data(prop_key)
         if PROPERTIES.is_mechanical(prop_key):
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
-                return cats[cat_idx].get(prop_key)
+                return Material.get_category_prop_data(cats[cat_idx], prop_key)
         return None
 
     def _get_scalar_value(self, material, prop_key, cat_idx=None):
@@ -1585,8 +1653,8 @@ class PropertyComparisonTab(ttk.Frame):
             self.full_item_map[display_name] = (mat.data, None)
 
             # Категории прочности (для мех. свойств)
-            for cat in mat.data.get("mechanical_properties", {}).get("strength_category", []):
-                cat_name = cat.get('value_strength_category', '')
+            for cat in mat.get_strength_categories():
+                cat_name = Material.category_name(cat)
                 display_name_with_cat = f"{display_name} {cat_name}".strip()
                 self.full_item_map[display_name_with_cat] = (mat.data, cat)
 
@@ -1632,21 +1700,21 @@ class PropertyComparisonTab(ttk.Frame):
             if PROPERTIES.is_mechanical(prop_key):
                 # Для механического свойства показываем только те категории прочности,
                 # в которых это свойство реально заполнено (есть точки).
-                cats = mat.data.get("mechanical_properties", {}).get("strength_category", [])
+                cats = mat.get_strength_categories()
                 for cat in cats:
-                    prop_data = cat.get(prop_key)
+                    prop_data = Material.get_category_prop_data(cat, prop_key)
                     if not prop_data:
                         continue
                     pairs = prop_data.get("temperature_value_pairs", [])
                     if not pairs:
                         continue
 
-                    cat_name = cat.get('value_strength_category', '')
+                    cat_name = Material.category_name(cat)
                     display_name_with_cat = f"{display_name} {cat_name}".strip()
                     self.listbox_item_map[display_name_with_cat] = (mat.data, cat)
             else:
                 # Физическое свойство: используем только физические свойства материала.
-                prop_data = mat.data.get("physical_properties", {}).get(prop_key)
+                prop_data = Material.physical_data_from_raw(mat.data, prop_key)
                 if not prop_data:
                     continue
                 pairs = prop_data.get("temperature_value_pairs", [])
@@ -1742,12 +1810,11 @@ class PropertyComparisonTab(ttk.Frame):
 
             if PROPERTIES.is_mechanical(prop_key):
                 # Если свойство механическое, ищем его ТОЛЬКО в категории
-                if category_data and prop_key in category_data:
-                    prop_data = category_data[prop_key]
+                if category_data:
+                    prop_data = Material.get_category_prop_data(category_data, prop_key)
             else:
                 # Если свойство физическое, ищем его в ОБЩИХ данных материала
-                if prop_key in material_data.get("physical_properties", {}):
-                    prop_data = material_data["physical_properties"][prop_key]
+                prop_data = Material.physical_data_from_raw(material_data, prop_key)
 
             if prop_data and "temperature_value_pairs" in prop_data and prop_data["temperature_value_pairs"]:
                 pairs = sorted(prop_data["temperature_value_pairs"], key=lambda p: p[0])
@@ -1959,7 +2026,7 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
 
         for mat in self.app_data.materials:
             # учитываем только материалы с хоть одним источником хим. состава
-            if not mat.data.get("chemical_properties", {}).get("composition"):
+            if not mat.get_compositions():
                 continue
 
             meta = mat.data.get(Schema.METADATA, {})
@@ -2020,7 +2087,7 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
         self.s1_compositions = []
         self.s1_elements = []
 
-        chem = material.data.get(Schema.CHEMICAL, {}).get(Schema.COMPOSITION, [])
+        chem = material.get_compositions()
         source_manager = getattr(self.app_data, "source_manager", None)
 
         all_elements = set()
@@ -2396,7 +2463,7 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
         source_manager = getattr(self.app_data, "source_manager", None)
 
         for mat in self.app_data.materials:
-            chem = mat.data.get(Schema.CHEMICAL, {}).get(Schema.COMPOSITION, [])
+            chem = mat.get_compositions()
             if not chem:
                 continue
 
@@ -3116,7 +3183,7 @@ class AshbyDiagramTab(ttk.Frame):
                 continue
 
             if PROPERTIES.is_physical(prop_key):
-                prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
+                prop_data = material.get_physical_data(prop_key) or {}
                 for t_raw, _ in prop_data.get(Schema.TEMP_PAIRS, []):
                     t_val = MathUtils.safe_float(t_raw)
                     if t_val is not None:
@@ -3125,7 +3192,7 @@ class AshbyDiagramTab(ttk.Frame):
             elif PROPERTIES.is_mechanical(prop_key) and cat_idx is not None:
                 cats = material.get_strength_categories()
                 if 0 <= cat_idx < len(cats):
-                    prop_data = cats[cat_idx].get(prop_key, {})
+                    prop_data = Material.get_category_prop_data(cats[cat_idx], prop_key) or {}
                     for t_raw, _ in prop_data.get(Schema.TEMP_PAIRS, []):
                         t_val = MathUtils.safe_float(t_raw)
                         if t_val is not None:
@@ -3247,7 +3314,7 @@ class AshbyDiagramTab(ttk.Frame):
                 # Если хотя бы одна ось механическая — рисуем по категориям
                 if x_is_mech or y_is_mech:
                     for cat_idx, cat in enumerate(cats):
-                        cat_name = cat.get(Schema.VAL_STR_CAT, "")
+                        cat_name = Material.category_name(cat)
                         series_label = f"{mat.get_display_name()} {cat_name}".strip()
 
                         xs, ys = self._compute_series_points(mat, cat_idx, x_prop_key, y_prop_key)
@@ -3821,29 +3888,19 @@ class PropertyEditorTab(ttk.Frame, ScrollableMixin):
             for editor in self.editors.values():
                 editor.set_source_manager(self.app_data.source_manager)
 
-        prop_group = material.data.get(self.prop_group_key, {})
-
-        # Свойства
         for prop_key, editor in self.editors.items():
-            p_data = prop_group.get(prop_key, {})
+            p_data = material.get_physical_data(prop_key) or {}
             editor.set_data(p_data)
 
     def collect_data(self, material):
         """Собирает данные из всех редакторов в структуру материала."""
-        if self.prop_group_key not in material.data:
-            material.data[self.prop_group_key] = {}
-        prop_group = material.data[self.prop_group_key]
-
-        # Свойства
         for prop_key, editor in self.editors.items():
             data = editor.get_data()
             if data:
-                prop_group[prop_key] = data
-                # старое поле property_source очищаем, если оно ещё есть
-                if "property_source" in prop_group[prop_key]:
-                    del prop_group[prop_key]["property_source"]
-            elif prop_key in prop_group:
-                del prop_group[prop_key]
+                data.pop("property_source", None)
+                material.set_physical_data(prop_key, data)
+            else:
+                material.remove_physical_data(prop_key)
 
 
 class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
@@ -3983,8 +4040,8 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         self.current_category_idx = -1
         self._update_source_list()
 
-        cats = material.data.get("mechanical_properties", {}).get("strength_category", [])
-        names = [c.get("value_strength_category", f"КП {i + 1}") for i, c in enumerate(cats)]
+        cats = material.get_strength_categories()
+        names = [Material.category_name(c) or f"КП {i + 1}" for i, c in enumerate(cats)]
         self.category_combo["values"] = names
 
         if cats:
@@ -4002,10 +4059,10 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
             self._save_current_category()
         self.current_category_idx = new_idx
 
-        cat_data = self.material.data["mechanical_properties"]["strength_category"][self.current_category_idx]
+        cat_data = self.material.get_strength_categories()[self.current_category_idx]
 
         self.category_name_entry.delete(0, tk.END)
-        self.category_name_entry.insert(0, cat_data.get("value_strength_category", ""))
+        self.category_name_entry.insert(0, Material.category_name(cat_data))
 
         ref_id = cat_data.get("source_ref_id")
         if ref_id and self.app_data:
@@ -4015,15 +4072,11 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
             self.category_source_combo.set("")
 
         for prop_key, editor in self.editors.items():
-            p_data = cat_data.get(prop_key, {})
+            p_data = Material.get_category_prop_data(cat_data, prop_key) or {}
             editor.set_data(p_data)
 
         # Hardness Unit
-        h_unit = cat_data.get("hardness_unit")
-        if not h_unit:
-            hardness_list = cat_data.get("hardness", [])
-            if hardness_list:
-                h_unit = hardness_list[0].get("unit_value")
+        h_unit = Material.get_hardness_unit(cat_data)
 
         if h_unit and h_unit in self.hardness_unit_combo['values']:
             self.hardness_unit_combo.set(h_unit)
@@ -4033,9 +4086,7 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         tree = self.hardness_tree
         for i in tree.get_children():
             tree.delete(i)
-        # При чтении старых JSON игнорируем property_subsource,
-        # выводим только Min/Max
-        for h in cat_data.get("hardness", []):
+        for h in Material.get_hardness_entries(cat_data):
             tree.insert(
                 "", "end",
                 values=[
@@ -4048,12 +4099,12 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         if not self.material: return
         self._save_current_category()
         new_name = f"Новая КП {len(self.category_combo['values']) + 1}"
-        new_cat = {"value_strength_category": new_name, "hardness": []}
+        new_cat = Material.empty_strength_group(new_name)
 
-        if "mechanical_properties" not in self.material.data:
-            self.material.data["mechanical_properties"] = {"strength_category": []}
-
-        self.material.data["mechanical_properties"]["strength_category"].append(new_cat)
+        mech = self.material.ensure_group(Schema.TYPE_MECHANICAL)
+        if not isinstance(mech.get(Schema.STRENGTH_GROUPS), list):
+            mech[Schema.STRENGTH_GROUPS] = []
+        mech[Schema.STRENGTH_GROUPS].append(new_cat)
 
         vals = list(self.category_combo['values'])
         vals.append(new_name)
@@ -4064,7 +4115,8 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
     def _delete_category(self):
         if not self.material or self.current_category_idx == -1: return
         if messagebox.askyesno("Подтверждение", "Удалить категорию?"):
-            del self.material.data["mechanical_properties"]["strength_category"][self.current_category_idx]
+            cats = self.material.get_strength_categories()
+            del cats[self.current_category_idx]
             self.current_category_idx = -1
             self.populate_form(self.material)
 
@@ -4072,11 +4124,12 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         if not self.material or self.current_category_idx == -1:
             return
         try:
-            cat_data = self.material.data["mechanical_properties"]["strength_category"][self.current_category_idx]
+            cat_data = self.material.get_strength_categories()[self.current_category_idx]
         except Exception:
             return
 
-        cat_data["value_strength_category"] = self.category_name_entry.get()
+        cat_data[Schema.STRENGTH_CAT] = self.category_name_entry.get()
+        cat_data.pop(Schema.VAL_STR_CAT, None)
         src_name = self.category_source_combo.get()
         if src_name and self.app_data:
             sid = self.source_map.get(src_name)
@@ -4086,19 +4139,13 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
         for prop_key, editor in self.editors.items():
             data = editor.get_data()
             if data:
-                cat_data[prop_key] = data
-                if "property_source" in cat_data[prop_key]:
-                    del cat_data[prop_key]["property_source"]
-            elif prop_key in cat_data:
-                del cat_data[prop_key]
+                data.pop("property_source", None)
+                Material.set_category_prop_data(cat_data, prop_key, data)
+            else:
+                Material.remove_category_prop_data(cat_data, prop_key)
 
         current_h_unit = self.hardness_unit_combo.get()
-        cat_data["hardness_unit"] = current_h_unit
-
-        # Сохраняем hardness без столбца "под-источник".
-        # Для совместимости пытаемся сохранить старый property_subsource по индексу строки,
-        # если он был в исходных данных.
-        old_hardness = cat_data.get("hardness", [])
+        old_hardness = Material.get_hardness_entries(cat_data)
         h_list = []
         for idx, item in enumerate(self.hardness_tree.get_children()):
             v = self.hardness_tree.set(item)
@@ -4107,21 +4154,23 @@ class MechanicalPropertiesTab(ttk.Frame, ScrollableMixin):
                 "min_value": safe_float(v.get("min")),
                 "max_value": safe_float(v.get("max"))
             }
-
-            # Если в старых данных был property_subsource, сохраняем его, но не редактируем в UI
             if idx < len(old_hardness):
                 old_sub = old_hardness[idx].get("property_subsource")
                 if old_sub:
                     h["property_subsource"] = old_sub
-
-            # Добавляем строку, если есть хоть какое-то содержимое
+                old_src = old_hardness[idx].get("property_source")
+                if old_src:
+                    h["property_source"] = old_src
             if h.get("property_subsource") or h["min_value"] is not None or h["max_value"] is not None:
                 h_list.append(h)
 
-        cat_data["hardness"] = h_list
+        if h_list:
+            Material.set_hardness_entries(cat_data, h_list, unit=current_h_unit)
+        else:
+            Material.remove_category_prop_data(cat_data, Schema.HARDNESS)
 
         vals = list(self.category_combo['values'])
-        vals[self.current_category_idx] = cat_data["value_strength_category"]
+        vals[self.current_category_idx] = cat_data[Schema.STRENGTH_CAT]
         self.category_combo['values'] = vals
 
     def collect_data(self, material):
@@ -4567,7 +4616,7 @@ class ChemicalCompositionTab(ttk.Frame):
         self.material = material
         self.current_source_idx = -1
 
-        compositions = material.data.get("chemical_properties", {}).get("composition", [])
+        compositions = material.get_compositions()
         self.source_combo["values"] = [comp.get("composition_source", f"Источник {i + 1}") for i, comp in
                                        enumerate(compositions)]
 
@@ -4587,7 +4636,11 @@ class ChemicalCompositionTab(ttk.Frame):
             return
 
         self.current_source_idx = idx
-        comp_data = self.material.data["chemical_properties"]["composition"][idx]
+        compositions = self.material.get_compositions()
+        if idx >= len(compositions):
+            self.editor_content_frame.pack_forget()
+            return
+        comp_data = compositions[idx]
         self._populate_source_fields(comp_data)
         self.editor_content_frame.pack(fill="both", expand=True)
 
@@ -4656,8 +4709,8 @@ class ChemicalCompositionTab(ttk.Frame):
         if not self.material: return
         self._save_current_source()
         new_source = {"composition_source": "Новый источник", "other_elements": []}
-        compositions = self.material.data["chemical_properties"]["composition"]
-        compositions.append(new_source)
+        self.material.append_composition(new_source)
+        compositions = self.material.get_compositions()
         self.populate_form(self.material)
         self.source_combo.current(len(compositions) - 1)
         self._on_source_select()
@@ -4665,8 +4718,7 @@ class ChemicalCompositionTab(ttk.Frame):
     def _delete_source(self):
         if not self.material or self.current_source_idx == -1: return
         if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить этот источник хим. состава?"):
-            compositions = self.material.data["chemical_properties"]["composition"]
-            del compositions[self.current_source_idx]
+            self.material.delete_composition_at(self.current_source_idx)
             self.source_combo.set("")
             self.populate_form(self.material)
 
@@ -4674,7 +4726,8 @@ class ChemicalCompositionTab(ttk.Frame):
         if not self.material or self.current_source_idx == -1:
             return
         try:
-            comp_data = self.material.data["chemical_properties"]["composition"][self.current_source_idx]
+            compositions = self.material.get_compositions()
+            comp_data = compositions[self.current_source_idx]
         except IndexError:
             return
 
@@ -4786,7 +4839,7 @@ class EditorFrame(ttk.Frame):
         self.notebook.pack(expand=True, fill="both", padx=10, pady=(0, 10))
 
         self.general_tab = GeneralDataTab(self.notebook, self.app_data)
-        self.phys_tab = PropertyEditorTab(self.notebook, "physical_properties", PHYSICAL_MAP)
+        self.phys_tab = PropertyEditorTab(self.notebook, Schema.TYPE_PHYSICAL, PHYSICAL_MAP)
         self.mech_tab = MechanicalPropertiesTab(self.notebook)
         self.chem_tab = ChemicalCompositionTab(self.notebook)
 
@@ -5660,27 +5713,37 @@ class SourcesManagerTab(ttk.Frame):
         used_in = []
 
         for mat in self.app_data.materials:
-            # Проверка физ. свойств
-            if mat.data.get("physical_properties", {}).get("source_ref_id") == self.current_source_id:
-                usage_count += 1
-                used_in.append(mat.get_display_name())
+            found = False
+            for prop in mat.get_physical_properties_list():
+                data = Material.get_prop_data(prop) or {}
+                if data.get("source_ref_id") == self.current_source_id:
+                    usage_count += 1
+                    used_in.append(mat.get_display_name())
+                    found = True
+                    break
+            if found:
                 continue
 
-            # Проверка мех. свойств (по категориям)
-            cats = mat.data.get("mechanical_properties", {}).get("strength_category", [])
             found_in_mech = False
-            for cat in cats:
+            for cat in mat.get_strength_categories():
                 if cat.get("source_ref_id") == self.current_source_id:
                     usage_count += 1
                     used_in.append(mat.get_display_name())
                     found_in_mech = True
                     break
+                for entry in cat.get(Schema.PROPERTIES) or []:
+                    data = Material.get_prop_data(entry) or {}
+                    if data.get("source_ref_id") == self.current_source_id:
+                        usage_count += 1
+                        used_in.append(mat.get_display_name())
+                        found_in_mech = True
+                        break
+                if found_in_mech:
+                    break
             if found_in_mech:
                 continue
 
-            # Проверка хим. состава (по источникам)
-            comps = mat.data.get("chemical_properties", {}).get("composition", [])
-            for comp in comps:
+            for comp in mat.get_compositions():
                 if comp.get("source_ref_id") == self.current_source_id:
                     usage_count += 1
                     used_in.append(mat.get_display_name())

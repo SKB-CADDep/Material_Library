@@ -96,3 +96,62 @@ export function hasCategorySource(cat: StrengthCategoryFields): boolean {
   }
   return Boolean(firstPropertySourceInCategory(cat));
 }
+
+/** Уникальные имена КП в порядке первого появления. */
+export function uniqueStrengthCategoryNames(
+  categories: StrengthCategoryFields[],
+): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (let index = 0; index < categories.length; index += 1) {
+    const name = categoryDisplayName(categories[index], index);
+    if (!seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+/** Индексы категорий с заданным отображаемым именем КП. */
+export function indicesForStrengthCategoryName(
+  categories: StrengthCategoryFields[],
+  name: string,
+): number[] {
+  return categories.reduce<number[]>((acc, cat, index) => {
+    if (categoryDisplayName(cat, index) === name) {
+      acc.push(index);
+    }
+    return acc;
+  }, []);
+}
+
+export type StrengthCategoryNtdOption = {
+  index: number;
+  label: string;
+};
+
+/** Варианты НТД для выбранного имени КП (модель «пара КП × источник»). */
+export function buildStrengthCategoryNtdOptions(
+  categories: StrengthCategoryFields[],
+  categoryName: string,
+  strengthSources: SourceItem[],
+): StrengthCategoryNtdOption[] {
+  const indices = indicesForStrengthCategoryName(categories, categoryName);
+  const rawLabels = indices.map(
+    (index) =>
+      resolveCategorySourceName(categories[index], strengthSources).trim() ||
+      "— без НТД —",
+  );
+  const hasDuplicateLabels = rawLabels.some(
+    (label, pos) => rawLabels.indexOf(label) !== pos,
+  );
+
+  return indices.map((index) => {
+    const base =
+      resolveCategorySourceName(categories[index], strengthSources).trim() ||
+      "— без НТД —";
+    const label = hasDuplicateLabels ? `${base} (#${index + 1})` : base;
+    return { index, label };
+  });
+}

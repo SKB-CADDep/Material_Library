@@ -6,7 +6,9 @@ export async function openWorkspace(directory: string): Promise<WorkspaceRespons
   return data;
 }
 
-export async function getWorkspace(): Promise<WorkspaceResponse> {
-  const { data } = await api.get<WorkspaceResponse>("/workspace");
-  return data;
+export async function getWorkspace(): Promise<WorkspaceResponse | null> {
+  const { status, data } = await api.get<WorkspaceResponse>("/workspace", {
+    validateStatus: (code) => code === 200 || code === 404,
+  });
+  return status === 200 ? data : null;
 }

@@ -1,4 +1,8 @@
-import type { SingleCalculationColumn } from "../types/api";
+import type { SingleCalculationColumn, UnitResponse } from "../types/api";
+import { unitDisplayText } from "./columnUnits";
+
+/** unit_type из units_registry.json для колонки температуры. */
+export const TEMPERATURE_UNIT_TYPE = "Температура";
 
 export function splitCalculationColumnHeader(col: SingleCalculationColumn): {
   symbol: string;
@@ -23,9 +27,29 @@ export function splitCalculationColumnHeader(col: SingleCalculationColumn): {
   return { symbol: col.label, unit };
 }
 
-export function calculationColumnMenuLabel(
+export function calculationColumnSymbol(
   col: SingleCalculationColumn,
 ): string {
-  const { symbol, unit } = splitCalculationColumnHeader(col);
+  const fromApi = col.display_symbol?.trim();
+  if (fromApi) {
+    return fromApi;
+  }
+  return splitCalculationColumnHeader(col).symbol;
+}
+
+export function calculationColumnUnitLabel(
+  displayUnit: string,
+  unitConfig?: UnitResponse,
+): string {
+  return unitDisplayText(displayUnit, unitConfig?.display_labels);
+}
+
+export function calculationColumnMenuLabel(
+  col: SingleCalculationColumn,
+  displayUnit: string,
+  unitConfig?: UnitResponse,
+): string {
+  const symbol = calculationColumnSymbol(col);
+  const unit = calculationColumnUnitLabel(displayUnit, unitConfig);
   return unit ? `${symbol}, ${unit}` : symbol;
 }

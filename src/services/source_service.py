@@ -4,8 +4,10 @@ import json
 import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 
 from src.infrastructure.paths import get_app_directory
+from src.infrastructure.storage_backend import SOURCE_JSON_NAME
 
 
 def _get_username() -> str:
@@ -15,13 +17,22 @@ def _get_username() -> str:
         return os.environ.get("USERNAME", "unknown_user")
 
 
+def default_source_json_path() -> Path:
+    """Legacy: source.json в корне приложения (Tkinter без workspace)."""
+    return get_app_directory() / SOURCE_JSON_NAME
+
+
 class SourceService:
     """Менеджер источников."""
-    FILENAME = "source.json"
 
-    def __init__(self):
-        self.app_dir = get_app_directory()
-        self.filepath = os.path.join(self.app_dir, self.FILENAME)
+    FILENAME = SOURCE_JSON_NAME
+
+    def __init__(self, filepath: str | Path | None = None):
+        if filepath is None:
+            path = default_source_json_path()
+        else:
+            path = Path(filepath).expanduser().resolve()
+        self.filepath = str(path)
         self.sources = {
             "property_sources": [],
             "strength_sources": [],
@@ -29,8 +40,20 @@ class SourceService:
         }
         self.load()
 
+    @property
+    def filepath_path(self) -> Path:
+        return Path(self.filepath)
+
+    def set_filepath(self, filepath: str | Path) -> None:
+        """Переключить файл источников и перечитать данные."""
+        resolved = str(Path(filepath).expanduser().resolve())
+        if resolved == self.filepath:
+            return
+        self.filepath = resolved
+        self.load()
+
     def load(self):
-        """Загрузка source.json с поддержкой старого формата (список)."""
+        """Загрузка source.json"""
         if not os.path.exists(self.filepath):
             self.save()
             return
@@ -61,9 +84,11 @@ class SourceService:
             }
 
     def save(self):
-        """Сохранение в новом формате (3 группы в одном JSON)."""
+        """Сохранение в новом формате"""
         try:
-            with open(self.filepath, "w", encoding="utf-8") as f:
+            path = Path(self.filepath)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.sources, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Ошибка сохранения source.json: {e}")

@@ -761,6 +761,7 @@ class SelectionService:
                 {
                     "key": key,
                     "label": label,
+                    "display_symbol": symbol,
                     "unit": unit,
                     "unit_type": meta.get("unit_type"),
                     "temperature_dependent": self._properties.supports_temperature(key),
