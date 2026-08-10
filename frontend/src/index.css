@@ -1,4 +1,4 @@
-:root{
+﻿:root{
     --bg: #eef3fe;
     --surface: #FFFFFF;
     --text: #242930;
@@ -154,7 +154,7 @@ button:disabled{
     cursor: not-allowed;
 }
 
-button:hover:not(:disabled):not(.input):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item) {
+button:hover:not(:disabled):not(.input):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary) {
     background-color: var(--accent-hover);
 }
 
@@ -165,8 +165,9 @@ button.button-secondary {
 }
 
 button.button-secondary:hover:not(:disabled) {
-  background-color: var(--accent-soft);
-  color: var(--text);
+  background-color: var(--accent-hover);
+  color: #fff;
+  border-color: var(--accent-hover);
 }
 
 .error{
@@ -226,37 +227,37 @@ select {
     background-color: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    outline: none; /* Убираем стандартную синюю обводку браузера */
+    outline: none; /* РЈР±РёСЂР°РµРј СЃС‚Р°РЅРґР°СЂС‚РЅСѓСЋ СЃРёРЅСЋСЋ РѕР±РІРѕРґРєСѓ Р±СЂР°СѓР·РµСЂР° */
     transition: border-color 0.2s ease;
-    box-sizing: border-box; /* Чтобы padding не увеличивал ширину */
+    box-sizing: border-box; /* Р§С‚РѕР±С‹ padding РЅРµ СѓРІРµР»РёС‡РёРІР°Р» С€РёСЂРёРЅСѓ */
   }
 
-  /* Цвет рамки при фокусе */
+  /* Р¦РІРµС‚ СЂР°РјРєРё РїСЂРё С„РѕРєСѓСЃРµ */
 .input:focus {
     border-color: var(--accent);
   }
 
-  /* Цвет плейсхолдера */
+  /* Р¦РІРµС‚ РїР»РµР№СЃС…РѕР»РґРµСЂР° */
 .input::placeholder {
     color: var(--text-muted);
   }
 
-  /* Контейнер формы */
+  /* РљРѕРЅС‚РµР№РЅРµСЂ С„РѕСЂРјС‹ */
 .form-horizontal {
     display: grid;
-    grid-template-columns: 200px 1fr; /* ← Ключевое: label = 200px, input = всё остальное */
-    gap: 12px 16px; /* Отступы между строками и колонками */
-    align-items: center; /* Выравнивание по центру по вертикали */
+    grid-template-columns: 200px 1fr; /* в†ђ РљР»СЋС‡РµРІРѕРµ: label = 200px, input = РІСЃС‘ РѕСЃС‚Р°Р»СЊРЅРѕРµ */
+    gap: 12px 16px; /* РћС‚СЃС‚СѓРїС‹ РјРµР¶РґСѓ СЃС‚СЂРѕРєР°РјРё Рё РєРѕР»РѕРЅРєР°РјРё */
+    align-items: center; /* Р’С‹СЂР°РІРЅРёРІР°РЅРёРµ РїРѕ С†РµРЅС‚СЂСѓ РїРѕ РІРµСЂС‚РёРєР°Р»Рё */
   }
 
-  /* Подпись слева */
+  /* РџРѕРґРїРёСЃСЊ СЃР»РµРІР° */
 .form-horizontal label {
     font-size: 14px;
     color: var(--text);
-    text-align: right; /* Текст прижат к правому краю (к инпуту) */
+    text-align: right; /* РўРµРєСЃС‚ РїСЂРёР¶Р°С‚ Рє РїСЂР°РІРѕРјСѓ РєСЂР°СЋ (Рє РёРЅРїСѓС‚Сѓ) */
   }
 
-  /* Инпут справа */
+  /* РРЅРїСѓС‚ СЃРїСЂР°РІР° */
 .form-horizontal .input {
     width: 100%;
     padding: 6px 10px;
@@ -273,9 +274,9 @@ select {
     border-color: var(--accent);
   }
 
-  /* Если нужно, чтобы инпут занимал обе колонки (например, textarea) */
+  /* Р•СЃР»Рё РЅСѓР¶РЅРѕ, С‡С‚РѕР±С‹ РёРЅРїСѓС‚ Р·Р°РЅРёРјР°Р» РѕР±Рµ РєРѕР»РѕРЅРєРё (РЅР°РїСЂРёРјРµСЂ, textarea) */
 .form-horizontal .full-width {
-    grid-column: 1 / -1; /* Растянуть на всю ширину */
+    grid-column: 1 / -1; /* Р Р°СЃС‚СЏРЅСѓС‚СЊ РЅР° РІСЃСЋ С€РёСЂРёРЅСѓ */
   }
 
 .form-horizontal .full-width label {
@@ -290,11 +291,11 @@ select {
   }
 
 .form-row label {
-    min-width: 200px; /* Фиксированная ширина для всех label */
+    min-width: 200px; /* Р¤РёРєСЃРёСЂРѕРІР°РЅРЅР°СЏ С€РёСЂРёРЅР° РґР»СЏ РІСЃРµС… label */
     text-align: left;
     font-size: 14px;
     color: var(--text);
-    flex-shrink: 0; /* Чтобы label не сжимался */
+    flex-shrink: 0; /* Р§С‚РѕР±С‹ label РЅРµ СЃР¶РёРјР°Р»СЃСЏ */
   }
 
 .form-row label.form-label--fixed {
@@ -312,7 +313,7 @@ select {
   }
 
 .form-row .input {
-    flex: 1; /* Инпут занимает всё оставшееся место */
+    flex: 1; /* РРЅРїСѓС‚ Р·Р°РЅРёРјР°РµС‚ РІСЃС‘ РѕСЃС‚Р°РІС€РµРµСЃСЏ РјРµСЃС‚Рѕ */
     padding: 6px 10px;
     font-size: 14px;
     border: 1px solid var(--border);
@@ -401,17 +402,23 @@ select {
     flex: 1;
   }
 
-  /* Toolbar фильтров подбора (паритет Tkinter controls_frame) */
+  /* Toolbar С„РёР»СЊС‚СЂРѕРІ РїРѕРґР±РѕСЂР° (РїР°СЂРёС‚РµС‚ Tkinter controls_frame) */
   .selection-page {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    overflow: visible;
+    overflow: auto;
   }
 
   .selection-page > .editor-subtabs {
     flex-shrink: 0;
+  }
+
+  .selection-page > .ashby-tab,
+  .selection-page > .temp-selection-tab {
+    flex: 1;
+    min-height: 0;
   }
 
   .selection-controls {
@@ -612,7 +619,7 @@ select {
     width: 200px;
   }
 
-  /* В toolbar не растягивать фильтр областей (глобально .area-filter { flex: 1 }) */
+  /* Р’ toolbar РЅРµ СЂР°СЃС‚СЏРіРёРІР°С‚СЊ С„РёР»СЊС‚СЂ РѕР±Р»Р°СЃС‚РµР№ (РіР»РѕР±Р°Р»СЊРЅРѕ .area-filter { flex: 1 }) */
   .selection-controls .area-filter {
     flex: none;
     width: 280px;
@@ -736,7 +743,7 @@ select {
     color: var(--danger);
   }
 
-  /* Контейнер для списка чекбоксов */
+  /* РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ СЃРїРёСЃРєР° С‡РµРєР±РѕРєСЃРѕРІ */
 .checkbox-list {
     display: flex;
     flex-direction: column;
@@ -749,7 +756,7 @@ select {
     background-color: var(--surface);
   }
 
-  /* Одна строка с чекбоксом */
+  /* РћРґРЅР° СЃС‚СЂРѕРєР° СЃ С‡РµРєР±РѕРєСЃРѕРј */
   .checkbox-item {
     display: flex;
     align-items: center;
@@ -759,12 +766,12 @@ select {
     cursor: pointer;
   }
 
-  /* Сам чекбокс */
+  /* РЎР°Рј С‡РµРєР±РѕРєСЃ */
   .checkbox-item input[type="checkbox"] {
     width: 16px;
     height: 16px;
     cursor: pointer;
-    accent-color: var(--accent); /* Цвет галочки */
+    accent-color: var(--accent); /* Р¦РІРµС‚ РіР°Р»РѕС‡РєРё */
   }
 
   .checkbox-item:hover {
@@ -772,7 +779,7 @@ select {
     border-radius: 4px;
   }
 
-  /* Главное окно приложения */
+  /* Р“Р»Р°РІРЅРѕРµ РѕРєРЅРѕ РїСЂРёР»РѕР¶РµРЅРёСЏ */
 .app-shell {
     margin: 0 auto;
     background-color: var(--surface);
@@ -794,7 +801,7 @@ select {
     flex-direction: column;
   }
 
-  /* Заголовок окна */
+  /* Р—Р°РіРѕР»РѕРІРѕРє РѕРєРЅР° */
   .window-header {
     background-color: var(--bg);
     padding: 12px 16px;
@@ -810,7 +817,7 @@ select {
     color: var(--text);
   }
 
-  /* Панель инструментов с кнопками */
+  /* РџР°РЅРµР»СЊ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ СЃ РєРЅРѕРїРєР°РјРё */
   .toolbar {
     display: flex;
     gap: 8px;
@@ -821,13 +828,13 @@ select {
     flex-wrap: wrap;
   }
 
-  /* Группа кнопок */
+  /* Р“СЂСѓРїРїР° РєРЅРѕРїРѕРє */
   .button-group {
     display: flex;
     gap: 8px;
   }
 
-  /* Вложенные вкладки */
+  /* Р’Р»РѕР¶РµРЅРЅС‹Рµ РІРєР»Р°РґРєРё */
   .nested-tabs {
     display: flex;
     gap: 4px;
@@ -859,13 +866,13 @@ select {
     background-color: var(--surface);
   }
   
-  /* Контент окна */
+  /* РљРѕРЅС‚РµРЅС‚ РѕРєРЅР° */
   .window-content {
     padding: 16px;
     background-color: var(--bg);
   }
   
-  /* Секция (группа полей) */
+  /* РЎРµРєС†РёСЏ (РіСЂСѓРїРїР° РїРѕР»РµР№) */
   .section {
     background-color: var(--surface);
     border: 1px solid var(--border);
@@ -883,7 +890,7 @@ select {
     border-bottom: 1px solid var(--border);
   }
 
-  /* Сетка формы внутри секции */
+  /* РЎРµС‚РєР° С„РѕСЂРјС‹ РІРЅСѓС‚СЂРё СЃРµРєС†РёРё */
   .section-grid {
     display: grid;
     grid-template-columns: 180px 1fr;
@@ -903,7 +910,7 @@ select {
     font-size: 13px;
   }
 
-  /* Чекбоксы в секции */
+  /* Р§РµРєР±РѕРєСЃС‹ РІ СЃРµРєС†РёРё */
   .checkbox-section {
     max-height: 200px;
     overflow-y: auto;
@@ -913,7 +920,7 @@ select {
     background-color: var(--surface);
   }
 
-  /* Строка с label и инпутом для добавления */
+  /* РЎС‚СЂРѕРєР° СЃ label Рё РёРЅРїСѓС‚РѕРј РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ */
   .add-row {
     display: flex;
     gap: 8px;
@@ -932,7 +939,7 @@ select {
     flex: 1;
   }
 
-  /* Селект материала */
+  /* РЎРµР»РµРєС‚ РјР°С‚РµСЂРёР°Р»Р° */
   .material-select {
     display: flex;
     align-items: center;
@@ -958,7 +965,7 @@ select {
     font-size: 13px;
   }
 
-  /* ——— Редактор материалов ——— */
+  /* вЂ”вЂ”вЂ” Р РµРґР°РєС‚РѕСЂ РјР°С‚РµСЂРёР°Р»РѕРІ вЂ”вЂ”вЂ” */
   .editor-page {
     display: flex;
     flex-direction: column;
@@ -1146,7 +1153,7 @@ select {
     min-width: 220px;
   }
 
-  /* Обертка для всей секции: таблица | график ~50/50 */
+  /* РћР±РµСЂС‚РєР° РґР»СЏ РІСЃРµР№ СЃРµРєС†РёРё: С‚Р°Р±Р»РёС†Р° | РіСЂР°С„РёРє ~50/50 */
 .property-section-layout {
   display: flex;
   gap: 24px;
@@ -1156,14 +1163,14 @@ select {
 }
 
 
-/* Стили для label */
+/* РЎС‚РёР»Рё РґР»СЏ label */
 .property-section-fields .form-row label {
   font-size: 14px;
   color: var(--text);
   font-weight: 500;
 }
 
-/* Стили для input/select */
+/* РЎС‚РёР»Рё РґР»СЏ input/select */
 .property-section-fields .form-row input,
 .property-section-fields .form-row select {
   padding: 8px 12px;
@@ -1181,7 +1188,7 @@ select {
   box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
 }
 
-/* Правая колонка с графиком */
+/* РџСЂР°РІР°СЏ РєРѕР»РѕРЅРєР° СЃ РіСЂР°С„РёРєРѕРј */
 .property-section-chart {
   min-height: 300px;
   flex: 1 1 0;
@@ -1193,7 +1200,7 @@ select {
   padding: 16px;
 }
 
-/* Для таблицы с данными (если она есть в property-section-fields) */
+/* Р”Р»СЏ С‚Р°Р±Р»РёС†С‹ СЃ РґР°РЅРЅС‹РјРё (РµСЃР»Рё РѕРЅР° РµСЃС‚СЊ РІ property-section-fields) */
 .property-section-fields table {
   width: 100%;
   border-collapse: collapse;
@@ -1218,7 +1225,7 @@ select {
   color: var(--text-muted);
 }
 
-/* Адаптивность для мобильных */
+/* РђРґР°РїС‚РёРІРЅРѕСЃС‚СЊ РґР»СЏ РјРѕР±РёР»СЊРЅС‹С… */
 @media (max-width: 768px) {
   .property-section-layout {
     flex-direction: column;
@@ -1249,7 +1256,7 @@ select {
   align-items: stretch;
 }
 
-/* Таблица + график: равные колонки как в Tkinter */
+/* РўР°Р±Р»РёС†Р° + РіСЂР°С„РёРє: СЂР°РІРЅС‹Рµ РєРѕР»РѕРЅРєРё РєР°Рє РІ Tkinter */
 .property-section-layout:has(.property-section-chart) > .property-section-fields,
 .property-section-layout:has(.property-section-chart) > .property-section-chart {
   flex: 1 1 0;
@@ -1267,7 +1274,7 @@ select {
   min-width: 0;
 }
 
-/* Контейнер для таблицы */
+/* РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ С‚Р°Р±Р»РёС†С‹ */
 .data-table-container {
   flex: 1;
   min-width: 0;
@@ -1280,7 +1287,7 @@ select {
   margin-top: 0;
 }
 
-/* Сама таблица */
+/* РЎР°РјР° С‚Р°Р±Р»РёС†Р° */
 .data-table {
   width: 100%;
   table-layout: fixed;
@@ -1289,7 +1296,7 @@ select {
   background-color: var(--surface);
 }
 
-/* Заголовок таблицы */
+/* Р—Р°РіРѕР»РѕРІРѕРє С‚Р°Р±Р»РёС†С‹ */
 .data-table thead {
   background-color: var(--bg);
   border-bottom: 1px solid var(--border);
@@ -1307,7 +1314,7 @@ select {
   border-right: none;
 }
 
-/* Ячейки таблицы */
+/* РЇС‡РµР№РєРё С‚Р°Р±Р»РёС†С‹ */
 .data-table td {
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
@@ -1332,7 +1339,7 @@ select {
   outline: none;
 }
 
-/* Редактируемые T–value таблицы: клик по ячейке — выбор строки, по числу — ввод */
+/* Р РµРґР°РєС‚РёСЂСѓРµРјС‹Рµ TвЂ“value С‚Р°Р±Р»РёС†С‹: РєР»РёРє РїРѕ СЏС‡РµР№РєРµ вЂ” РІС‹Р±РѕСЂ СЃС‚СЂРѕРєРё, РїРѕ С‡РёСЃР»Сѓ вЂ” РІРІРѕРґ */
 .data-table--selectable-rows .data-table-select-cell {
   cursor: pointer;
 }
@@ -1363,7 +1370,7 @@ select {
   background-color: var(--bg);
 }
 
-/* Контейнер для кнопок + и - */
+/* РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ РєРЅРѕРїРѕРє + Рё - */
 .table-controls {
   display: flex;
   flex-direction: column;
@@ -1373,7 +1380,7 @@ select {
   border-left: 1px solid var(--border);
 }
 
-/* Кнопки управления */
+/* РљРЅРѕРїРєРё СѓРїСЂР°РІР»РµРЅРёСЏ */
 .table-control-btn {
   width: 28px;
   height: 28px;
@@ -1400,7 +1407,7 @@ select {
   transform: scale(0.95);
 }
 
-/* Обертка для таблицы и кнопок */
+/* РћР±РµСЂС‚РєР° РґР»СЏ С‚Р°Р±Р»РёС†С‹ Рё РєРЅРѕРїРѕРє */
 .table-wrapper {
   display: flex;
   width: 100%;
@@ -1412,7 +1419,7 @@ select {
 
 .note-field {
   display: flex;
-  flex-direction: column; /* Это ключевое - располагает элементы вертикально */
+  flex-direction: column; /* Р­С‚Рѕ РєР»СЋС‡РµРІРѕРµ - СЂР°СЃРїРѕР»Р°РіР°РµС‚ СЌР»РµРјРµРЅС‚С‹ РІРµСЂС‚РёРєР°Р»СЊРЅРѕ */
   gap: 8px;
   margin-top: 16px;
   width: 100%;
@@ -1435,7 +1442,7 @@ select {
   font-family: inherit;
   resize: vertical;
   outline: none;
-  min-height: 120px; /* Минимальная высота */
+  min-height: 120px; /* РњРёРЅРёРјР°Р»СЊРЅР°СЏ РІС‹СЃРѕС‚Р° */
 }
 
 .note-textarea:focus {
@@ -1443,7 +1450,7 @@ select {
   box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
 }
 
-/* Контекстное меню */
+/* РљРѕРЅС‚РµРєСЃС‚РЅРѕРµ РјРµРЅСЋ */
 .context-menu {
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -1505,7 +1512,7 @@ select {
   margin-top: 4px;
 }
 
-/* Стили для кастомных тостов */
+/* РЎС‚РёР»Рё РґР»СЏ РєР°СЃС‚РѕРјРЅС‹С… С‚РѕСЃС‚РѕРІ */
 .custom-toast-wrapper {
   background: transparent !important;
   box-shadow: none !important;
@@ -1626,7 +1633,7 @@ select {
   }
 }
 
-/* Контейнер ошибки */
+/* РљРѕРЅС‚РµР№РЅРµСЂ РѕС€РёР±РєРё */
 .error-container {
   display: flex;
   justify-content: center;
@@ -1718,7 +1725,7 @@ select {
   transform: scale(0.98);
 }
 
-/* Контейнер загрузки */
+/* РљРѕРЅС‚РµР№РЅРµСЂ Р·Р°РіСЂСѓР·РєРё */
 .loading-container {
   display: flex;
   justify-content: center;
@@ -1726,16 +1733,16 @@ select {
   min-height: 400px;
 }
 
-/* ==================== ОБЩИЕ СТИЛИ ==================== */
+/* ==================== РћР‘Р©РР• РЎРўРР›Р ==================== */
 
-/* Контейнер страницы */
+/* РљРѕРЅС‚РµР№РЅРµСЂ СЃС‚СЂР°РЅРёС†С‹ */
 .source-page {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-/* ==================== ЗАГОЛОВОК ==================== */
+/* ==================== Р—РђР“РћР›РћР’РћРљ ==================== */
 
 .page-header {
   display: flex;
@@ -1777,7 +1784,7 @@ select {
   font-weight: 600;
 }
 
-/* ==================== ВКЛАДКИ ==================== */
+/* ==================== Р’РљР›РђР”РљР ==================== */
 
 .nested-tabs {
   display: flex;
@@ -1809,7 +1816,7 @@ select {
   border-bottom-color: var(--accent);
 }
 
-/* ==================== ТАБЛИЦА ==================== */
+/* ==================== РўРђР‘Р›РР¦Рђ ==================== */
 
 .table-panel {
   background: var(--surface);
@@ -1830,7 +1837,7 @@ select {
   overflow: auto;
 }
 
-/* ==================== СТИЛИ ТАБЛИЦЫ ==================== */
+/* ==================== РЎРўРР›Р РўРђР‘Р›РР¦Р« ==================== */
 
 .data-table {
   width: 100%;
@@ -1840,7 +1847,7 @@ select {
   background-color: var(--surface);
 }
 
-/* Заголовок таблицы */
+/* Р—Р°РіРѕР»РѕРІРѕРє С‚Р°Р±Р»РёС†С‹ */
 .data-table thead {
   background-color: var(--bg);
   border-bottom: 1px solid var(--border);
@@ -1858,21 +1865,21 @@ select {
   border-right: none;
 }
 
-/* Колонка с номером */
+/* РљРѕР»РѕРЅРєР° СЃ РЅРѕРјРµСЂРѕРј */
 .data-table th.col-index,
 .data-table td.col-index {
   width: 50px;
   text-align: center;
 }
 
-/* Колонка с ID */
+/* РљРѕР»РѕРЅРєР° СЃ ID */
 .data-table th.col-id,
 .data-table td.col-id {
   width: 80px;
   text-align: center;
 }
 
-/* Ячейки таблицы */
+/* РЇС‡РµР№РєРё С‚Р°Р±Р»РёС†С‹ */
 .data-table td {
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
@@ -1887,9 +1894,9 @@ select {
   border-bottom: none;
 }
 
-/* ==================== СОРТИРОВКА ==================== */
+/* ==================== РЎРћР РўРР РћР’РљРђ ==================== */
 
-/* Заголовки с сортировкой */
+/* Р—Р°РіРѕР»РѕРІРєРё СЃ СЃРѕСЂС‚РёСЂРѕРІРєРѕР№ */
 .data-table th.sortable {
   cursor: pointer;
   user-select: none;
@@ -1900,7 +1907,7 @@ select {
   background-color: #e3f2fd;
 }
 
-/* Индикатор сортировки */
+/* РРЅРґРёРєР°С‚РѕСЂ СЃРѕСЂС‚РёСЂРѕРІРєРё */
 .sort-indicator {
   display: inline-block;
   margin-left: 4px;
@@ -1914,7 +1921,7 @@ select {
   font-weight: bold;
 }
 
-/* Текст заголовка с сортировкой */
+/* РўРµРєСЃС‚ Р·Р°РіРѕР»РѕРІРєР° СЃ СЃРѕСЂС‚РёСЂРѕРІРєРѕР№ */
 .sort-label {
   cursor: pointer;
   user-select: none;
@@ -1925,7 +1932,7 @@ select {
   color: #1976d2;
 }
 
-/* ==================== СТИЛИ ДЛЯ ССЫЛОК ==================== */
+/* ==================== РЎРўРР›Р Р”Р›РЇ РЎРЎР«Р›РћРљ ==================== */
 
 .data-table td a {
   color: #1976d2;
@@ -1938,7 +1945,7 @@ select {
   color: #0d47a1;
 }
 
-/* ==================== ЗАГРУЗКА ==================== */
+/* ==================== Р—РђР“Р РЈР—РљРђ ==================== */
 
 .loading-container {
   display: flex;
@@ -1953,7 +1960,7 @@ select {
   color: var(--text-muted);
 }
 
-/* ==================== ОШИБКА ==================== */
+/* ==================== РћРЁРР‘РљРђ ==================== */
 
 .error-container {
   display: flex;
@@ -2024,7 +2031,7 @@ select {
   word-break: break-all;
 }
 
-/* Кнопка повтора */
+/* РљРЅРѕРїРєР° РїРѕРІС‚РѕСЂР° */
 .retry-button {
   padding: 12px 32px;
   background: #007bff;
@@ -2145,7 +2152,7 @@ select {
   transform: none;
 }
 
-/* Контейнер для обрезанного текста */
+/* РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ РѕР±СЂРµР·Р°РЅРЅРѕРіРѕ С‚РµРєСЃС‚Р° */
 .truncated-cell {
   position: relative;
   display: inline-block;
@@ -2173,7 +2180,7 @@ select {
   pointer-events: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   animation: tooltipFade 0.15s ease;
-/* Подбор: скроллы как в Tkinter — 1 вертикальный (общий) + 1 горизонтальный (только свойства) */
+/* РџРѕРґР±РѕСЂ: СЃРєСЂРѕР»Р»С‹ РєР°Рє РІ Tkinter вЂ” 1 РІРµСЂС‚РёРєР°Р»СЊРЅС‹Р№ (РѕР±С‰РёР№) + 1 РіРѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№ (С‚РѕР»СЊРєРѕ СЃРІРѕР№СЃС‚РІР°) */
 .selection-table-container {
   flex: 1;
   min-height: 0;
@@ -2206,7 +2213,7 @@ select {
   background-color: var(--surface);
 }
 
-/* У frozen-таблицы последняя колонка — граница зоны (глобально th:last-child без border) */
+/* РЈ frozen-С‚Р°Р±Р»РёС†С‹ РїРѕСЃР»РµРґРЅСЏСЏ РєРѕР»РѕРЅРєР° вЂ” РіСЂР°РЅРёС†Р° Р·РѕРЅС‹ (РіР»РѕР±Р°Р»СЊРЅРѕ th:last-child Р±РµР· border) */
 .selection-table-frozen .data-table th:last-child,
 .selection-table-frozen .data-table td:last-child {
   border-right: none;
@@ -2346,7 +2353,7 @@ select {
   margin: 8px 0 16px;
 }
 
-/* Задача 11: комментарий к tприм — ⓘ + tooltip в таблице подбора */
+/* Р—Р°РґР°С‡Р° 11: РєРѕРјРјРµРЅС‚Р°СЂРёР№ Рє tРїСЂРёРј вЂ” в“ + tooltip РІ С‚Р°Р±Р»РёС†Рµ РїРѕРґР±РѕСЂР° */
 .selection-table-legend {
   margin: 0 0 8px;
   font-size: 13px;
@@ -2468,7 +2475,7 @@ select {
   overflow: auto;
 }
 
-/* «Расчёт отдельно» — таблица и легенда */
+/* В«Р Р°СЃС‡С‘С‚ РѕС‚РґРµР»СЊРЅРѕВ» вЂ” С‚Р°Р±Р»РёС†Р° Рё Р»РµРіРµРЅРґР° */
 .calculation-table-panel {
   padding: 12px;
   gap: 10px;
@@ -2826,4 +2833,669 @@ select {
   margin: 8px 0 0;
   color: var(--danger);
   font-size: 13px;
+}
+
+.ashby-tab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  background-color: var(--bg);
+  /* одинаковый отступ до контента: сверху/слева/справа 0.5 см */
+  padding: 0.5cm 0.5cm 0 0.5cm !important;
+  box-sizing: border-box !important;
+}
+
+.ashby-layout {
+  /* 1/5 параметры | 4/5 график (легенда теперь внутри графика). */
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 4fr) !important;
+  grid-template-rows: auto;
+  align-items: stretch;
+  gap: 20px;
+  padding: 0 !important;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: calc(100vh - 180px);
+}
+
+/* 1/5 — параметры */
+.ashby-controls {
+  grid-column: 1;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5cm !important;
+  /* сверху запас под заголовки плашек на рамке */
+  padding: 18px 16px 14px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-sizing: border-box;
+  align-self: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+  contain: inline-size;
+}
+
+.ashby-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 !important;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Единый размер подписей: Область применения / Ось X / плашки */
+.ashby-controls .ashby-section-label,
+.ashby-legend-panel .ashby-section-label,
+.ashby-section-label {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+  color: var(--text) !important;
+}
+
+.ashby-field label {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Режет intrinsic-ширину <select> по длинным option */
+.ashby-control-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  contain: inline-size;
+}
+
+.ashby-controls .ashby-control-shell > .input,
+.ashby-controls .ashby-control-shell > select,
+.ashby-controls .ashby-control-shell > input[type="search"],
+.ashby-field-control,
+.ashby-field .input,
+.ashby-controls select,
+.ashby-controls input[type="search"] {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  field-sizing: fixed;
+  /* Не даём option задавать min-content колонки */
+  justify-self: stretch;
+}
+
+.ashby-controls select {
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+  Плашка с заголовком на верхней границе.
+  Рамка принудительно как у .input (светло-серая, скругление 6px).
+*/
+.ashby-controls .ashby-labelframe,
+.ashby-legend-panel .ashby-labelframe,
+.ashby-labelframe {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 0 0 auto !important;
+  align-self: stretch !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 140px !important;
+  margin: 0.65em 0 0 !important;
+  padding: 14px 10px 10px !important;
+  background-color: #fff !important;
+  /* как .input: --border #D8DCE3, --radius 6px */
+  border: 1px solid #d8dce3 !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.ashby-labelframe-title {
+  position: absolute !important;
+  top: 0 !important;
+  left: 10px !important;
+  z-index: 1;
+  transform: translateY(-50%);
+  padding: 0 6px !important;
+  margin: 0 !important;
+  background-color: #fff !important;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Внутренний список без второй рамки */
+.ashby-listbox {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 4px 0 0;
+  padding: 4px;
+  flex: 1;
+  min-height: 110px;
+  max-height: 200px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: auto;
+  border: none !important;
+  outline: none !important;
+  border-radius: 0;
+  background-color: transparent;
+  box-sizing: border-box;
+}
+
+.ashby-listbox > li + li {
+  margin-top: 0;
+}
+
+.ashby-listbox-spacer {
+  flex-shrink: 0;
+  line-height: 0;
+  font-size: 0;
+}
+
+.ashby-listbox-item {
+  display: block;
+  /* не раздувать колонку длинными именами классов */
+  width: 0;
+  min-width: 100%;
+  max-width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: none !important;
+  border-radius: 4px;
+  background-color: transparent !important;
+  color: var(--text) !important;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.ashby-listbox-item:hover:not(:disabled) {
+  background-color: var(--accent-soft) !important;
+  color: var(--text) !important;
+}
+
+.ashby-listbox-item--active {
+  background-color: color-mix(in srgb, var(--accent) 22%, var(--accent-soft)) !important;
+  color: var(--text) !important;
+}
+
+.ashby-listbox-empty {
+  padding: 8px 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ashby-controls .ashby-labelframe.ashby-class-labelframe,
+.ashby-class-labelframe {
+  flex: 1 1 auto !important;
+  min-height: 200px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ashby-class-list {
+  gap: 0.1cm;
+  max-height: 280px;
+}
+
+.ashby-class-row {
+  display: block !important;
+  list-style: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.ashby-class-row-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100% !important;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.ashby-class-row-label:hover {
+  background-color: var(--accent-soft);
+}
+
+.ashby-class-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.ashby-class-row-name {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ashby-class-labelframe .ashby-listbox-empty {
+  padding: 8px 6px 8px calc(6px + 1.25em);
+}
+
+.ashby-selection-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  /* место под заголовок первой плашки на верхней рамке */
+  margin-top: 0.5em;
+}
+
+.ashby-selection-stack > .ashby-labelframe {
+  margin: 0 !important;
+}
+
+.ashby-selection-stack > .ashby-class-labelframe,
+.ashby-controls .ashby-labelframe.ashby-class-labelframe {
+  flex: 1 1 auto !important;
+  min-height: 200px !important;
+}
+
+.ashby-selection-stack-spacer {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.ashby-selection-stack > .ashby-actions {
+  gap: 0.15cm !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.ashby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15cm;
+  margin-top: 0;
+  flex-shrink: 0;
+  padding-top: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  /* как у .ashby-labelframe: рабочая зона контента внутри рамки */
+  padding-inline: 10px;
+  box-sizing: border-box;
+  align-items: center;
+}
+
+.ashby-action-btn {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 3/5 — график */
+.ashby-chart-panel {
+  grid-column: 2;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+/* 1/5 — легенда справа: плашка как «Результаты поиска» / «Выбранные классы» */
+.ashby-legend-panel {
+  grid-column: 3;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  padding: 0 16px 14px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.ashby-legend-labelframe {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  margin-top: 12px !important;
+}
+
+.ashby-legend-panel-empty {
+  margin: 0 !important;
+  padding: 0 !important;
+  padding-left: calc(28px + 0.25cm) !important;
+  list-style: none !important;
+  display: block !important;
+  font-size: 14px !important;
+  line-height: 1.4;
+  color: var(--text-muted);
+  box-sizing: border-box;
+}
+
+.ashby-legend-panel .ashby-legend,
+.ashby-legend-panel .ashby-listbox.ashby-legend {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  list-style: none !important;
+  margin: 4px 0 0 !important;
+  padding: 8px 4px !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.ashby-legend-panel .ashby-legend > li,
+.ashby-legend-panel .ashby-listbox.ashby-legend > li {
+  list-style: none !important;
+}
+
+.ashby-legend-panel .ashby-legend-item {
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.ashby-legend-panel .ashby-legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.ashby-legend-panel .ashby-legend-label {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ashby-legend-panel .ashby-legend-marker,
+.ashby-legend-panel .ashby-legend-class-swatch {
+  display: block;
+  overflow: visible;
+}
+
+.ashby-chart-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: #fff;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ashby-toolbar {
+  position: relative;
+  z-index: 100;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+  padding: 6px 8px;
+  border: none;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.ashby-toolbar-spacer {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.ashby-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  flex: 0 0 34px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.ashby-toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ashby-toolbar-btn:disabled {
+  cursor: not-allowed;
+}
+
+.ashby-save-menu {
+  position: relative;
+  z-index: 101;
+  display: inline-flex;
+}
+
+.ashby-save-menu-dropdown {
+  position: fixed;
+  min-width: 120px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 4px 16px rgba(36, 41, 48, 0.16);
+  z-index: 10000;
+  box-sizing: border-box;
+}
+
+.ashby-save-menu-item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.ashby-save-menu-item:hover,
+.ashby-save-menu-item--hover {
+  background-color: var(--accent-soft) !important;
+  color: var(--accent) !important;
+}
+
+.ashby-chart-canvas--pan,
+.ashby-chart-canvas--pan svg {
+  cursor: grab;
+}
+
+.ashby-chart-canvas--pan:active,
+.ashby-chart-canvas--pan:active svg {
+  cursor: grabbing;
+}
+
+.ashby-chart-canvas--zoom,
+.ashby-chart-canvas--zoom svg {
+  cursor: crosshair;
+}
+
+.ashby-status {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background-color: #fff;
+}
+
+.ashby-status--error {
+  color: var(--danger);
+}
+
+.ashby-chart-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px 16px 16px;
+}
+
+.ashby-chart-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.ashby-chart-svg-title,
+.ashby-axis-label {
+  font-family: inherit;
+  pointer-events: none;
+}
+
+.ashby-chart-canvas {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  flex-shrink: 0;
+  background-color: #fff;
+  /* фиксированная высота из JS; не зависит от списка классов слева */
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Легенда поверх графика: прозрачность видна; hover проходит сквозь. */
+.ashby-legend-overlay {
+  width: max-content;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 10px rgba(36, 41, 48, 0.12);
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.ashby-chart-layer {
+  position: relative;
+  z-index: 1;
+}
+
+.ashby-tooltip-portal {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.ashby-point-tooltip {
+  z-index: 30;
+}
+
+.ashby-cursor-coords {
+  z-index: 25;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ashby-legend-overlay-title {
+  margin: 0;
+  padding: 0 2px 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.ashby-legend-overlay-list {
+  margin: 0;
+  padding: 4px 4px 8px;
+  list-style: none;
+  overflow: auto;
+  width: max-content;
+  max-width: 100%;
 }

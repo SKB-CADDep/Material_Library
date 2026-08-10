@@ -8,6 +8,20 @@ api.interceptors.response.use(
   (r) => r,
   (err) => {
     const detail = err.response?.data?.detail;
-    return Promise.reject(new Error(typeof detail === "string" ? detail : "Ошибка API"));
+    let message = "Ошибка API";
+    if (typeof detail === "string") {
+      message = detail;
+    } else if (Array.isArray(detail) && detail.length > 0) {
+      message = detail
+        .map((item) =>
+          typeof item === "object" && item && "msg" in item
+            ? String((item as { msg: string }).msg)
+            : String(item),
+        )
+        .join("; ");
+    } else if (err.message) {
+      message = err.message;
+    }
+    return Promise.reject(new Error(message));
   }
 );

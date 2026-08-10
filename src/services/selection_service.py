@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import colorsys
 from typing import Any, Literal
 
+from src.core.math.interpolation import MathUtils
 from src.core.models.material import Material
 from src.core.schema_keys import Schema
 from src.services.material_repository import MaterialRepository
 from src.services.properties_catalog import PropertiesCatalog
+from src.services.unit_manager import UnitManager
 
 PropType = Literal["physical", "mechanical", "hardness"]
 
@@ -30,9 +33,32 @@ HARDNESS_COLUMNS: dict[str, dict[str, str]] = {
     },
 }
 
+_TEMPERATURE_AXIS = {
+    "key": "temperature",
+    "name": "Температура",
+    "symbol": "T",
+    "unit": "°С",
+    "unit_type": "Температура",
+    "kind": "temperature",
+}
+
+# Палитра заливки классов — как class_colors в AshbyDiagramTab (main.py)
+_ASHBY_CLASS_COLORS = [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+]
+
 
 class SelectionService:
-    """Подбор материалов. Паритет с TempSelectionTab (main.py)."""
+    """Подбор материалов. Паритет с TempSelectionTab / AshbyDiagramTab (main.py)."""
 
     def __init__(self, properties: PropertiesCatalog):
         self._properties = properties
@@ -309,8 +335,7 @@ class SelectionService:
         class_names: list[str],
         areas: list[str] | None = None,
     ) -> dict[str, Any]:
-        if not class_names:
-            raise ValueError("class_names не должен быть пустым")
+        """Паритет AshbyDiagramTab._plot_diagram (main.py)."""
         if x_prop == y_prop:
             raise ValueError("Оси X и Y должны отличаться")
         allowed = self._ashby_prop_keys()
@@ -318,88 +343,98 @@ class SelectionService:
             raise ValueError("Неизвестный ключ свойства оси")
 
         selected_classes = list(dict.fromkeys(class_names))
-        class_color = {
-            name: self._series_color(i) for i, name in enumerate(selected_classes)
-        }
-        selected_set = set(selected_classes)
-
         x_is_mech = self._properties.is_mechanical(x_prop)
         y_is_mech = self._properties.is_mechanical(y_prop)
+
         series: list[dict[str, Any]] = []
-        class_points: dict[str, list[tuple[float, float]]] = {
-            name: [] for name in selected_classes
-        }
+        class_legend: list[dict[str, str]] = []
+        hulls: list[dict[str, Any]] = []
+        series_index = 0
 
-        for material in repository.materials:
-            if not self._matches_area(material, None, areas):
-                continue
-            class_name = self._classification_class(material)
-            if class_name not in selected_set:
-                continue
+        for idx_class, class_name in enumerate(selected_classes):
+            class_color = _ASHBY_CLASS_COLORS[idx_class % len(_ASHBY_CLASS_COLORS)]
+            class_legend.append({"class_name": class_name, "color": class_color})
+            class_points: list[tuple[float, float]] = []
 
-            color = class_color[class_name]
-            material_id = material.data.get("material_id", "") or material.filename
-            cats = material.get_strength_categories()
+            for material in repository.materials:
+                if not self._matches_area(material, None, areas):
+                    continue
+                if self._classification_class(material) != class_name:
+                    continue
 
-            if x_is_mech or y_is_mech:
-                for cat_idx, cat in enumerate(cats):
-                    cat_name = (
-                        cat.get(Schema.VAL_STR_CAT, "")
-                        if isinstance(cat, dict)
-                        else ""
-                    )
-                    label = f"{material.get_display_name()} {cat_name}".strip()
+                material_id = material.data.get("material_id", "") or material.filename
+                cats = material.get_strength_categories()
+
+                if x_is_mech or y_is_mech:
+                    for cat_idx, cat in enumerate(cats):
+                        cat_name = (
+                            cat.get(Schema.VAL_STR_CAT, "")
+                            if isinstance(cat, dict)
+                            else ""
+                        )
+                        base_label = (
+                            f"{material.get_display_name()} {cat_name}".strip()
+                        )
+                        points = self._ashby_series_points(
+                            material, cat_idx, x_prop, y_prop
+                        )
+                        curve_color = self._series_color(series_index)
+                        series_index += 1
+                        if points:
+                            class_points.extend(
+                                (p["x"], p["y"]) for p in points
+                            )
+                            label = base_label
+                        else:
+                            label = f"{base_label} (нет данных)"
+                        series.append(
+                            {
+                                "id": f"{material_id}:{cat_idx}",
+                                "label": label,
+                                "class_name": class_name,
+                                "color": curve_color,
+                                "points": points,
+                            }
+                        )
+                else:
+                    base_label = material.get_display_name()
                     points = self._ashby_series_points(
-                        material, cat_idx, x_prop, y_prop
+                        material, None, x_prop, y_prop
                     )
-                    if not points:
-                        continue
-                    class_points[class_name].extend(
-                        (p["x"], p["y"]) for p in points
-                    )
+                    curve_color = self._series_color(series_index)
+                    series_index += 1
+                    if points:
+                        class_points.extend((p["x"], p["y"]) for p in points)
+                        label = base_label
+                    else:
+                        label = f"{base_label} (нет данных)"
                     series.append(
                         {
-                            "id": f"{material_id}:{cat_idx}",
+                            "id": material_id,
                             "label": label,
                             "class_name": class_name,
-                            "color": color,
+                            "color": curve_color,
                             "points": points,
                         }
                     )
-            else:
-                points = self._ashby_series_points(material, None, x_prop, y_prop)
-                if not points:
-                    continue
-                class_points[class_name].extend((p["x"], p["y"]) for p in points)
-                series.append(
+
+            hull = self._compute_convex_hull(class_points)
+            if len(hull) >= 3:
+                closed = list(hull) + [hull[0]]
+                hulls.append(
                     {
-                        "id": material_id,
-                        "label": material.get_display_name(),
                         "class_name": class_name,
-                        "color": color,
-                        "points": points,
+                        "color": class_color,
+                        "points": [{"x": x, "y": y} for x, y in closed],
                     }
                 )
-
-        hulls: list[dict[str, Any]] = []
-        for class_name in selected_classes:
-            hull = self._compute_convex_hull(class_points[class_name])
-            if len(hull) < 3:
-                continue
-            closed = list(hull) + [hull[0]]
-            hulls.append(
-                {
-                    "class_name": class_name,
-                    "color": class_color[class_name],
-                    "points": [{"x": x, "y": y} for x, y in closed],
-                }
-            )
 
         return {
             "x_axis": self._ashby_axis_meta(x_prop),
             "y_axis": self._ashby_axis_meta(y_prop),
             "series": series,
             "hulls": hulls,
+            "class_legend": class_legend,
         }
 
     def _ashby_prop_keys(self) -> set[str]:
@@ -448,17 +483,41 @@ class SelectionService:
 
     def _ashby_axis_meta(self, prop_key: str) -> dict[str, Any]:
         if prop_key == "temperature":
+            unit = _TEMPERATURE_AXIS["unit"]
             return {
                 "key": "temperature",
                 "label": _TEMPERATURE_AXIS["name"],
-                "unit": _TEMPERATURE_AXIS["unit"],
+                "symbol": _TEMPERATURE_AXIS["symbol"],
+                "unit": self._ashby_display_unit(
+                    unit, _TEMPERATURE_AXIS["unit_type"]
+                ),
             }
         meta = self._properties.get_meta(prop_key)
+        unit = meta.get("unit", "") or ""
         return {
             "key": prop_key,
             "label": meta.get("name", prop_key),
-            "unit": meta.get("unit", ""),
+            "symbol": self._properties.get_display_symbol(prop_key),
+            "unit": self._ashby_display_unit(unit, meta.get("unit_type")),
         }
+
+    @staticmethod
+    def _ashby_display_unit(unit: str, unit_type: str | None) -> str:
+        """Единица для UI: display_labels из units_registry, иначе как в каталоге."""
+        raw = (unit or "").strip()
+        if not raw:
+            return ""
+        if not unit_type:
+            return raw
+        labels = UnitManager.get_display_labels(unit_type)
+        if raw in labels:
+            return labels[raw]
+        # Температура в каталоге — «°С», в registry ключ «C».
+        if unit_type == "Температура":
+            celsius_keys = {"C", "°C", "°С", "С"}
+            if raw in celsius_keys and "C" in labels:
+                return labels["C"]
+        return raw
 
     @staticmethod
     def _axis_label(name: str, symbol: str) -> str:

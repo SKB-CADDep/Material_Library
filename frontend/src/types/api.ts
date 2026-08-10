@@ -28,6 +28,14 @@ export type SourceResponse = {
   chemical_sources: SourceItem[];
 };
 
+/** Alias для совместимости с api/sources.ts */
+export type SourcesResponse = SourceResponse;
+
+export type TabType =
+  | "property_sources"
+  | "strength_sources"
+  | "chemical_sources";
+
 
 export type MaterialSaveResponse = {
 ok: boolean
@@ -111,3 +119,66 @@ export type SingleCalculationResponse = {
     db_rows: SingleCalculationRow[];
     custom_rows: SingleCalculationRow[]
 }
+
+export type AshbyAxisKind = "temperature" | "physical" | "mechanical";
+
+export type AshbyAxisOption = {
+  key: string;
+  label: string;
+  unit: string;
+  unit_type?: string | null;
+  kind: AshbyAxisKind;
+};
+
+export type AshbyOptionsResponse = {
+  axes: AshbyAxisOption[];
+  classes: string[];
+};
+
+export type AshbyRequest = {
+  x_prop: string;
+  y_prop: string;
+  class_names: string[];
+  areas?: string[] | null;
+};
+
+export type AshbyPoint = {
+  x: number;
+  y: number;
+};
+
+export type AshbySeries = {
+  id: string;
+  label: string;
+  class_name: string;
+  color: string;
+  points: AshbyPoint[];
+};
+
+export type AshbyHull = {
+  class_name: string;
+  color: string;
+  points: AshbyPoint[];
+};
+
+export type AshbyClassLegendItem = {
+  class_name: string;
+  color: string;
+};
+
+export type AshbyAxisMeta = {
+  key: string;
+  label: string;
+  /** Дисплей-символ свойства (T, E, ρ, …). */
+  symbol: string;
+  unit: string;
+};
+
+export type AshbyResponse = {
+  x_axis: AshbyAxisMeta;
+  y_axis: AshbyAxisMeta;
+  series: AshbySeries[];
+  hulls: AshbyHull[];
+  class_legend?: AshbyClassLegendItem[];
+};
+

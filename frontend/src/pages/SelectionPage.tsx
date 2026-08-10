@@ -1,6 +1,7 @@
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
 import { TempSelectionTab } from "./TempSelectionTab";
 import { SepCalculationTab } from "./SepCalculationTab";
+import { AshbyTab } from "./AshbyTab";
 
 function selectionSubtabClass({ isActive }: { isActive: boolean }) {
     return isActive ? "editor-subtab active" : "editor-subtab";
@@ -66,16 +67,7 @@ export function SelectionPage() {
                    }
             />
 
-            <Route
-                path="ashby"
-                element={
-                    <>
-                        <h2>
-                            Диаграмма Эшби
-                        </h2>
-                    </>
-                   }
-            />
+            <Route path="ashby" element={<AshbyTab />} />
         </Routes>
       </div>
     );
