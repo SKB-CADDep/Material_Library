@@ -17,7 +17,7 @@ class Material:
       mechanical_properties: {
         strength_category: [{
           value_strength_category,
-          hardness: { unit_value, min_value, max_value } | [{...}, ...],
+          hardness: [{ unit_value, min_value, max_value }, ...],
           hardness_unit?,
           properties: [{ property_name, temperature_value_pairs, ... }, ...]
         }]
@@ -237,21 +237,12 @@ class Material:
 
     @staticmethod
     def set_hardness_entries(cat, values_list, unit="HB"):
-        """
-        Пишет hardness: один объект при одной записи (формат data/),
-        список — при нескольких.
-        """
+        """Пишет hardness всегда списком записей."""
         if not isinstance(cat, dict):
             return
         values_list = [v for v in (values_list or []) if isinstance(v, dict)]
         cat[Schema.HARDNESS_UNIT] = unit
-        if not values_list:
-            cat.pop(Schema.HARDNESS, None)
-            return
-        if len(values_list) == 1:
-            cat[Schema.HARDNESS] = values_list[0]
-        else:
-            cat[Schema.HARDNESS] = values_list
+        cat[Schema.HARDNESS] = values_list
 
     # ------------------------------------------------------------------
     # Interpolation / sources
@@ -473,6 +464,14 @@ class Material:
         if not isinstance(props, list):
             props = []
             cat[Schema.PROPERTIES] = props
+
+        hard = cat.get(Schema.HARDNESS)
+        if isinstance(hard, dict) and (
+            "min_value" in hard or "max_value" in hard or "unit_value" in hard
+        ):
+            cat[Schema.HARDNESS] = [hard]
+        elif not isinstance(hard, list):
+            cat[Schema.HARDNESS] = []
 
         reserved = {
             Schema.VAL_STR_CAT, Schema.PROPERTIES, Schema.REF_ID,

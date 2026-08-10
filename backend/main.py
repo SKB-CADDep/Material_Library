@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Material Library API", lifespan=lifespan, version="0.1.0")
+# reload nudge: keep material schema physical_properties / mechanical_properties
 
 app.add_middleware(
     CORSMiddleware,

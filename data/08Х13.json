@@ -96,11 +96,13 @@
     "strength_category": [
       {
         "value_strength_category": "КП40",
-        "hardness": {
-          "unit_value": "HB",
-          "min_value": 187.0,
-          "max_value": 217.0
-        },
+        "hardness": [
+          {
+            "unit_value": "HB",
+            "min_value": 187.0,
+            "max_value": 217.0
+          }
+        ],
         "properties": [
           {
             "property_name": "yield_strength",

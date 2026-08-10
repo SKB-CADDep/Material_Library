@@ -64,9 +64,33 @@ class PropertiesArraySchemaTests(unittest.TestCase):
         Material.set_hardness_entries(
             cat, [{"unit_value": "HB", "min_value": 10, "max_value": 20}], unit="HB"
         )
-        # одна запись → dict
-        self.assertIsInstance(cat[Schema.HARDNESS], dict)
+        # одна запись тоже всегда list
+        self.assertIsInstance(cat[Schema.HARDNESS], list)
         self.assertEqual(Material.get_hardness_entries(cat)[0]["max_value"], 20)
+
+    def test_normalize_hardness_object_to_list(self):
+        data = {
+            "material_id": "x",
+            Schema.METADATA: {Schema.NAME_STD: "T"},
+            Schema.PHYSICAL: {Schema.PROPERTIES: []},
+            Schema.MECHANICAL: {
+                Schema.STRENGTH_CAT: [
+                    {
+                        Schema.VAL_STR_CAT: "КП1",
+                        "hardness": {
+                            "unit_value": "HB",
+                            "min_value": 187.0,
+                            "max_value": 217.0,
+                        },
+                    }
+                ]
+            },
+            Schema.CHEMICAL: {Schema.COMPOSITION: []},
+        }
+        mat = Material(data=data)
+        cat = mat.get_strength_categories()[0]
+        self.assertIsInstance(cat[Schema.HARDNESS], list)
+        self.assertEqual(cat[Schema.HARDNESS][0]["min_value"], 187.0)
 
     def test_source_info_from_property(self):
         mat = Material(data={

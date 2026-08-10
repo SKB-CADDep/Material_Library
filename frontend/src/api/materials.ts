@@ -53,22 +53,49 @@ function assertMaterialDraftForSave(body: Record<string, unknown>): void {
   }
 }
 
+type TemperaturePairsHolder = {
+  temperature_value_pairs?: Array<[number, number]>;
+};
+
+function filterValidPairs(
+  pairs: Array<[number, number]> | undefined,
+): Array<[number, number]> | undefined {
+  if (!pairs) return pairs;
+  return pairs.filter(
+    ([temperature, value]) =>
+      Number.isFinite(temperature) && Number.isFinite(value),
+  );
+}
+
+function stripPairsInPropertiesList(container: {
+  properties?: TemperaturePairsHolder[];
+}): void {
+  if (!Array.isArray(container.properties)) return;
+  for (const property of container.properties) {
+    if (!property?.temperature_value_pairs) continue;
+    property.temperature_value_pairs = filterValidPairs(
+      property.temperature_value_pairs,
+    );
+  }
+}
+
 /** Незаполненные строки T–value (NaN) не сохраняем в JSON. */
 function stripInvalidTemperaturePairs(
   body: Record<string, unknown>,
 ): Record<string, unknown> {
   const next = structuredClone(body);
   const physical = next.physical_properties as
-    | Record<string, { temperature_value_pairs?: Array<[number, number]> }>
+    | { properties?: TemperaturePairsHolder[] }
     | undefined;
-  if (!physical) return next;
+  if (physical) {
+    stripPairsInPropertiesList(physical);
+  }
 
-  for (const property of Object.values(physical)) {
-    if (!property?.temperature_value_pairs) continue;
-    property.temperature_value_pairs = property.temperature_value_pairs.filter(
-      ([temperature, value]) =>
-        Number.isFinite(temperature) && Number.isFinite(value),
-    );
+  const mechanical = next.mechanical_properties as
+    | { strength_category?: Array<{ properties?: TemperaturePairsHolder[] }> }
+    | undefined;
+  for (const category of mechanical?.strength_category ?? []) {
+    stripPairsInPropertiesList(category);
   }
 
   return next;

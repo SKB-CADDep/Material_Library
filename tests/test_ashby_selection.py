@@ -78,6 +78,71 @@ def test_ashby_options_and_diagram_smoke():
     assert result["series"][0]["color"] != result["class_legend"][0]["color"]
 
 
+def test_ashby_named_properties_schema():
+    """Новая схема: physical_properties.properties[{property_name, ...}]."""
+    material = Material(
+        data={
+            "material_id": "m2",
+            "metadata": {
+                "name_material_standard": "NamedSteel",
+                "name_material_alternative": [],
+                "application_area": [],
+                "classification": {
+                    "classification_category": "",
+                    "classification_class": "Аустенитный",
+                    "classification_subclass": "",
+                },
+            },
+            "physical_properties": {
+                "properties": [
+                    {
+                        "property_name": "density",
+                        "temperature_value_pairs": [[20.0, 7900.0], [200.0, 7850.0]],
+                        "value_unit": "кг/м3",
+                    }
+                ]
+            },
+            "mechanical_properties": {
+                "strength_category": [
+                    {
+                        "value_strength_category": "КП40",
+                        "properties": [
+                            {
+                                "property_name": "yield_strength",
+                                "temperature_value_pairs": [
+                                    [20.0, 400.0],
+                                    [100.0, 380.0],
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            },
+            "chemical_properties": {"composition": []},
+        }
+    )
+    service = SelectionService(PropertiesCatalog())
+    repo = _FakeRepo([material])
+
+    phys = service.ashby_diagram(
+        repo,
+        x_prop="density",
+        y_prop="temperature",
+        class_names=["Аустенитный"],
+    )
+    assert len(phys["series"]) == 1
+    assert len(phys["series"][0]["points"]) == 2
+
+    mech = service.ashby_diagram(
+        repo,
+        x_prop="yield_strength",
+        y_prop="temperature",
+        class_names=["Аустенитный"],
+    )
+    assert len(mech["series"]) == 1
+    assert len(mech["series"][0]["points"]) == 2
+
+
 def test_ashby_empty_classes_ok():
     service = SelectionService(PropertiesCatalog())
     result = service.ashby_diagram(

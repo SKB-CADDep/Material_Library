@@ -25,20 +25,18 @@ import { RequiredMark } from "../components/RequiredMark";
 import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { computeNiceAxisFromValues, formatTickLabel } from "../utils/chartTicks";
+import {
+  findNamedProp,
+  patchNamedPropertyInContainer,
+  type NamedProperty,
+} from "../lib/namedProperties";
+
 type MechanicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
 };
 
-type PropertyData = {
-  temperature_value_pairs?: Array<[number, number]>;
-  value_unit?: string;
-  comment?: string;
-  property_subsource?: string | number | readonly string[];
-  source_ref_id?: string | null;
-  min_value?: number;
-  is_acceptance?: boolean;
-};
+type PropertyData = NamedProperty;
 
 type StrengthCategory = {
   value_strength_category?: string;
@@ -46,6 +44,7 @@ type StrengthCategory = {
   hardness_unit: string;
   source_strength_category?: string | null;
   source_ref_id?: string | null;
+  properties?: NamedProperty[];
 };
 
 type MechanicalProperties = {
@@ -181,8 +180,12 @@ type ChartPoint = { temperature: number; value: number };
 
 function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
   return (pairs ?? [])
-    .filter(([temperature, value]) =>
-      Number.isFinite(temperature) && Number.isFinite(value),
+    .filter(
+      (pair): pair is [number, number] =>
+        Array.isArray(pair) &&
+        pair.length >= 2 &&
+        Number.isFinite(pair[0]) &&
+        Number.isFinite(pair[1]),
     )
     .map(([temperature, value]) => ({ temperature, value }));
 }
@@ -390,8 +393,7 @@ function getPropertyData(
   category: StrengthCategory | undefined,
   key: string,
 ): PropertyData | undefined {
-  if (!category) return undefined;
-  return category[key] as PropertyData | undefined;
+  return findNamedProp(category, key);
 }
 
 function patchCategoryProperty(
@@ -402,8 +404,6 @@ function patchCategoryProperty(
   patch: Partial<PropertyData>,
 ): Record<string, unknown> {
   const categories = mechanical.strength_category ?? [];
-  const current = categories[categoryIndex] ?? {};
-  const prevProp = (current[propertyKey] as PropertyData | undefined) ?? {};
 
   return {
     ...material,
@@ -412,13 +412,7 @@ function patchCategoryProperty(
       strength_category: categories.map((cat, i) =>
         i !== categoryIndex
           ? cat
-          : {
-              ...cat,
-              [propertyKey]: {
-                ...prevProp,
-                ...patch,
-              },
-            },
+          : patchNamedPropertyInContainer(cat, propertyKey, patch),
       ),
     },
   };
@@ -466,7 +460,6 @@ export function MechanicalPropertiesTab({
           max_value?: number;
         }>
       | undefined) ?? [];
-  
 
   return (
     <form
@@ -515,6 +508,7 @@ export function MechanicalPropertiesTab({
                 source_ref_id: "",
                 hardness: [],
                 hardness_unit: "",
+                properties: [],
               };
               onDraftChange({
                 ...material,

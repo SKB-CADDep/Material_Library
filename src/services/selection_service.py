@@ -566,18 +566,9 @@ class SelectionService:
         prop_key: str,
         cat_idx: int | None,
     ) -> list:
-        if self._properties.is_physical(prop_key):
-            prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
-            if isinstance(prop_data, dict):
-                return prop_data.get(Schema.TEMP_PAIRS, []) or []
-            return []
-
-        if self._properties.is_mechanical(prop_key) and cat_idx is not None:
-            cats = material.get_strength_categories()
-            if 0 <= cat_idx < len(cats):
-                prop_data = cats[cat_idx].get(prop_key, {})
-                if isinstance(prop_data, dict):
-                    return prop_data.get(Schema.TEMP_PAIRS, []) or []
+        prop_data = self._get_property_container(material, prop_key, cat_idx)
+        if isinstance(prop_data, dict):
+            return prop_data.get(Schema.TEMP_PAIRS, []) or []
         return []
 
     def _ashby_axis_value(
@@ -647,17 +638,13 @@ class SelectionService:
                 "approx" (линейная экстраполяция по двум ближайшим точкам),
                 либо None, если значение не может быть определено.
         """
-        data_container = None
-
-        if self._properties.is_physical(prop_key):
-            data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
-        elif self._properties.is_mechanical(prop_key):
-            cats = material.get_strength_categories()
-            if cat_idx is not None and 0 <= cat_idx < len(cats):
-                data_container = cats[cat_idx].get(prop_key)
-        else:
+        if not (
+            self._properties.is_physical(prop_key)
+            or self._properties.is_mechanical(prop_key)
+        ):
             return None, None
 
+        data_container = self._get_property_container(material, prop_key, cat_idx)
         if not data_container:
             return None, None
 
@@ -725,11 +712,11 @@ class SelectionService:
         cat_idx: int | None = None,
     ) -> dict[str, Any] | None:
         if self._properties.is_physical(prop_key):
-            return material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+            return material.get_physical_data(prop_key)
         if self._properties.is_mechanical(prop_key):
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
-                return cats[cat_idx].get(prop_key)
+                return Material.get_category_prop_data(cats[cat_idx], prop_key)
         return None
 
     def _get_scalar_value(
