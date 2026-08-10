@@ -157,8 +157,72 @@ export function computeNiceAxis(
 
   [lo, hi] = expandDegenerateRange(lo, hi);
 
+  const paddingRatio = options.paddingRatio ?? 0;
+  if (paddingRatio > 0) {
+    const span = hi - lo;
+    const padHigh = span * paddingRatio;
+    const padLow = span * Math.min(paddingRatio, 0.05);
+    lo -= padLow;
+    hi += padHigh;
+  }
+
   const step = selectBestStep(lo, hi, targetTickCount);
   return buildAxisForStep(lo, hi, step);
+}
+
+/**
+ * Тики для фиксированного view-диапазона (zoom/pan).
+ * Domain не расширяется до «красивых» границ — иначе зум колесом дёргается.
+ */
+export function computeTicksForFixedDomain(
+  min: number,
+  max: number,
+  options: NiceAxisOptions = {},
+): NiceAxisResult {
+  const targetTickCount = Math.max(
+    2,
+    options.targetTickCount ?? DEFAULT_TARGET_TICK_COUNT,
+  );
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return computeTicksForFixedDomain(0, 1, options);
+  }
+
+  let lo = min;
+  let hi = max;
+  if (lo > hi) {
+    [lo, hi] = [hi, lo];
+  }
+
+  [lo, hi] = expandDegenerateRange(lo, hi);
+
+  const step = selectBestStep(lo, hi, targetTickCount);
+  const first = roundToStep(Math.ceil(lo / step - 1e-12) * step, step);
+  const last = roundToStep(Math.floor(hi / step + 1e-12) * step, step);
+
+  const ticks: number[] = [];
+  if (first <= last) {
+    const count = Math.round((last - first) / step);
+    for (let i = 0; i <= count; i += 1) {
+      const tick = roundToStep(first + i * step, step);
+      if (tick >= lo - step * 1e-9 && tick <= hi + step * 1e-9) {
+        ticks.push(tick);
+      }
+    }
+  }
+
+  if (ticks.length === 0) {
+    ticks.push(lo, hi);
+  } else if (ticks.length === 1) {
+    ticks.push(ticks[0] === lo ? hi : lo);
+    ticks.sort((a, b) => a - b);
+  }
+
+  return {
+    domain: [lo, hi],
+    ticks,
+    step,
+  };
 }
 
 

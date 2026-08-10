@@ -1,0 +1,12 @@
+.git
+.env
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+tests/
+.venv/
+.vscode/
+.idea/
+*.log
+**/Dockerfile

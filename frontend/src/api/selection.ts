@@ -1,9 +1,12 @@
 import { api } from "./client";
 import type {
+  AshbyOptionsResponse,
+  AshbyRequest,
+  AshbyResponse,
   TemperatureSelectionRequest,
   TemperatureSelectionResponse,
   SingleCalculationRequest,
-  SingleCalculationResponse
+  SingleCalculationResponse,
 } from "../types/api";
 
 export async function postTemperatureSelection(
@@ -23,5 +26,25 @@ export async function postSingleCalculation(
     "/selection/calculate",
     body,
   );
+  return data;
+}
+
+export async function getAshbyOptions(
+  areas?: string[],
+): Promise<AshbyOptionsResponse> {
+  const { data } = await api.get<AshbyOptionsResponse>(
+    "/selection/ashby/options",
+    {
+      params: areas && areas.length > 0 ? { areas } : undefined,
+      paramsSerializer: {
+        indexes: null,
+      },
+    },
+  );
+  return data;
+}
+
+export async function postAshby(body: AshbyRequest): Promise<AshbyResponse> {
+  const { data } = await api.post<AshbyResponse>("/selection/ashby", body);
   return data;
 }
