@@ -72,8 +72,6 @@ class UnitResponse(BaseModel):
     unit_type: str
     system_unit: str
     units: list[str]
-    display_labels: dict[str, str] = {}
-    factors: dict[str, float | str] = {}
 
 class TemperatureSelectionColumn(BaseModel):
     key: str
@@ -133,4 +131,62 @@ class SingleCalculationResponse(BaseModel):
     columns: list[SingleCalculationColumn]
     db_rows: list[SingleCalculationRow]
     custom_rows: list[SingleCalculationRow] = []
+
+
+class AshbyAxisOption(BaseModel):
+    key: str
+    label: str
+    unit: str = ""
+    unit_type: str | None = None
+    kind: Literal["temperature", "physical", "mechanical"]
+
+
+class AshbyOptionsResponse(BaseModel):
+    axes: list[AshbyAxisOption]
+    classes: list[str]
+
+
+class AshbyRequest(BaseModel):
+    x_prop: str
+    y_prop: str
+    class_names: list[str]
+    areas: list[str] | None = None
+
+
+class AshbyPoint(BaseModel):
+    x: float
+    y: float
+
+
+class AshbySeries(BaseModel):
+    id: str
+    label: str
+    class_name: str
+    color: str
+    points: list[AshbyPoint]
+
+
+class AshbyHull(BaseModel):
+    class_name: str
+    color: str
+    points: list[AshbyPoint]
+
+
+class AshbyClassLegendItem(BaseModel):
+    class_name: str
+    color: str
+
+
+class AshbyAxisMeta(BaseModel):
+    key: str
+    label: str
+    unit: str = ""
+
+
+class AshbyResponse(BaseModel):
+    x_axis: AshbyAxisMeta
+    y_axis: AshbyAxisMeta
+    series: list[AshbySeries]
+    hulls: list[AshbyHull]
+    class_legend: list[AshbyClassLegendItem] = []
 
