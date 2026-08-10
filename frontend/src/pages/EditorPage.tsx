@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listMaterials,
   getMaterial,
-  saveMaterial,
   saveNewMaterial,
   materialDraftFilename,
   normalizeMaterialFilename,
+  nextVersionedMaterialFilename,
   validateMaterialDraftForSave,
 } from "../api/materials";
+import { syncMaterialsAfterSave, normalizeMaterialDraft } from "../lib/materialDraft";
 import { useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
 import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
@@ -107,19 +108,22 @@ function createEmptyMaterialDraft(): Record<string, unknown> {
   };
 }
 
-function promptFilename(draft: Record<string, unknown>): string | null {
-  let defaultName: string;
-  try {
-    defaultName = materialDraftFilename(draft);
-  } catch {
-    defaultName = "Новыйматериал.json";
+function promptFilename(draft: Record<string, unknown>, defaultName?: string): string | null {
+  let suggested = defaultName;
+  if (!suggested) {
+    try {
+      suggested = materialDraftFilename(draft);
+    } catch {
+      suggested = "Новыйматериал.json";
+    }
   }
-  const input = window.prompt("Имя файла для сохранения", defaultName);
+  const input = window.prompt("Имя файла для сохранения", suggested);
   if (input === null) {
     return null;
   }
+  const effective = input.trim() === "" ? suggested : input;
   try {
-    return normalizeMaterialFilename(input);
+    return normalizeMaterialFilename(effective);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Неверное имя файла";
     showToastWithOK(message, 'error');
@@ -138,11 +142,20 @@ export function EditorPage() {
     queryKey: ["materials"],
     queryFn: listMaterials,
   });
-  const { draft, setDraft, selectedId, setSelectedId, isNewMaterial, setIsNewMaterial } = useEditor()
+  const {
+    draft,
+    setDraft,
+    selectedId,
+    setSelectedId,
+    isNewMaterial,
+    setIsNewMaterial,
+    isEditing,
+    setIsEditing,
+  } = useEditor();
   const detail = useQuery({
     queryKey: ["material", selectedId],
     queryFn: () => getMaterial(selectedId!),
-    enabled: selectedId !== null,
+    enabled: selectedId !== null && !isNewMaterial,
   });
   
   useEffect(() => {
@@ -163,33 +176,24 @@ export function EditorPage() {
   }, [selectedId, detail.data, isNewMaterial]);
 
   const hasFileOnDisk = selectedId !== null && !isNewMaterial;
+  const canEdit = isNewMaterial || isEditing;
+  const readOnly = hasFileOnDisk && !canEdit;
+  const materialLoading = selectedId !== null && !isNewMaterial && detail.isLoading;
+  const materialLoadError = selectedId !== null && !isNewMaterial && detail.isError;
+  const showEmptyPanel = !draft && !materialLoading && !materialLoadError
   const queryClient = useQueryClient();
 
   const newSave = useMutation({
     mutationFn: ({ body, filename }: { body: Record<string, unknown>; filename: string }) =>
-      saveNewMaterial(body, filename),
-    onSuccess: (_data, variables) => {
-      const id = variables.body.material_id as string;
-      queryClient.setQueryData(["material", id], variables.body);
-      queryClient.invalidateQueries({ queryKey: ["materials"] });
-      queryClient.invalidateQueries({ queryKey: ["selection"] });
+      saveNewMaterial(normalizeMaterialDraft(body), filename),
+    onSuccess: async (data, variables) => {
+      const normalized = normalizeMaterialDraft(variables.body);
+      const id = normalized.material_id as string;
+      await syncMaterialsAfterSave(queryClient, normalized, data.filename);
       setIsNewMaterial(false);
+      setIsEditing(false);
       setSelectedId(id);
-      setDraft(structuredClone(variables.body));
-
-      showToastWithOK(`Материал "${variables.filename}" успешно сохранён`, 'success');
-    },
-    onError: (error: Error) => {
-      showToastWithOK(`Ошибка сохранения: ${error.message}`, 'error');
-    },
-  });
-
-  const save = useMutation({
-    mutationFn: () => saveMaterial(selectedId!, draft!),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["materials"] });
-      queryClient.invalidateQueries({ queryKey: ["material", selectedId] });
-      queryClient.invalidateQueries({ queryKey: ["selection"] });
+      setDraft(normalized);
 
       showToastWithOK(`Материал "${data.filename}" успешно сохранён`, 'success');
     },
@@ -198,27 +202,69 @@ export function EditorPage() {
     },
   });
 
-  const saveBusy = save.isPending || newSave.isPending;
+  const saveBusy = newSave.isPending;
 
   function handleDraftChange(next: Record<string, unknown>) {
+    if (readOnly) {
+      return;
+    }
     setDraft(next);
-    save.reset();
     newSave.reset();
   }
 
   if (result.isLoading) {
-    return <p className="status-message">Загрузка…</p>;
+    return (
+      <div className="editor-page editor-page--centered">
+        <h1 className="editor-page__header">Добавление / редактирование</h1>
+        <div className="loading-container">
+          <p className="tab-placeholder">Загрузка списка материалов…</p>
+        </div>
+      </div>
+    );
   }
   if (result.isError) {
-    return <p className="status-message error">Ошибка загрузки списка материалов</p>;
+    const errorMessage = result.error instanceof Error ? result.error.message : "Неизвестная ошибка";
+    return (
+      <div className="editor-page editor-page--centered">
+        <h1 className="editor-page__header">Добавление / редактирование</h1>
+        <div className="error-container">
+          <div className="error-card">
+            <h2>Ошибка загрузки списка материалов</h2>
+            <p className="error-message">{errorMessage}</p>
+            <button type="button" className="retry-button" onClick={() => void result.refetch()}>
+              Повторить
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
+
 
   const materials = result.data ?? [];
 
   function handleCreateNew() {
     setSelectedId(null);
     setIsNewMaterial(true);
+    setIsEditing(true);
     setDraft(createEmptyMaterialDraft());
+  }
+
+  function handleStartEditing() {
+    setIsEditing(true);
+  }
+
+  function pickSaveFilename(): string | null {
+    if (!draft) return null;
+    const existingFilenames = materials.map((material) => material.filename);
+    const originalFilename = hasFileOnDisk
+      ? materials.find((material) => material.id === selectedId)?.filename
+      : undefined;
+    const suggested =
+      hasFileOnDisk && originalFilename
+        ? nextVersionedMaterialFilename(originalFilename, existingFilenames)
+        : undefined;
+    return promptFilename(draft, suggested);
   }
 
   function runSaveFlow() {
@@ -228,23 +274,7 @@ export function EditorPage() {
       showToastWithOK(error, 'warning');
       return;
     }
-    if (hasFileOnDisk) {
-      save.mutate();
-      return;
-    }
-    const filename = promptFilename(draft);
-    if (!filename) return;
-    newSave.mutate({ body: draft, filename });
-  }
-
-  function runSaveAsFlow() {
-    if (!draft) return;
-    const error = validateMaterialDraftForSave(draft);
-    if (error) {
-      showToastWithOK(error, 'warning');
-      return;
-    }
-    const filename = promptFilename(draft);
+    const filename = pickSaveFilename();
     if (!filename) return;
     const body = hasFileOnDisk ? draftCopyAsNewFile(draft) : draft;
     newSave.mutate({ body, filename });
@@ -279,7 +309,10 @@ export function EditorPage() {
     if (fresh) {
       setDraft(structuredClone(fresh));
     }
+    setIsEditing(false);
   }
+
+  const detailErrorMessage = detail.error instanceof Error ? detail.error.message: "Неизвестная ошибка";
 
   return (
     <div className="editor-page">
@@ -292,7 +325,12 @@ export function EditorPage() {
             value={selectedId ?? ""}
             onChange={(event) => {
               setIsNewMaterial(false);
-              setSelectedId(event.target.value || null);
+              setIsEditing(false);
+              const nextId = event.target.value || null;
+              setSelectedId(nextId);
+              if (!nextId) {
+                setDraft(null);
+              }
             }}
           >
             <option value="">— не выбран —</option>
@@ -303,7 +341,17 @@ export function EditorPage() {
             ))}
           </select>
         </div>
+        {readOnly && (
+          <span className="editor-mode-badge" aria-live="polite">
+            Только просмотр
+          </span>
+        )}
         <div className="button-group">
+          {hasFileOnDisk && !isEditing && (
+            <button type="button" onClick={handleStartEditing}>
+              Редактировать
+            </button>
+          )}
           <button
             type="button"
             className="button-secondary"
@@ -313,20 +361,17 @@ export function EditorPage() {
           </button>
           <button
             type="button"
-            disabled={!draft || saveBusy}
+            disabled={!draft || saveBusy || readOnly}
             onClick={runSaveFlow}
           >
-            {save.isPending ? "Сохранение…" : "Сохранить"}
+            {newSave.isPending ? "Сохранение…" : "Сохранить"}
           </button>
           <button
             type="button"
             className="button-secondary"
-            disabled={!draft || saveBusy}
-            onClick={runSaveAsFlow}
+            disabled={!draft || saveBusy || readOnly}
+            onClick={handleRevertChanges}
           >
-            {newSave.isPending ? "Сохранение…" : "Сохранить как…"}
-          </button>
-          <button type="button" className="button-secondary" disabled={!draft||saveBusy} onClick={handleRevertChanges}>
             Отменить изменения
           </button>
         </div>
@@ -349,27 +394,74 @@ export function EditorPage() {
         </nav>
 
         <div className="editor-tab-panel">
-          <Routes>
-            <Route index element={<Navigate to="general" replace />} />
-            <Route
-              path="general"
-              element={
-                <AddRedactor material={draft ?? undefined} onDraftChange={handleDraftChange} />
-              }
-            />
-            <Route
-              path="physical"
-              element={<PhysicalPropertiesTab material={draft ?? undefined} onDraftChange={setDraft} />}
-            />
-            <Route
-              path="mechanical"
-              element={<MechanicalPropertiesTab material={draft ?? undefined} onDraftChange={setDraft} />}
-            />
-            <Route
-              path="chemical"
-              element={<ChemicalProperties material={draft ?? undefined} onDraftChange={setDraft} />}
-            />
-          </Routes>
+          {materialLoading ? (
+            <div className="editor-panel-state">
+              <p className="tab-placeholder">Загрузка материала…</p>
+            </div>
+          ) : materialLoadError ? (
+            <div className="editor-panel-state">
+              <div className="error-card">
+                <h2>Не удалось загрузить материал</h2>
+                <p className="error-message">{detailErrorMessage}</p>
+                <button type="button" className="retry-button" onClick={() => void detail.refetch()}>
+                  Повторить
+                </button>
+              </div>
+            </div>
+          ) : showEmptyPanel ? (
+            <div className="editor-panel-state">
+              <p className="tab-placeholder">
+                Выберите материал в списке выше или создайте новый
+              </p>
+              <button type="button" className="button-secondary" onClick={handleCreateNew}>
+                Создать новый
+              </button>
+            </div>
+          ) : (
+            <Routes>
+              <Route index element={<Navigate to="general" replace />} />
+              <Route
+                path="general"
+                element={
+                  <AddRedactor
+                    material={draft ?? undefined}
+                    onDraftChange={handleDraftChange}
+                    readOnly={readOnly}
+                  />
+                }
+              />
+              <Route
+                path="physical"
+                element={
+                  <PhysicalPropertiesTab
+                    material={draft ?? undefined}
+                    onDraftChange={handleDraftChange}
+                    readOnly={readOnly}
+                  />
+                }
+              />
+              <Route
+                path="mechanical"
+                element={
+                  <MechanicalPropertiesTab
+                    material={draft ?? undefined}
+                    onDraftChange={handleDraftChange}
+                    readOnly={readOnly}
+                  />
+                }
+              />
+              <Route
+                path="chemical"
+                element={
+                  <ChemicalProperties
+                    material={draft ?? undefined}
+                    onDraftChange={handleDraftChange}
+                    readOnly={readOnly}
+                  />
+                }
+              />
+            </Routes>
+          )}
         </div>
       </div>
     </div>

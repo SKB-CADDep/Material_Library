@@ -1,7 +1,13 @@
-import type { SingleCalculationColumn, UnitResponse } from "../types/api";
+import type { UnitResponse } from "../types/api";
+
+export type ColumnWithUnit = {
+  key: string;
+  unit: string;
+  unit_type?: string | null;
+};
 
 export function resolveDefaultColumnUnit(
-  col: SingleCalculationColumn,
+  col: ColumnWithUnit,
   unitConfig?: UnitResponse,
 ): string {
   const baseUnit = col.unit?.trim() ?? "";
@@ -17,7 +23,7 @@ export function resolveDefaultColumnUnit(
 }
 
 export function mergeColumnUnits(
-  columns: SingleCalculationColumn[],
+  columns: ColumnWithUnit[],
   prev: Record<string, string>,
   unitConfigs: Record<string, UnitResponse | undefined>,
 ): Record<string, string> {

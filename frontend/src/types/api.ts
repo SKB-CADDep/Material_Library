@@ -46,9 +46,23 @@ export type SourcesTabType = TabType;
 
 
 export type MaterialSaveResponse = {
-ok: boolean
-filename: string
-}
+  ok: boolean;
+  filename: string;
+};
+
+export type ClassificationClassItem = {
+  name: string;
+  subclasses: string[];
+};
+
+export type ClassificationCategoryItem = {
+  name: string;
+  classes: ClassificationClassItem[];
+};
+
+export type ClassificationResponse = {
+  categories: ClassificationCategoryItem[];
+};
 
   export type UnitFactor = number | "offset_k" | "offset_f";
 
@@ -67,6 +81,7 @@ export type TemperatureSelectionColumn = {
   label: string;
   unit: string;
   unit_type?: string | null;
+  display_symbol?: string;
 };
 
 export type TemperatureSelectionRow = {

@@ -15,7 +15,7 @@ import {
   isDuplicateCalculationTemperature,
   parseCalculationTemperature,
 } from "../lib/calculationTemperature";
-import { getSources } from "../api/sources";
+import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { postSingleCalculation } from "../api/selection";
 import { CalculationColumnMenu } from "../components/CalculationColumnMenu";
 import { CalculationTableLegend } from "../components/CalculationTableLegend";
@@ -74,7 +74,7 @@ export function SepCalculationTab() {
     enabled: selectedId !== null,
   });
   const material = result.data ?? [];
-  const sourcesQuery = useQuery({ queryKey: ["sources"], queryFn: getSources });
+  const sourcesQuery = useSourcesCatalog();
   const mechanicalSources = sourcesQuery.data?.strength_sources ?? [];
   const propertySources = sourcesQuery.data?.property_sources ?? [];
   const mechanical_properties = (detail.data?.mechanical_properties ??

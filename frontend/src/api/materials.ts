@@ -1,5 +1,6 @@
 import { api } from "./client";
 import type { MaterialSummary, MaterialSaveResponse} from "../types/api";
+import { materialForEditor } from "../lib/materialDraft";
 import {
   categoryDisplayName,
   hasCategorySource,
@@ -80,7 +81,7 @@ export async function listMaterials(): Promise<MaterialSummary[]> {
 }
 export async function getMaterial(id:string): Promise<Record<string, unknown>>{
   const { data } = await api.get<Record<string, unknown>>(`/materials/${id}`)
-  return data;
+  return materialForEditor(data);
 }
 
 export async function saveMaterial(
@@ -112,13 +113,42 @@ export function materialDraftFilename(body: Record<string, unknown>): string {
   return base.toLowerCase().endsWith(".json") ? base : `${base}.json`;
 }
 
+
+export function materialFilenameBaseStem(filename: string): string {
+  const stem = filename.replace(/\.json$/i, "");
+  return stem.replace(/ \((\d+)\)$/, "");
+}
+
+
+export function nextVersionedMaterialFilename(
+  sourceFilename: string,
+  existingFilenames: readonly string[],
+): string {
+  const base = materialFilenameBaseStem(sourceFilename);
+  const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const versionPattern = new RegExp(`^${escapedBase} \\((\\d+)\\)\\.json$`, "i");
+  const exactBasePattern = new RegExp(`^${escapedBase}\\.json$`, "i");
+
+  let maxVersion = 0;
+  for (const name of existingFilenames) {
+    if (exactBasePattern.test(name)) {
+      maxVersion = Math.max(maxVersion, 0);
+    }
+    const match = name.match(versionPattern);
+    if (match) {
+      maxVersion = Math.max(maxVersion, Number(match[1]));
+    }
+  }
+
+  return `${base} (${maxVersion + 1}).json`;
+}
+
 export function normalizeMaterialFilename(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) {
     throw new Error("Имя файла не может быть пустым");
   }
-  const base = trimmed.replace(/\s+/g, "_");
-  return base.toLowerCase().endsWith(".json") ? base : `${base}.json`;
+  return trimmed.toLowerCase().endsWith(".json") ? trimmed : `${trimmed}.json`;
 }
 
 export async function saveNewMaterial(

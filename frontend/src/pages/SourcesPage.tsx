@@ -1,6 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSources, createSource, updateSource, deleteSource } from "../api/sources";
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createSource, updateSource, deleteSource } from "../api/sources";
+import { refreshSourcesAfterCrud } from "../lib/sourcesCatalog";
+import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { TruncatedText } from "../components/TruncatedText";
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from "react-router-dom";
 import type { SourceItem, TabType } from "../types/api";
 
@@ -19,82 +22,28 @@ const TAB_CONFIG = {
   }
 };
 
-// ==================== КАСТОМНЫЙ TOOLTIP С ПОЗИЦИОНИРОВАНИЕМ ====================
-const TruncatedCell: React.FC<{
-  value: string;
-  maxLength?: number;
-  className?: string;
-}> = ({ value, maxLength = 30, className = '' }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const cellRef = useRef<HTMLSpanElement>(null);
-
-  const text = value || '—';
-  const needsTruncation = text.length > maxLength;
-  const displayText = needsTruncation ? text.slice(0, maxLength) + '…' : text;
-
-  if (!value || value.trim() === '') {
-    return <span className="empty-value">—</span>;
-  }
-
-  const updatePosition = () => {
-    const rect = cellRef.current?.getBoundingClientRect();
-    if (rect) {
-      setPosition({
-        top: rect.top - 8,
-        left: rect.left + rect.width / 2
-      });
-    }
-  };
-
-  const handleMouseEnter = () => {
-    if (!needsTruncation) return;
-    updatePosition();
-    setShowTooltip(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShowTooltip(false);
-  };
-
-  useEffect(() => {
-    if (!showTooltip) return;
-
-    const handleUpdate = () => updatePosition();
-    window.addEventListener('scroll', handleUpdate);
-    window.addEventListener('resize', handleUpdate);
-
-    return () => {
-      window.removeEventListener('scroll', handleUpdate);
-      window.removeEventListener('resize', handleUpdate);
-    };
-  }, [showTooltip]);
-
-  return (
-    <span
-      ref={cellRef}
-      className={`truncated-cell ${className}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <span className="truncated-text">{displayText}</span>
-      {showTooltip && needsTruncation && (
-        <div
-          className="tooltip"
-          style={{
-            top: position.top,
-            left: position.left,
-            transform: 'translateX(-50%) translateY(-100%)'
-          }}
-        >
-          {text}
-        </div>
-      )}
-    </span>
-  );
-};
-
 type DialogMode = 'create' | 'edit' | 'delete' | null;
+
+function mutationErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return "Не удалось выполнить операцию";
+}
+
+function validateSourceFormData(formData: {
+  name_source: string;
+  hyperlink: string;
+}): string | null {
+  if (!formData.name_source.trim()) {
+    return "Укажите наименование источника";
+  }
+  const hyperlink = formData.hyperlink.trim();
+  if (hyperlink && !/^https?:\/\/.+/i.test(hyperlink)) {
+    return "Ссылка должна начинаться с http:// или https://";
+  }
+  return null;
+}
 
 export function SourcesPage() {
   const queryClient = useQueryClient();
@@ -114,7 +63,6 @@ export function SourcesPage() {
 
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedItem, setSelectedItem] = useState<SourceItem | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<{
     name_source: string;
     description: string;
@@ -124,6 +72,7 @@ export function SourcesPage() {
     description: '',
     hyperlink: ''
   });
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const {
     data,
@@ -131,46 +80,56 @@ export function SourcesPage() {
     isError,
     error,
     refetch
-  } = useQuery({
-    queryKey: ["sources"],
-    queryFn: getSources,
-    retry: false,
-  });
+  } = useSourcesCatalog();
 
   const createMutation = useMutation({
     mutationFn: createSource,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sources"] });
+    onSuccess: async () => {
+      await refreshSourcesAfterCrud(queryClient);
       setDialogMode(null);
     },
-    onError: (error) => {
-      console.error('Ошибка создания:', error);
-    }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: { name?: string; description?: string; hyperlink?: string } }) =>
       updateSource(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sources"] });
+    onSuccess: async () => {
+      await refreshSourcesAfterCrud(queryClient);
       setDialogMode(null);
     },
-    onError: (error) => {
-      console.error('Ошибка обновления:', error);
-    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteSource,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sources"] });
+    onSuccess: async () => {
+      await refreshSourcesAfterCrud(queryClient);
       setDialogMode(null);
       setSelectedItem(null);
     },
-    onError: (error) => {
-      console.error('Ошибка удаления:', error);
-    }
   });
+
+  const isSubmitting =
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
+  const activeDialogMutation =
+    dialogMode === "create"
+      ? createMutation
+      : dialogMode === "edit"
+        ? updateMutation
+        : dialogMode === "delete"
+          ? deleteMutation
+          : null;
+
+  const dialogError =
+    validationError ??
+    (activeDialogMutation?.error ? mutationErrorMessage(activeDialogMutation.error) : null);
+
+  const resetDialogMutations = () => {
+    createMutation.reset();
+    updateMutation.reset();
+    deleteMutation.reset();
+    setValidationError(null);
+  };
 
   const currentTabConfig = TAB_CONFIG[activeTab];
   const currentData = data?.[currentTabConfig.apiKey] || [];
@@ -209,6 +168,7 @@ export function SourcesPage() {
   }, [highlightSourceId, sortedData, activeTab]);
 
   const openCreateDialog = () => {
+    resetDialogMutations();
     setDialogMode('create');
     setSelectedItem(null);
     setFormData({
@@ -219,6 +179,7 @@ export function SourcesPage() {
   };
 
   const openEditDialog = (item: SourceItem) => {
+    resetDialogMutations();
     setDialogMode('edit');
     setSelectedItem(item);
     setFormData({
@@ -229,23 +190,36 @@ export function SourcesPage() {
   };
 
   const openDeleteDialog = (item: SourceItem) => {
+    resetDialogMutations();
     setDialogMode('delete');
     setSelectedItem(item);
   };
 
   const closeDialog = () => {
+    resetDialogMutations();
     setDialogMode(null);
     setSelectedItem(null);
-    setIsSubmitting(false);
   };
 
   const handleFormChange = (field: keyof typeof formData, value: string) => {
+    setValidationError(null);
+    if (dialogMode === "create" && createMutation.isError) {
+      createMutation.reset();
+    } else if (dialogMode === "edit" && updateMutation.isError) {
+      updateMutation.reset();
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setValidationError(null);
+
+    const validationMessage = validateSourceFormData(formData);
+    if (validationMessage) {
+      setValidationError(validationMessage);
+      return;
+    }
 
     if (dialogMode === 'create') {
       createMutation.mutate({
@@ -268,7 +242,6 @@ export function SourcesPage() {
 
   const handleDeleteConfirm = () => {
     if (!selectedItem) return;
-    setIsSubmitting(true);
     deleteMutation.mutate(selectedItem.id_source);
   };
 
@@ -363,8 +336,13 @@ export function SourcesPage() {
             </div>
 
             {dialogMode === 'create' || dialogMode === 'edit' ? (
-              <form onSubmit={handleFormSubmit}>
+              <form onSubmit={handleFormSubmit} noValidate>
                 <div className="dialog-body">
+                  {dialogError && (
+                    <div className="dialog-error" role="alert">
+                      {dialogError}
+                    </div>
+                  )}
                   <div className="form-group">
                     <label htmlFor="name_source">Наименование <span className="required">*</span></label>
                     <input
@@ -374,8 +352,8 @@ export function SourcesPage() {
                       value={formData.name_source}
                       onChange={(e) => handleFormChange('name_source', e.target.value)}
                       placeholder="Введите наименование"
-                      required
                       autoFocus
+                      aria-invalid={Boolean(validationError && !formData.name_source.trim())}
                     />
                   </div>
                   <div className="form-group">
@@ -393,11 +371,12 @@ export function SourcesPage() {
                     <label htmlFor="hyperlink">Ссылка</label>
                     <input
                       id="hyperlink"
-                      type="url"
+                      type="text"
                       className="form-input"
                       value={formData.hyperlink}
                       onChange={(e) => handleFormChange('hyperlink', e.target.value)}
                       placeholder="https://example.com"
+                      inputMode="url"
                     />
                   </div>
                 </div>
@@ -413,6 +392,11 @@ export function SourcesPage() {
             ) : (
               <>
                 <div className="dialog-body">
+                  {dialogError && (
+                    <div className="dialog-error" role="alert">
+                      {dialogError}
+                    </div>
+                  )}
                   <p>Вы уверены, что хотите удалить запись <strong>«{selectedItem?.name_source || 'без названия'}»</strong>?</p>
                   <p className="dialog-warning">Это действие невозможно отменить.</p>
                 </div>
@@ -518,55 +502,33 @@ export function SourcesPage() {
                       >
                         <td className="col-index">{index + 1}</td>
                         <td className="col-name">
-                          <TruncatedCell
-                            value={source.name_source}
-                            maxLength={25}
-                          />
+                          <TruncatedText value={source.name_source} />
                         </td>
                         <td className="col-description">
-                          <TruncatedCell
-                            value={source.description}
-                            maxLength={30}
-                          />
+                          <TruncatedText value={source.description} />
                         </td>
                         <td className="col-link">
                           {source.hyperlink ? (
-                            <a
+                            <TruncatedText
+                              value={source.hyperlink}
                               href={source.hyperlink}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="link-cell"
-                            >
-                              <TruncatedCell
-                                value={source.hyperlink}
-                                maxLength={20}
-                              />
-                            </a>
+                            />
                           ) : '—'}
                         </td>
                         <td className="col-user">
-                          <TruncatedCell
-                            value={source.user_name_change || ''}
-                            maxLength={15}
-                          />
+                          <TruncatedText value={source.user_name_change || ''} />
                         </td>
                         <td className="col-date">
-                          <TruncatedCell
-                            value={source.data_change || ''}
-                            maxLength={10}
-                          />
+                          <TruncatedText value={source.data_change || ''} />
                         </td>
                         <td className="col-user">
-                          <TruncatedCell
-                            value={source.user_name_found || ''}
-                            maxLength={15}
-                          />
+                          <TruncatedText value={source.user_name_found || ''} />
                         </td>
                         <td className="col-date">
-                          <TruncatedCell
-                            value={source.data_found || ''}
-                            maxLength={10}
-                          />
+                          <TruncatedText value={source.data_found || ''} />
                         </td>
                         <td className="col-actions">
                           <button

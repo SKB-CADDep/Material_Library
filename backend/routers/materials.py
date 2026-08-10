@@ -36,8 +36,8 @@ def get_material_by_id(material_id:str, repo= Depends(get_repository)):
     material = repo.get_by_id(material_id)
     if material is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
-    else:
-        return material.data
+    Material.normalize_metadata(material.data)
+    return material.data
 
 @router.put("/materials/{material_id}", response_model=MaterialSaveResponse)
 def put_material_by_id(material_id:str, body:dict, repo= Depends(get_repository)):
@@ -48,6 +48,7 @@ def put_material_by_id(material_id:str, body:dict, repo= Depends(get_repository)
     material = repo.get_by_id(material_id)
     if material is None:
         raise HTTPException(status_code=404, detail="Материал не найден")
+    Material.normalize_metadata(body)
     material.data = body
     repo.save_material(material)
     return MaterialSaveResponse(ok=True, filename=material.filename)
@@ -55,6 +56,8 @@ def put_material_by_id(material_id:str, body:dict, repo= Depends(get_repository)
 @router.post("/materials", response_model=MaterialSaveResponse)
 def post_new_material(body:dict, filename:str, repo=Depends(get_repository)):
     path = Path(repo.work_dir) / filename
+    if path.exists():
+        raise HTTPException(status_code=409, detail=f"Файл '{filename}' уже существует")
     material = Material(data=body)
     material.filepath = str(path)
     repo.save_material(material)

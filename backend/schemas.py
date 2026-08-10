@@ -54,19 +54,47 @@ class SourceUpdateRequest(BaseModel):
     hyperlink: str = ""
 
 class SourcesResponse(BaseModel):
-    property_sources: list[dict[str,str]]
-    strength_sources: list[dict[str,str]]
-    chemical_sources: list[dict[str,str]]
+    property_sources: list["SourceItem"]
+    strength_sources: list["SourceItem"]
+    chemical_sources: list["SourceItem"]
 
 class SourceItem(BaseModel):
     id_source: str
     name_source: str
-    description: str
-    hyperlink: str
+    description: str = ""
+    hyperlink: str = ""
+    user_name_change: str = ""
+    data_change: str = ""
+    user_name_found: str = ""
+    data_found: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SourceItem":
+        return cls(
+            id_source=str(data.get("id_source", "")),
+            name_source=str(data.get("name_source", "")),
+            description=str(data.get("description") or ""),
+            hyperlink=str(data.get("hyperlink") or ""),
+            user_name_change=str(data.get("user_name_change") or ""),
+            data_change=str(data.get("data_change") or ""),
+            user_name_found=str(data.get("user_name_found") or ""),
+            data_found=str(data.get("data_found") or ""),
+        )
 
 class PropertiesResponse(BaseModel):
     physical: dict[str, dict]
     mechanical: dict[str, dict]
+
+class ClassificationClassItem(BaseModel):
+    name: str
+    subclasses: list[str]
+
+class ClassificationCategoryItem(BaseModel):
+    name: str
+    classes: list[ClassificationClassItem]
+
+class ClassificationResponse(BaseModel):
+    categories: list[ClassificationCategoryItem]
 
 class UnitResponse(BaseModel):
     unit_type: str
@@ -80,6 +108,7 @@ class TemperatureSelectionColumn(BaseModel):
     label: str
     unit: str = ""
     unit_type: str | None = None
+    display_symbol: str = ""
 
 class TemperatureSelectionRow(BaseModel):
     material_id: str
