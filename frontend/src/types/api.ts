@@ -206,3 +206,16 @@ export type AshbyResponse = {
   class_legend?: AshbyClassLegendItem[];
 };
 
+export type PropertyMeta = {
+  unit_type: string;
+  name: string;
+  symbol: string;
+  unit: string;
+  temperature_dependent?: boolean;
+  display_symbol?: string;
+}
+
+export type PropertiesResponse = {
+    physical:  Record<string, PropertyMeta>
+    mechanical:  Record<string, PropertyMeta>
+}

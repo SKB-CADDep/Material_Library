@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkSpaceContext";
 import { useState, useRef, useEffect } from 'react';
+import { HelpMenu } from "../HelpMenu";
 
 export function AppShell() {
   const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
@@ -54,7 +55,7 @@ export function AppShell() {
           </div>
         )}
       </div>
-      <button className="menu-button">Справка</button>
+      <HelpMenu />
 
         {isOpen && (
           <p className="workspace-info">

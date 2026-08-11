@@ -100,6 +100,8 @@ class UnitResponse(BaseModel):
     unit_type: str
     system_unit: str
     units: list[str]
+    display_labels: dict[str, str] = {}
+    factors: dict[str, float | str] = {}
 
 class TemperatureSelectionColumn(BaseModel):
     key: str

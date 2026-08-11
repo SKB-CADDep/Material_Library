@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getHealth } from "../api/health";
 import { getWorkspace, openWorkspace } from "../api/workspace";
+import { setWorkspaceLostHandler } from "../api/client";
 import type {
   WorkspacePlaceholderMode,
   WorkspaceResponse,
@@ -59,6 +60,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     void queryClient.invalidateQueries({ queryKey: ["sources"] });
     void queryClient.invalidateQueries({ queryKey: ["selection"] });
   }, [data?.directory, queryClient]);
+
+  useEffect(() => {
+    setWorkspaceLostHandler(() => {
+      queryClient.setQueryData(["workspace"], null);
+    });
+    return () => setWorkspaceLostHandler(null);
+  }, [queryClient]);
 
   const openDirectory = async (directory: string) => {
     const ws = await openWorkspace(directory);

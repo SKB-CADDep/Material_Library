@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from backend.dependencies import AppState, get_state, get_repository, open_workspace
+from backend.dependencies import AppState, get_state, get_repository, open_workspace, try_auto_open_workspace
 from backend.schemas import WorkspaceResponse, WorkspaceOpenRequest, MaterialSummary, MaterialSaveResponse
 from pathlib import Path
 from src.core.models.material import Material
@@ -23,9 +23,14 @@ def workspace_open(body: WorkspaceOpenRequest, state: AppState=Depends(get_state
 @router.get("/workspace", response_model=WorkspaceResponse)
 def real_workspace(state: AppState=Depends(get_state)):
     if state.repository is None or not state.repository.work_dir:
+        try_auto_open_workspace(state)
+    if state.repository is None or not state.repository.work_dir:
         raise HTTPException(status_code=404, detail="Workspace не открыт")
-    else:
-        return WorkspaceResponse(count = len(state.repository.materials), directory=str(state.repository.work_dir), application_areas= state.repository.application_areas)
+    return WorkspaceResponse(
+        count=len(state.repository.materials),
+        directory=str(state.repository.work_dir),
+        application_areas=state.repository.application_areas,
+    )
     
 @router.get("/materials")
 def get_material(repo= Depends(get_repository)):

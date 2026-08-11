@@ -225,7 +225,8 @@ button{
 
 /* Кнопки, стилизованные как поля ввода (фильтры, combobox) */
 button.input,
-button.area-filter-trigger {
+button.area-filter-trigger,
+button.unit-select-trigger {
   background-color: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
@@ -235,14 +236,16 @@ button.area-filter-trigger {
 }
 
 button.input:hover:not(:disabled),
-button.area-filter-trigger:hover:not(:disabled) {
+button.area-filter-trigger:hover:not(:disabled),
+button.unit-select-trigger:hover:not(:disabled) {
   background-color: var(--surface);
   color: var(--text);
   border-color: var(--border);
 }
 
 button.input:focus-visible,
-button.area-filter-trigger:focus-visible {
+button.area-filter-trigger:focus-visible,
+button.unit-select-trigger:focus-visible {
   background-color: var(--surface);
   color: var(--text);
   border-color: var(--accent);
@@ -255,7 +258,7 @@ button:disabled{
     cursor: not-allowed;
 }
 
-button:hover:not(:disabled):not(.input):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary) {
+button:hover:not(:disabled):not(.input):not(.unit-select-trigger):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary):not(.calculation-source-ref) {
     background-color: var(--accent-hover);
 }
 
@@ -282,6 +285,96 @@ button.button-secondary:hover:not(:disabled) {
 .workspace-info{
     color: var(--text-muted);
     font-size: small;
+}
+
+.help-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.help-dialog {
+  width: min(760px, 100%);
+  max-height: min(85vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.help-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.help-dialog__header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.help-dialog__close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.help-dialog__body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
+}
+
+.help-dialog__footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.help-markdown {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.help-markdown h1,
+.help-markdown h2,
+.help-markdown h3 {
+  margin: 0 0 12px;
+  white-space: normal;
+}
+
+.help-markdown p {
+  margin: 0 0 10px;
+}
+
+.help-markdown ul,
+.help-markdown ol {
+  margin: 0 0 10px;
+  padding-left: 1.4rem;
+}
+
+.help-markdown li {
+  margin-bottom: 4px;
+}
+
+.help-markdown strong {
+  font-weight: 600;
 }
 
 input,
@@ -1286,6 +1379,7 @@ select {
   }
 
   .general-form .form-row > select,
+  .general-form .form-row > .unit-select,
   .general-form .form-row > input.input,
   .general-form .form-row > input[type="text"],
   .general-form .form-row > input[type="number"],
@@ -1301,6 +1395,7 @@ select {
   }
   
   .general-form .form-row-inline > select,
+  .general-form .form-row-inline > .unit-select,
   .general-form .form-row-inline > .input {
     flex: 1;
     min-width: 0;
@@ -1329,6 +1424,78 @@ select {
     font-size: var(--font-size-tab);
     font-weight: var(--font-weight-semibold);
     color: var(--text);
+  }
+
+  .unit-select {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .unit-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    padding-right: 45px;
+    line-height: 1.4;
+    background-color: var(--surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .unit-select-trigger-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .unit-select-trigger-caret {
+    display: none;
+  }
+
+  .unit-select-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 4px;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .unit-select-panel--portal {
+    position: fixed;
+    z-index: 2000;
+  }
+
+  .unit-select-option {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    text-align: left;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+  }
+
+  .unit-select-option:hover {
+    background-color: var(--accent-soft);
+  }
+
+  .unit-select-option--active {
+    background-color: var(--accent-soft);
+    font-weight: var(--font-weight-semibold);
   }
 
   .form-section .form-row {
@@ -1417,6 +1584,104 @@ select {
   min-height: 440px;
 }
 
+.chemical-composition-chart {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+.chemical-composition-chart__frame {
+  margin: 0;
+  padding: 10px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chemical-composition-chart__legend {
+  padding: 0 6px;
+  font-size: var(--font-size-tab);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text);
+}
+
+.chemical-composition-chart__plot {
+  flex: 1 1 auto;
+  min-height: 280px;
+  border: 1px solid #000;
+  background: #fff;
+  padding: 4px 2px 2px;
+  box-sizing: border-box;
+}
+
+.chemical-composition-chart__plot .recharts-responsive-container {
+  min-height: 260px;
+}
+
+.chemical-composition-chart__empty {
+  margin: 0;
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.chemical-composition-chart__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 2px;
+}
+
+.chemical-composition-chart__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.chemical-composition-chart__check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.chemical-log-axis-tick {
+  fill: #000;
+}
+
+.chemical-bar-value-label {
+  font-weight: 700;
+  fill: #000;
+}
+
+.table-wrapper--chemical-elements {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.property-section-fields table.data-table--chemical-elements {
+  min-width: 920px;
+}
+
+.property-section-fields table.data-table--chemical-elements .table-cell-input {
+  min-width: 72px;
+}
+
 .property-chart-plot {
   position: relative;
   flex: 1 1 auto;
@@ -1446,6 +1711,17 @@ select {
   text-align: center;
   pointer-events: none;
   user-select: none;
+}
+
+.scientific-text sup {
+  font-size: 0.9em;
+  vertical-align: super;
+  line-height: 1;
+  font-weight: inherit;
+}
+
+.property-chart-y-axis-label .scientific-text sup {
+  font-size: 0.9em;
 }
 
 .property-chart-tooltip {
@@ -1498,7 +1774,9 @@ select {
   }
 
   .property-section-layout:has(.property-section-chart) > .property-section-fields,
-  .property-section-layout:has(.property-section-chart) > .property-section-chart {
+  .property-section-layout:has(.property-section-chart) > .property-section-chart,
+  .property-section-layout:has(.chemical-composition-chart) > .property-section-fields,
+  .property-section-layout:has(.chemical-composition-chart) > .chemical-composition-chart {
     max-width: none;
     width: 100%;
   }
@@ -1538,7 +1816,9 @@ select {
 
 /* Хим. состав и прочие широкие таблицы: ~50/50 с графиком */
 .property-section-layout:has(.property-section-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-fields,
-.property-section-layout:has(.property-section-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-chart {
+.property-section-layout:has(.property-section-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-chart,
+.property-section-layout:has(.chemical-composition-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-fields,
+.property-section-layout:has(.chemical-composition-chart):not(:has(.table-wrapper--temperature-pairs)) > .chemical-composition-chart {
   flex: 1 1 0;
   max-width: calc(50% - 12px);
   min-width: 0;
@@ -3328,13 +3608,27 @@ select {
   cursor: pointer;
 }
 
-.calculation-source-ref:hover:not(:disabled) {
+.calculation-source-ref:hover:not(:disabled),
+.calculation-source-ref:focus-visible:not(:disabled) {
   background: var(--accent-soft);
+  color: var(--accent-hover);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  outline: none;
 }
 
 .calculation-source-ref:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+.temp-comment-indicator--header {
+  position: relative;
+  z-index: 1;
+}
+
+.temp-comment-indicator--header:hover,
+.temp-comment-indicator--header:focus-visible {
+  z-index: 20;
 }
 
 .source-row--highlight td {
@@ -3389,6 +3683,7 @@ select {
   right: auto;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 120;
 }
 
 .temp-comment-indicator--header .temp-comment-tooltip::before {

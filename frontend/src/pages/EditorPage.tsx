@@ -17,6 +17,7 @@ import { MechanicalPropertiesTab } from "./MechaicalPropertiesTab";
 import { ChemicalProperties } from "./ChemicalProperties";
 import { showToastWithOK } from "../lib/toast";
 import { useEditor } from "../context/EditorContext";
+import { useWorkspace } from "../context/WorkSpaceContext";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -138,9 +139,17 @@ function draftCopyAsNewFile(draft: Record<string, unknown>): Record<string, unkn
 }
 
 export function EditorPage() {
+  const { workspace } = useWorkspace();
   const result = useQuery({
     queryKey: ["materials"],
     queryFn: listMaterials,
+    enabled: Boolean(workspace),
+    retry: (failureCount, error) => {
+      if (error instanceof Error && error.message.toLowerCase().includes("workspace")) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
   const {
     draft,
@@ -155,7 +164,13 @@ export function EditorPage() {
   const detail = useQuery({
     queryKey: ["material", selectedId],
     queryFn: () => getMaterial(selectedId!),
-    enabled: selectedId !== null && !isNewMaterial,
+    enabled: Boolean(workspace) && selectedId !== null && !isNewMaterial,
+    retry: (failureCount, error) => {
+      if (error instanceof Error && error.message.toLowerCase().includes("workspace")) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
   
   useEffect(() => {

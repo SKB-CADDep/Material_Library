@@ -1,0 +1,1 @@
+export const HARDNESS_UNIT_TYPE = "Твердость";

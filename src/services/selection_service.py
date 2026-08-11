@@ -42,21 +42,6 @@ _TEMPERATURE_AXIS = {
     "kind": "temperature",
 }
 
-# Палитра заливки классов — как class_colors в AshbyDiagramTab (main.py)
-_ASHBY_CLASS_COLORS = [
-    "#1f77b4",
-    "#ff7f0e",
-    "#2ca02c",
-    "#d62728",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#7f7f7f",
-    "#bcbd22",
-    "#17becf",
-]
-
-
 class SelectionService:
     """Подбор материалов. Паритет с TempSelectionTab / AshbyDiagramTab (main.py)."""
 
@@ -353,7 +338,7 @@ class SelectionService:
         series_index = 0
 
         for idx_class, class_name in enumerate(selected_classes):
-            class_color = _ASHBY_CLASS_COLORS[idx_class % len(_ASHBY_CLASS_COLORS)]
+            class_color = self._class_color(idx_class)
             class_legend.append({"class_name": class_name, "color": class_color})
             class_points: list[tuple[float, float]] = []
 
@@ -567,19 +552,10 @@ class SelectionService:
         prop_key: str,
         cat_idx: int | None,
     ) -> list:
-        if self._properties.is_physical(prop_key):
-            prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
-            if isinstance(prop_data, dict):
-                return prop_data.get(Schema.TEMP_PAIRS, []) or []
+        container = self._get_property_container(material, prop_key, cat_idx)
+        if not container:
             return []
-
-        if self._properties.is_mechanical(prop_key) and cat_idx is not None:
-            cats = material.get_strength_categories()
-            if 0 <= cat_idx < len(cats):
-                prop_data = cats[cat_idx].get(prop_key, {})
-                if isinstance(prop_data, dict):
-                    return prop_data.get(Schema.TEMP_PAIRS, []) or []
-        return []
+        return container.get(Schema.TEMP_PAIRS, []) or []
 
     def _ashby_axis_value(
         self,
@@ -631,12 +607,20 @@ class SelectionService:
         return lower[:-1] + upper[:-1]
 
     @staticmethod
-    def _series_color(index: int) -> str:
-        """HSV-цвет по golden ratio — стабильно различаются при >10 классах."""
+    def _hsv_hex(index: int, saturation: float, value: float) -> str:
+        """HSV-цвет по golden ratio — без лимита числа серий/классов."""
         golden_ratio_conjugate = 0.618033988749895
         h = (index * golden_ratio_conjugate) % 1.0
-        r, g, b = colorsys.hsv_to_rgb(h, 0.9, 0.9)
+        r, g, b = colorsys.hsv_to_rgb(h, saturation, value)
         return "#{:02x}{:02x}{:02x}".format(int(r * 255), int(g * 255), int(b * 255))
+
+    @classmethod
+    def _series_color(cls, index: int) -> str:
+        return cls._hsv_hex(index, 0.9, 0.9)
+
+    @classmethod
+    def _class_color(cls, index: int) -> str:
+        return cls._hsv_hex(index, 0.65, 0.88)
 
 
     def _get_value_with_mode(self, material, prop_key, temp, cat_idx=None, allow_extrapolation=False):
@@ -648,17 +632,13 @@ class SelectionService:
                 "approx" (линейная экстраполяция по двум ближайшим точкам),
                 либо None, если значение не может быть определено.
         """
-        data_container = None
-
-        if self._properties.is_physical(prop_key):
-            data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
-        elif self._properties.is_mechanical(prop_key):
-            cats = material.get_strength_categories()
-            if cat_idx is not None and 0 <= cat_idx < len(cats):
-                data_container = cats[cat_idx].get(prop_key)
-        else:
+        if not (
+            self._properties.is_physical(prop_key)
+            or self._properties.is_mechanical(prop_key)
+        ):
             return None, None
 
+        data_container = self._get_property_container(material, prop_key, cat_idx)
         if not data_container:
             return None, None
 
@@ -726,11 +706,11 @@ class SelectionService:
         cat_idx: int | None = None,
     ) -> dict[str, Any] | None:
         if self._properties.is_physical(prop_key):
-            return material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+            return material.get_physical_data(prop_key)
         if self._properties.is_mechanical(prop_key):
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
-                return cats[cat_idx].get(prop_key)
+                return Material.get_category_prop_data(cats[cat_idx], prop_key)
         return None
 
     def _get_scalar_value(

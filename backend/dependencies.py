@@ -76,7 +76,9 @@ def get_state() -> AppState:
 
 def get_repository(state: AppState = Depends(get_state)) -> MaterialRepository:
     if state.repository is None:
-        raise HTTPException(status_code = 409, detail="Workspace не открыт")
+        try_auto_open_workspace(state)
+    if state.repository is None:
+        raise HTTPException(status_code=409, detail="Workspace не открыт")
     return state.repository
 
 def open_workspace(state: AppState, directory: Path) -> MaterialRepository:

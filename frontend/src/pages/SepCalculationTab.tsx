@@ -190,9 +190,10 @@ export function SepCalculationTab() {
     }
 
     setSelectedId((prev) => {
-      if (prev === null) return null;
-      if (filteredMaterials.some((m) => m.id === prev)) return prev;
-      return filteredMaterials[0].id;
+      if (prev !== null && filteredMaterials.some((m) => m.id === prev)) {
+        return prev;
+      }
+      return filteredMaterials[0]?.id ?? null;
     });
   }, [filteredMaterials]);
 
@@ -292,6 +293,14 @@ export function SepCalculationTab() {
     selectedId &&
     sepCalculate.isSuccess &&
     rows.length > 0;
+
+  const showBodyPlaceholder =
+    workspace &&
+    selectedId &&
+    !showTable &&
+    !(sepCalculate.isPending || sepCalculate.isFetching) &&
+    !sepCalculate.isError &&
+    !(sepCalculate.isSuccess && rows.length === 0);
 
   const columnMenuDisabled =
     sepCalculate.isPending || sepCalculate.isFetching;
@@ -394,7 +403,13 @@ export function SepCalculationTab() {
         )}
 
         {workspace && selectedId && sepCalculate.isSuccess && rows.length === 0 && (
-          <p className="tab-placeholder">Нет данных для отображения</p>
+          <p className="tab-placeholder">
+            Нет температурных данных для выбранной категории прочности
+          </p>
+        )}
+
+        {showBodyPlaceholder && (
+          <p className="tab-placeholder">Подготовка расчёта…</p>
         )}
 
         {showTable && visibleColumns.length === 0 && (

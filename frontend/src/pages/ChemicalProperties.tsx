@@ -9,12 +9,15 @@ import {
   buildElementChartData,
   type ChartMode,
 } from "../components/ChemicalCompositionChart";
+import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
   readOnly?: boolean;
 };
+
+type ToleranceType = "absolute" | "relative";
 
 type ChemicalElement = {
   element: string;
@@ -23,6 +26,8 @@ type ChemicalElement = {
   max_value: number;
   min_value_tolerance: string;
   max_value_tolerance: string;
+  min_value_tolerance_relative: string;
+  max_value_tolerance_relative: string;
 };
 
 type CompositionEntry = {
@@ -32,7 +37,48 @@ type CompositionEntry = {
   comment?: string;
   base_element?: string;
   note?: string;
+  tolerance_type?: ToleranceType;
 };
+
+const EMPTY_ELEMENT: ChemicalElement = {
+  element: "",
+  unit_value: "%",
+  min_value: 0,
+  max_value: 0,
+  min_value_tolerance: "",
+  max_value_tolerance: "",
+  min_value_tolerance_relative: "",
+  max_value_tolerance_relative: "",
+};
+
+function normalizeElement(raw: Partial<ChemicalElement>): ChemicalElement {
+  return {
+    ...EMPTY_ELEMENT,
+    ...raw,
+    min_value_tolerance: raw.min_value_tolerance ?? "",
+    max_value_tolerance: raw.max_value_tolerance ?? "",
+    min_value_tolerance_relative: raw.min_value_tolerance_relative ?? "",
+    max_value_tolerance_relative: raw.max_value_tolerance_relative ?? "",
+  };
+}
+
+function toStoredElement(el: ChemicalElement): ChemicalElement {
+  const stored: Record<string, unknown> = {
+    element: el.element,
+    unit_value: el.unit_value,
+    min_value: el.min_value,
+    max_value: el.max_value,
+  };
+  if (el.min_value_tolerance) stored.min_value_tolerance = el.min_value_tolerance;
+  if (el.max_value_tolerance) stored.max_value_tolerance = el.max_value_tolerance;
+  if (el.min_value_tolerance_relative) {
+    stored.min_value_tolerance_relative = el.min_value_tolerance_relative;
+  }
+  if (el.max_value_tolerance_relative) {
+    stored.max_value_tolerance_relative = el.max_value_tolerance_relative;
+  }
+  return stored as ChemicalElement;
+}
 
 type ChemicalPropertiesData = {
   composition?: CompositionEntry[];
@@ -59,13 +105,14 @@ export function ChemicalProperties({
   onDraftChange,
   readOnly = false,
 }: ChemicalPropertiesProps) {
+  const propertiesCatalog = usePropertiesCatalog()
+  const result = useSourcesCatalog();
+  const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
+  const [chartMode, setChartMode] = useState<ChartMode>("max");
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
   }
   
-  const result = useSourcesCatalog();
-  const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
-  const [chartMode, setChartMode] = useState<ChartMode>("max");
   
   const chemical_properties = (material.chemical_properties ??
     {}) as ChemicalPropertiesData;
@@ -85,7 +132,36 @@ export function ChemicalProperties({
 
   const currentComposition =
     chemical_properties.composition?.[compositionSourceIndex];
-  const otherElements = currentComposition?.other_elements ?? [];
+  const toleranceType: ToleranceType =
+    currentComposition?.tolerance_type === "relative" ? "relative" : "absolute";
+  const otherElements = (currentComposition?.other_elements ?? []).map((row) =>
+    normalizeElement(row),
+  );
+
+  const updateCompositionAt = (
+    updater: (entry: CompositionEntry) => CompositionEntry,
+  ) => {
+    onDraftChange({
+      ...material,
+      chemical_properties: {
+        ...chemical_properties,
+        composition: (chemical_properties.composition ?? []).map((entry, entryIndex) =>
+          entryIndex !== compositionSourceIndex ? entry : updater(entry),
+        ),
+      },
+    });
+  };
+
+  const updateElementAt = (rowIndex: number, patch: Partial<ChemicalElement>) => {
+    updateCompositionAt((entry) => ({
+      ...entry,
+      other_elements: (entry.other_elements ?? []).map((el, elIndex) =>
+        elIndex !== rowIndex
+          ? toStoredElement(normalizeElement(el))
+          : toStoredElement({ ...normalizeElement(el), ...patch }),
+      ),
+    }));
+  };
   const chartUnit = otherElements[0]?.unit_value ?? "%";
   const chartData = buildElementChartData(
     otherElements,
@@ -114,29 +190,13 @@ export function ChemicalProperties({
   
 
 const handleAddRow = () => {
-  const newElement: ChemicalElement = {
-    element: "",
-    unit_value: chartUnit,
-    min_value: 0,
-    max_value: 0,
-    min_value_tolerance: "",
-    max_value_tolerance: "",
-  };
-
-  onDraftChange({
-    ...material,
-    chemical_properties: {
-      ...chemical_properties,
-      composition: (chemical_properties.composition ?? []).map((entry, entryIndex) =>
-        entryIndex !== compositionSourceIndex
-          ? entry
-          : {
-              ...entry,
-              other_elements: [...(entry.other_elements ?? []), newElement],
-            },
-      ),
-    },
-  });
+  updateCompositionAt((entry) => ({
+    ...entry,
+    other_elements: [
+      ...(entry.other_elements ?? []).map((el) => toStoredElement(normalizeElement(el))),
+      toStoredElement({ ...EMPTY_ELEMENT, unit_value: chartUnit }),
+    ],
+  }));
 };
 
 
@@ -170,48 +230,31 @@ const handleElementSelect = (element: Elements) => {
   const { rowIndex } = contextMenu;
 
   if (rowIndex === null) {
-    const newElement: ChemicalElement = {
-      element: element.symbol,
-      unit_value: chartUnit,
-      min_value: 0,
-      max_value: 0,
-      min_value_tolerance: "",
-      max_value_tolerance: "",
-    };
-
-    onDraftChange({
-      ...material,
-      chemical_properties: {
-        ...chemical_properties,
-        composition: (chemical_properties.composition ?? []).map((entry, entryIndex) =>
-          entryIndex !== compositionSourceIndex
-            ? entry
-            : {
-                ...entry,
-                other_elements: [...(entry.other_elements ?? []), newElement],
-              },
-        ),
-      },
-    });
+    updateCompositionAt((entry) => ({
+      ...entry,
+      other_elements: [
+        ...(entry.other_elements ?? []).map((el) => toStoredElement(normalizeElement(el))),
+        toStoredElement({
+          ...EMPTY_ELEMENT,
+          element: element.symbol,
+          unit_value: chartUnit,
+          min_value: element.symbol === "P+S" ? 0 : 0,
+        }),
+      ],
+    }));
   } else {
-    onDraftChange({
-      ...material,
-      chemical_properties: {
-        ...chemical_properties,
-        composition: (chemical_properties.composition ?? []).map((entry, entryIndex) =>
-          entryIndex !== compositionSourceIndex
-            ? entry
-            : {
-                ...entry,
-                other_elements: (entry.other_elements ?? []).map((el, elIndex) =>
-                  elIndex !== rowIndex
-                    ? el
-                    : { ...el, element: element.symbol, min_value: element.symbol == "P+S" ? 0: el.min_value },
-                ),
-              },
-        ),
-      },
-    });
+    updateCompositionAt((entry) => ({
+      ...entry,
+      other_elements: (entry.other_elements ?? []).map((el, elIndex) =>
+        elIndex !== rowIndex
+          ? toStoredElement(normalizeElement(el))
+          : toStoredElement({
+              ...normalizeElement(el),
+              element: element.symbol,
+              min_value: element.symbol === "P+S" ? 0 : el.min_value,
+            }),
+      ),
+    }));
   }
 
   setContextMenu(null);
@@ -447,10 +490,31 @@ useEffect(() => {
             </select>
           </div>
           <div className="form-row">
+            <label htmlFor="composition_tolerance_type">Тип допуска для подбора:</label>
+            <select
+              id="composition_tolerance_type"
+              className="input"
+              value={toleranceType}
+              onChange={(e) => {
+                const nextType = e.target.value as ToleranceType;
+                updateCompositionAt((entry) => {
+                  if (nextType === "relative") {
+                    return { ...entry, tolerance_type: "relative" };
+                  }
+                  const { tolerance_type: _removed, ...rest } = entry;
+                  return rest;
+                });
+              }}
+            >
+              <option value="absolute">Абсолютный</option>
+              <option value="relative">Относительный (%)</option>
+            </select>
+          </div>
+          <div className="form-row">
             <label htmlFor="composition_source_value_unit">Ед. изм:</label>
             <UnitSelect
               id="composition_source_value_unit"
-              unitType="Безразмерный"
+              unitType={propertiesCatalog.data?.mechanical["relative_elongation"]?.unit_type ?? ""}
               value={
                 chemical_properties.composition?.[compositionSourceIndex]
                   ?.other_elements?.[0]?.unit_value ?? ""
@@ -486,17 +550,18 @@ useEffect(() => {
             disabled={readOnly}
           >
           <legend>Элементы(ПКМ для выбора из списка)</legend>
-            <div className="table-wrapper">
-            
-              <table className="data-table">
+            <div className="table-wrapper table-wrapper--chemical-elements">
+              <table className="data-table data-table--chemical-elements">
                 <thead>
                   <tr>
                     <th>Название элемента</th>
                     <th>Элемент</th>
                     <th>Min</th>
                     <th>Max</th>
-                    <th>Допуск Min</th>
-                    <th>Допуск Max</th>
+                    <th>Допуск Min (абс.)</th>
+                    <th>Допуск Max (абс.)</th>
+                    <th>Допуск Min (отн., %)</th>
+                    <th>Допуск Max (отн., %)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -513,31 +578,7 @@ useEffect(() => {
                           className="table-cell-input"
                           type="text"
                           value={row.element ?? ""}
-                          onChange={(e) => {
-                            const nextElement = e.target.value;
-                            onDraftChange({
-                              ...material,
-                              chemical_properties: {
-                                ...chemical_properties,
-                                composition: (
-                                  chemical_properties.composition ?? []
-                                ).map((entry, entryIndex) =>
-                                  entryIndex !== compositionSourceIndex
-                                    ? entry
-                                    : {
-                                        ...entry,
-                                        other_elements: (
-                                          entry.other_elements ?? []
-                                        ).map((el, elIndex) =>
-                                          elIndex !== i
-                                            ? el
-                                            : { ...el, element: nextElement },
-                                        ),
-                                      },
-                                ),
-                              },
-                            });
-                          }}
+                          onChange={(e) => updateElementAt(i, { element: e.target.value })}
                         />
                       </td>
                       <td>
@@ -545,31 +586,9 @@ useEffect(() => {
                           className="table-cell-input"
                           type="number"
                           value={row.min_value ?? ""}
-                          onChange={(e) => {
-                            const nextValue = Number(e.target.value);
-                            onDraftChange({
-                              ...material,
-                              chemical_properties: {
-                                ...chemical_properties,
-                                composition: (
-                                  chemical_properties.composition ?? []
-                                ).map((entry, entryIndex) =>
-                                  entryIndex !== compositionSourceIndex
-                                    ? entry
-                                    : {
-                                        ...entry,
-                                        other_elements: (
-                                          entry.other_elements ?? []
-                                        ).map((el, elIndex) =>
-                                          elIndex !== i
-                                            ? el
-                                            : { ...el, min_value: nextValue },
-                                        ),
-                                      },
-                                ),
-                              },
-                            });
-                          }}
+                          onChange={(e) =>
+                            updateElementAt(i, { min_value: Number(e.target.value) })
+                          }
                         />
                       </td>
                       <td>
@@ -577,101 +596,57 @@ useEffect(() => {
                           className="table-cell-input"
                           type="number"
                           value={row.max_value ?? ""}
-                          onChange={(e) => {
-                            const nextValue = Number(e.target.value);
-                            onDraftChange({
-                              ...material,
-                              chemical_properties: {
-                                ...chemical_properties,
-                                composition: (
-                                  chemical_properties.composition ?? []
-                                ).map((entry, entryIndex) =>
-                                  entryIndex !== compositionSourceIndex
-                                    ? entry
-                                    : {
-                                        ...entry,
-                                        other_elements: (
-                                          entry.other_elements ?? []
-                                        ).map((el, elIndex) =>
-                                          elIndex !== i
-                                            ? el
-                                            : { ...el, max_value: nextValue },
-                                        ),
-                                      },
-                                ),
-                              },
-                            });
-                          }}
+                          onChange={(e) =>
+                            updateElementAt(i, { max_value: Number(e.target.value) })
+                          }
                         />
                       </td>
                       <td>
                         <input
                           className="table-cell-input"
                           type="text"
-                          value={row.min_value_tolerance ?? ""}
-                          onChange={(e) => {
-                            const nextValue = e.target.value;
-                            onDraftChange({
-                              ...material,
-                              chemical_properties: {
-                                ...chemical_properties,
-                                composition: (
-                                  chemical_properties.composition ?? []
-                                ).map((entry, entryIndex) =>
-                                  entryIndex !== compositionSourceIndex
-                                    ? entry
-                                    : {
-                                        ...entry,
-                                        other_elements: (
-                                          entry.other_elements ?? []
-                                        ).map((el, elIndex) =>
-                                          elIndex !== i
-                                            ? el
-                                            : {
-                                                ...el,
-                                                min_value_tolerance: nextValue,
-                                              },
-                                        ),
-                                      },
-                                ),
-                              },
-                            });
-                          }}
+                          value={row.min_value_tolerance}
+                          title="Абсолютный нижний предел допуска"
+                          onChange={(e) =>
+                            updateElementAt(i, { min_value_tolerance: e.target.value })
+                          }
                         />
                       </td>
                       <td>
                         <input
                           className="table-cell-input"
                           type="text"
-                          value={row.max_value_tolerance ?? ""}
-                          onChange={(e) => {
-                            const nextValue = e.target.value;
-                            onDraftChange({
-                              ...material,
-                              chemical_properties: {
-                                ...chemical_properties,
-                                composition: (
-                                  chemical_properties.composition ?? []
-                                ).map((entry, entryIndex) =>
-                                  entryIndex !== compositionSourceIndex
-                                    ? entry
-                                    : {
-                                        ...entry,
-                                        other_elements: (
-                                          entry.other_elements ?? []
-                                        ).map((el, elIndex) =>
-                                          elIndex !== i
-                                            ? el
-                                            : {
-                                                ...el,
-                                                max_value_tolerance: nextValue,
-                                              },
-                                        ),
-                                      },
-                                ),
-                              },
-                            });
-                          }}
+                          value={row.max_value_tolerance}
+                          title="Абсолютный верхний предел допуска"
+                          onChange={(e) =>
+                            updateElementAt(i, { max_value_tolerance: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="table-cell-input"
+                          type="text"
+                          value={row.min_value_tolerance_relative}
+                          title="Относительный допуск к Min, %"
+                          onChange={(e) =>
+                            updateElementAt(i, {
+                              min_value_tolerance_relative: e.target.value,
+                            })
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="table-cell-input"
+                          type="text"
+                          value={row.max_value_tolerance_relative}
+                          title="Относительный допуск к Max, %"
+                          onChange={(e) =>
+                            updateElementAt(i, {
+                              max_value_tolerance_relative: e.target.value,
+                            })
+                          }
                         />
                       </td>
                     </tr>
@@ -727,14 +702,12 @@ useEffect(() => {
   </div>
 )}
           </fieldset>
-          <div className="property-section-chart">
           <ChemicalCompositionChart
             data={chartData}
             unit={chartUnit}
             mode={chartMode}
             onModeChange={setChartMode}
           />
-          </div>
         </div>
         <div className="note-field">
       <label className="note-label">Примечание</label>

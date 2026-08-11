@@ -11,7 +11,8 @@ export function toSystem(
     return value;
   }
 
-  const factor = config.factors[fromUnit];
+  const factors = config.factors ?? {};
+  const factor = factors[fromUnit];
   if (factor === undefined) {
     return value;
   }
@@ -35,7 +36,8 @@ export function fromSystem(
     return value;
   }
 
-  const factor = config.factors[toUnit];
+  const factors = config.factors ?? {};
+  const factor = factors[toUnit];
   if (factor === undefined) {
     return value;
   }

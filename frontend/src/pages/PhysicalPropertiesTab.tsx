@@ -11,6 +11,8 @@ import { useUnitLabels } from "../hooks/useUnitLabels";
 import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart.tsx";
 import { PropertyCommentField } from "../components/PropertyCommentField.tsx";
 import { TemperatureValueTable } from "../components/TemperatureValueTable.tsx";
+import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog.ts";
+import { ScientificText } from "../lib/scientificNotation";
 
 const PHYSICAL_Y_LABELS = {
   modulus_elasticity: "E, МПа",
@@ -69,6 +71,7 @@ export function PhysicalPropertiesTab({
   readOnly = false,
 }: PhysicalPropertiesTabProps) {
   const result = useSourcesCatalog();
+  const propertiesCatalog = usePropertiesCatalog()
   const physicalSources = result.data?.property_sources ?? [];
   const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
     number | null
@@ -164,6 +167,9 @@ export function PhysicalPropertiesTab({
     sourceNames,
   );
 
+  const physicalUnitType = (key: keyof typeof PHYSICAL_Y_LABELS) =>
+    propertiesCatalog.data?.physical[key]?.unit_type ?? "";
+
   return (
     <form
       className="general-form physical-properties-form"
@@ -178,7 +184,7 @@ export function PhysicalPropertiesTab({
                 <label htmlFor="modulus_elasticity_value_unit">Ед. изм:</label>
                 <UnitSelect
                   id="modulus_elasticity_value_unit"
-                  unitType="Модуль упругости"
+                  unitType={physicalUnitType("modulus_elasticity")}
                   value={physical_properties.modulus_elasticity?.value_unit ?? ""}
                   onChange={(nextUnit) => {
                     onDraftChange({
@@ -320,7 +326,7 @@ export function PhysicalPropertiesTab({
             </div>
             <div className="property-section-chart">
               <PhysicalTemperatureGraph
-                unitType="Модуль упругости"
+                unitType={physicalUnitType("modulus_elasticity")}
                 yLabel={PHYSICAL_Y_LABELS.modulus_elasticity}
                 valueUnit={physical_properties.modulus_elasticity?.value_unit}
                 pairs={physical_properties.modulus_elasticity?.temperature_value_pairs}
@@ -330,14 +336,18 @@ export function PhysicalPropertiesTab({
         </fieldset>
 
         <fieldset className="form-section" disabled={readOnly}>
-          <legend>Коэффициент линейного расширения (·10⁻⁶)(α)</legend>
+          <legend>
+            <ScientificText>
+              Коэффициент линейного расширения (·10⁻⁶)(α)
+            </ScientificText>
+          </legend>
           <div className="property-section-layout">
             <div className="property-section-fields">
               <div className="form-row">
                 <label htmlFor="coefficient_linear_expansion_value_unit">Ед. изм:</label>
                 <UnitSelect
                   id="coefficient_linear_expansion_value_unit"
-                  unitType="Коэффициент линейного расширения"
+                  unitType={physicalUnitType("coefficient_linear_expansion")}
                   value={physical_properties.coefficient_linear_expansion?.value_unit ?? ""}
                   onChange={(nextUnit) => {
                     onDraftChange({
@@ -481,7 +491,7 @@ export function PhysicalPropertiesTab({
             </div>
             <div className="property-section-chart">
               <PhysicalTemperatureGraph
-                unitType="Коэффициент линейного расширения"
+                unitType={physicalUnitType("coefficient_linear_expansion")}
                 yLabel={PHYSICAL_Y_LABELS.coefficient_linear_expansion}
                 valueUnit={
                   physical_properties.coefficient_linear_expansion?.value_unit
@@ -505,7 +515,7 @@ export function PhysicalPropertiesTab({
                 </label>
                 <UnitSelect
                   id="coefficient_thermal_conductivity_value_unit"
-                  unitType="Теплопроводность"
+                  unitType={physicalUnitType("coefficient_thermal_conductivity")}
                   value={physical_properties.coefficient_thermal_conductivity?.value_unit ?? ""}
                   onChange={(nextUnit) => {
                     onDraftChange({
@@ -654,7 +664,7 @@ export function PhysicalPropertiesTab({
             </div>
             <div className="property-section-chart">
               <PhysicalTemperatureGraph
-                unitType="Теплопроводность"
+                unitType={physicalUnitType("coefficient_thermal_conductivity")}
                 yLabel={PHYSICAL_Y_LABELS.coefficient_thermal_conductivity}
                 valueUnit={
                   physical_properties.coefficient_thermal_conductivity?.value_unit
@@ -676,7 +686,7 @@ export function PhysicalPropertiesTab({
                 <label htmlFor="density_value_unit">Ед. изм:</label>
                 <UnitSelect
                   id="density_value_unit"
-                  unitType="Плотность"
+                  unitType={physicalUnitType("density")}
                   value={physical_properties.density?.value_unit ?? ""}
                   onChange={(nextUnit) => {
                     onDraftChange({
@@ -816,7 +826,7 @@ export function PhysicalPropertiesTab({
             </div>
             <div className="property-section-chart">
               <PhysicalTemperatureGraph
-                unitType="Плотность"
+                unitType={physicalUnitType("density")}
                 yLabel={PHYSICAL_Y_LABELS.density}
                 valueUnit={physical_properties.density?.value_unit}
                 pairs={physical_properties.density?.temperature_value_pairs}
@@ -833,7 +843,7 @@ export function PhysicalPropertiesTab({
                 <label htmlFor="specific_heat_value_unit">Ед. изм:</label>
                 <UnitSelect
                   id="specific_heat_value_unit"
-                  unitType="Удельная теплоемкость"
+                  unitType={physicalUnitType("specific_heat")}
                   value={physical_properties.specific_heat?.value_unit ?? ""}
                   onChange={(nextUnit) => {
                     onDraftChange({
@@ -975,7 +985,7 @@ export function PhysicalPropertiesTab({
             </div>
             <div className="property-section-chart">
               <PhysicalTemperatureGraph
-                unitType="Удельная теплоемкость"
+                unitType={physicalUnitType("specific_heat")}
                 yLabel={PHYSICAL_Y_LABELS.specific_heat}
                 valueUnit={physical_properties.specific_heat?.value_unit}
                 pairs={physical_properties.specific_heat?.temperature_value_pairs}

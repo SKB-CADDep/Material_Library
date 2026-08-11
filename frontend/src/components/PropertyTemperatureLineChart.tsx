@@ -18,6 +18,7 @@ import {
   PROPERTY_CHART_Y_AXIS_WIDTH,
   propertyChartXAxisLabel,
 } from "../utils/propertyChartAxis";
+import { ScientificText } from "../lib/scientificNotation";
 
 export type PropertyChartPoint = { temperature: number; value: number };
 
@@ -51,7 +52,7 @@ export function PropertyTemperatureLineChart({
   return (
     <div className="property-chart-plot">
       <div className="property-chart-y-axis-label" aria-hidden="true">
-        {yLabel}
+        <ScientificText>{yLabel}</ScientificText>
       </div>
       <ResponsiveContainer width="100%" height="100%" minHeight={PROPERTY_CHART_MIN_HEIGHT}>
           <LineChart data={data} margin={PROPERTY_CHART_MARGIN}>

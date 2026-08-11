@@ -17,6 +17,10 @@ import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureL
 import { PropertyCommentField } from "../components/PropertyCommentField";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
 import { useUnitLabels } from "../hooks/useUnitLabels";
+import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
+import { HARDNESS_UNIT_TYPE } from "../lib/unitTypes";
+import { ScientificText } from "../lib/scientificNotation";
+
 type MechanicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
@@ -48,14 +52,12 @@ type MechanicalProperties = {
 type MechPropertyConfig = {
   key: string;
   legend: string;
-  unitType: string;
   yLabel: string;
   hasAcceptance?: boolean;
 };
 type UndependMechPropertiesConfig = {
   key: string;
   legend: string;
-  unitType: string;
 };
 function parsePairNumber(raw: string): number {
   if (raw === "" || raw === "-") return NaN;
@@ -67,83 +69,70 @@ const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
   {
     key: "yield_strength",
     legend: "Предел текучести (σ_0,2)",
-    unitType: "Предел текучести",
     yLabel: "σ_0,2, МПа",
     hasAcceptance: true,
   },
   {
     key: "tensile_strength",
     legend: "Предел прочности (σ_в)",
-    unitType: "Предел прочности",
     yLabel: "σ_в, МПа",
     hasAcceptance: true,
   },
   {
     key: "impact_strength",
     legend: "Ударная вязкость (KCU)",
-    unitType: "Ударная вязкость",
     yLabel: "KCU, Дж/см²",
     hasAcceptance: true,
   },
   {
     key: "tensile_strength_limit_10_thousands_hours",
     legend: "Предел длит. прочности за 10 тыс.ч (σ_дп_10)",
-    unitType: "Предел длит. прочности",
     yLabel: "σ_дп_10, МПа",
   },
   {
     key: "tensile_strength_limit_100_thousands_hours",
     legend: "Предел длит. прочности за 100 тыс.ч (σ_дп_100)",
-    unitType: "Предел длит. прочности",
     yLabel: "σ_дп_100, МПа",
   },
   {
     key: "tensile_strength_limit_200_thousands_hours",
     legend: "Предел длит. прочности за 200 тыс.ч (σ_дп_200)",
-    unitType: "Предел длит. прочности",
     yLabel: "σ_дп_200, МПа",
   },
   {
     key: "tensile_strength_limit_250_thousands_hours",
     legend: "Предел длит. прочности за 250 тыс.ч (σ_дп_250)",
-    unitType: "Предел длит. прочности",
     yLabel: "σ_дп_250, МПа",
   },
   {
-    // ключ в JSON с кириллической «с»
+
     key: "сreep_strain_rate_1_100_thousands_hours",
     legend: "Ползучесть 1%/100 тыс.ч (σ_1_100)",
-    unitType: "Предел ползучести",
     yLabel: "σ_1_100, МПа",
   },
   {
     key: "decrement_oscillations_at_800",
     legend: "Декремент колебаний при 800 (·10⁻⁴) (δψ_800)",
-    unitType: "Декремент колебаний",
     yLabel: "δψ_800",
   },
   {
     key: "decrement_oscillations_at_1200",
     legend: "Декремент колебаний при 1200 (·10⁻⁴) (δψ_1200)",
-    unitType: "Декремент колебаний",
     yLabel: "δψ_1200",
   },
   {
     key: "decrement_oscillations_at_1600",
     legend: "Декремент колебаний при 1600 (·10⁻⁴) (δψ_1600)",
-    unitType: "Декремент колебаний",
     yLabel: "δψ_1600",
   },
   {
     key: "fatigue_limit_for_smooth_specimen",
     legend: "Предел выносливости (гладкий образец, N=10e7) (σ_-1_smooth)",
-    unitType: "Предел выносливости",
     yLabel: "σ_-1_smooth, МПа",
   },
   {
     key: "fatigue_limit_for_notched_specimen",
     legend: "Предел выносливости (образец с надрезом, N=10e7) (σ_-1_notched)",
-    unitType: "Предел выносливости",
     yLabel: "σ_-1_notched, МПа",
   },
 ];
@@ -151,18 +140,15 @@ const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
 const UNDEPEND_MECH_PROPERTIES: UndependMechPropertiesConfig[] = [
   {
     key: "relative_elongation",
-    legend: "Относительное удлинение(не менее)",
-    unitType: "Безразмерный",
+    legend: "Относительное удлинение(не менее)"
   },
   {
     key: "relative_contraction",
     legend: "Относительное сужение(не менее)",
-    unitType: "Безразмерный",
   },
   {
     key: "angle_of_bend",
     legend: "Угол изгиба",
-    unitType: "Угол",
   },
 ];
 
@@ -180,11 +166,13 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
 function MechTemperatureGraph({
   prop,
   data,
+  unitType,
 }: {
   prop: MechPropertyConfig;
   data: PropertyData | undefined;
+  unitType: string;
 }) {
-  const { labels } = useUnitLabels(prop.unitType);
+  const { labels } = useUnitLabels(unitType);
 
   return (
     <PropertyTemperatureLineChart
@@ -260,6 +248,9 @@ export function MechanicalPropertiesTab({
   const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
     number | null
   >(null);
+  const propertiesCatalog = usePropertiesCatalog()
+  const mechanicalUnitType = (key: string) =>
+    propertiesCatalog.data?.mechanical[key]?.unit_type ?? "";
 
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
@@ -352,7 +343,6 @@ export function MechanicalPropertiesTab({
                   strength_category: next,
                 },
               });
-              // как в Tkinter populate_form: после удаления выбрать первую, иначе сбросить
               setCategoryIndex(0);
             }}
           >
@@ -469,7 +459,9 @@ export function MechanicalPropertiesTab({
 
           return (
             <fieldset key={prop.key} className="form-section" disabled={readOnly}>
-              <legend>{prop.legend}</legend>
+              <legend>
+                <ScientificText>{prop.legend}</ScientificText>
+              </legend>
               {prop.hasAcceptance && (
                 <div className="form-row">
                   <label
@@ -502,7 +494,7 @@ export function MechanicalPropertiesTab({
                     <label htmlFor={unitId}>Ед. изм:</label>
                     <UnitSelect
                       id={unitId}
-                      unitType={prop.unitType}
+                      unitType={mechanicalUnitType(prop.key)}
                       value={data?.value_unit ?? ""}
                       onChange={(nextUnit) => {
                         onDraftChange(
@@ -636,7 +628,7 @@ export function MechanicalPropertiesTab({
                   />
                 </div>
                 <div className="property-section-chart">
-                  <MechTemperatureGraph prop={prop} data={data} />
+                  <MechTemperatureGraph prop={prop} data={data} unitType={mechanicalUnitType(prop.key)}/>
                 </div>
               </div>
             </fieldset>
@@ -680,7 +672,7 @@ export function MechanicalPropertiesTab({
                 <label htmlFor="hardness_value_unit">Ед. изм:</label>
                 <UnitSelect
                   id="hardness_value_unit"
-                  unitType="Твердость"
+                  unitType={HARDNESS_UNIT_TYPE}
                   value={
                     (category?.hardness_unit as string | undefined) ??
                     hardnessRows[0]?.unit_value ??
@@ -758,7 +750,9 @@ export function MechanicalPropertiesTab({
 
           return (
             <fieldset key={prop.key} className="form-section" disabled={readOnly}>
-              <legend>{prop.legend}</legend>
+              <legend>
+                <ScientificText>{prop.legend}</ScientificText>
+              </legend>
               <div className="form-row">
                 <label
                   htmlFor={`${prop.key}_is_acceptance`}
@@ -789,7 +783,7 @@ export function MechanicalPropertiesTab({
                     <label htmlFor={unitId}>Ед. изм:</label>
                     <UnitSelect
                       id={unitId}
-                      unitType={prop.unitType}
+                      unitType={mechanicalUnitType(prop.key)}
                       value={data?.value_unit ?? ""}
                       onChange={(nextUnit) => {
                         onDraftChange(

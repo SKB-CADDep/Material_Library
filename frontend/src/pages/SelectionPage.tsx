@@ -1,7 +1,11 @@
+import { lazy, Suspense } from "react";
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
 import { TempSelectionTab } from "./TempSelectionTab";
 import { SepCalculationTab } from "./SepCalculationTab";
-import { AshbyTab } from "./AshbyTab";
+
+const AshbyTab = lazy(() =>
+  import("./AshbyTab").then((module) => ({ default: module.AshbyTab })),
+);
 
 function selectionSubtabClass({ isActive }: { isActive: boolean }) {
     return isActive ? "editor-subtab active" : "editor-subtab";
@@ -67,7 +71,14 @@ export function SelectionPage() {
                    }
             />
 
-            <Route path="ashby" element={<AshbyTab />} />
+            <Route
+                path="ashby"
+                element={
+                    <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
+                        <AshbyTab />
+                    </Suspense>
+                }
+            />
         </Routes>
       </div>
     );

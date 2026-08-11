@@ -19,6 +19,7 @@ from src.core.schema_keys import Schema
 from src.core.models.material import Material
 from src.core.math.interpolation import MathUtils
 from src.infrastructure.paths import get_app_directory
+from src.infrastructure.help_docs import load_help_by_legacy_filename, markdown_to_plain
 from src.services.hardness_table import HardnessTable
 from src.services.source_service import SourceService
 from src.services.material_repository import MaterialRepository
@@ -158,9 +159,12 @@ def get_username():
         return os.environ.get("USERNAME", "unknown_user")
 
 
-def read_text_from_file(filename):
-    embedded = {"app_list.txt": APP_TEXT, "instruction_list.txt": INSTR_TEXT, "change_list.txt": CHANGELOG_TEXT}
-    return embedded.get(filename, f"ОШИБКА: Не удалось прочитать '{filename}'")
+def read_text_from_file(filename, *, plain: bool = False):
+    try:
+        text = load_help_by_legacy_filename(filename)
+    except FileNotFoundError:
+        return f"ОШИБКА: Не удалось прочитать '{filename}'"
+    return markdown_to_plain(text) if plain else text
 
 
 # Порядок вкладок редактора для аудита (отдельная строка JSON на каждую с изменениями)
@@ -411,10 +415,60 @@ def safe_float(value, default=None):
     if value is None: return default
     if isinstance(value, (float, int)): return float(value)
     try:
-        # Убираем пробелы и меняем запятую на точку
         return float(str(value).strip().replace(',', '.'))
     except (ValueError, TypeError):
         return default
+
+
+def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
+    """
+    Возвращает (lower, upper, min_tol_display, max_tol_display).
+    """
+    min_v = safe_float(elem_info.get("min_value"))
+    max_v = safe_float(elem_info.get("max_value"))
+
+    if tolerance_type == "relative":
+        min_rel = safe_float(elem_info.get("min_value_tolerance_relative"))
+        max_rel = safe_float(elem_info.get("max_value_tolerance_relative"))
+
+        if min_v is not None and min_rel is not None:
+            lower = min_v * (1 - min_rel / 100.0)
+        elif min_v is not None:
+            lower = min_v
+        else:
+            lower = float("-inf")
+
+        if max_v is not None and max_rel is not None:
+            upper = max_v * (1 + max_rel / 100.0)
+        elif max_v is not None:
+            upper = max_v
+        else:
+            upper = float("inf")
+
+        return lower, upper, min_rel, max_rel
+
+    min_tol = safe_float(elem_info.get("min_value_tolerance"))
+    max_tol = safe_float(elem_info.get("max_value_tolerance"))
+
+    if min_v is not None and min_tol is not None:
+        lower = min_tol
+    elif min_v is not None:
+        lower = min_v
+    elif min_tol is not None:
+        lower = min_tol
+    else:
+        lower = float("-inf")
+
+    if max_v is not None and max_tol is not None:
+        upper = max_tol
+    elif max_v is not None:
+        upper = max_v
+    elif max_tol is not None:
+        upper = max_tol
+    else:
+        upper = float("inf")
+
+    return lower, upper, min_tol, max_tol
 
 
 class ScrollableMixin:
@@ -2594,10 +2648,14 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
     def _s2_evaluate_candidate(self, cand, targets):
         """
         Оценивает один источник состава относительно целевого набора элементов.
-        Учитывает допуски Min/Max (min_value_tolerance, max_value_tolerance).
+        Учитывает допуски Min/Max (абсолютные или относительные — tolerance_type).
         Возвращает dict с суммарными метриками и деталями по каждому элементу.
         """
         elements_map = cand["elements_map"]
+        composition = cand.get("composition", {})
+        tolerance_type = composition.get("tolerance_type", "absolute")
+        if tolerance_type not in ("absolute", "relative"):
+            tolerance_type = "absolute"
         details = {}
         matched = 0
         missing = 0
@@ -2622,12 +2680,12 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
                 details[elem_sym] = detail
                 continue
 
-            # Базовые границы
             min_v = safe_float(elem_info.get("min_value"))
             max_v = safe_float(elem_info.get("max_value"))
-            # Допуски (абсолютные значения)
-            min_tol = safe_float(elem_info.get("min_value_tolerance"))
-            max_tol = safe_float(elem_info.get("max_value_tolerance"))
+            lower, upper, min_tol, max_tol = chemical_effective_bounds(
+                elem_info,
+                tolerance_type=tolerance_type,
+            )
 
             detail["min"] = min_v
             detail["max"] = max_v
@@ -2640,32 +2698,6 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
                 missing += 1
                 details[elem_sym] = detail
                 continue
-
-            # Эффективные границы с учётом допусков (НОВАЯ ЛОГИКА):
-            # - если заданы и min, и min_tol -> нижняя граница = min_tol (абсолютный предел);
-            # - если задан только один из них -> нижняя граница = это значение;
-            # - если нет ни min, ни min_tol -> нижняя граница = -inf.
-            if min_v is not None and min_tol is not None:
-                lower = min_tol
-            elif min_v is not None:
-                lower = min_v
-            elif min_tol is not None:
-                lower = min_tol
-            else:
-                lower = float("-inf")
-
-            # Аналогично для верхней границы:
-            # - если заданы и max, и max_tol -> верхняя граница = max_tol (абсолютный предел);
-            # - если задан только один из них -> верхняя граница = это значение;
-            # - если нет ни max, ни max_tol -> верхняя граница = +inf.
-            if max_v is not None and max_tol is not None:
-                upper = max_tol
-            elif max_v is not None:
-                upper = max_v
-            elif max_tol is not None:
-                upper = max_tol
-            else:
-                upper = float("inf")
 
             if lower <= target_val <= upper:
                 detail["state"] = "in"
@@ -2738,13 +2770,15 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
         tree.delete(*tree.get_children())
 
         unit = cand["unit"] or "%"
+        tolerance_type = cand.get("composition", {}).get("tolerance_type", "absolute")
+        tol_unit = "%" if tolerance_type == "relative" else unit
 
         # Обновляем заголовки с учётом единиц
         tree.heading("target", text=f"Target, {unit}")
         tree.heading("min", text=f"Min, {unit}")
         tree.heading("max", text=f"Max, {unit}")
-        tree.heading("min_tol", text=f"Допуск Min, {unit}")
-        tree.heading("max_tol", text=f"Допуск Max, {unit}")
+        tree.heading("min_tol", text=f"Допуск Min, {tol_unit}")
+        tree.heading("max_tol", text=f"Допуск Max, {tol_unit}")
         tree.heading("delta", text=f"Δ до границы, {unit}")
 
         # Человеко-читаемые статусы
@@ -4342,6 +4376,16 @@ class ChemicalCompositionTab(ttk.Frame):
         self.unit_combo.grid(row=3, column=1, sticky="w", padx=5, pady=2)
         self.unit_combo.set("%")
 
+        ttk.Label(meta_frame, text="Тип допуска:").grid(row=4, column=0, sticky="w")
+        self.tolerance_type_combo = ttk.Combobox(
+            meta_frame,
+            values=["absolute", "relative"],
+            state="readonly",
+            width=12,
+        )
+        self.tolerance_type_combo.grid(row=4, column=1, sticky="w", padx=5, pady=2)
+        self.tolerance_type_combo.set("absolute")
+
         # 2. Разделенный контейнер
         split_container = ttk.Frame(self.editor_content_frame)
         split_container.pack(fill="both", expand=True, pady=5)
@@ -4366,7 +4410,7 @@ class ChemicalCompositionTab(ttk.Frame):
 
         tree = create_editable_treeview(table_frame, on_update_callback=self._update_chart)
         tree.configure(show="headings")
-        tree["columns"] = ("name", "elem", "min", "max", "min_tol", "max_tol")
+        tree["columns"] = ("name", "elem", "min", "max", "min_tol", "max_tol", "min_tol_rel", "max_tol_rel")
 
         tree.heading("name", text="Название элемента")
         tree.column("name", width=140, anchor="center")
@@ -4376,10 +4420,14 @@ class ChemicalCompositionTab(ttk.Frame):
         tree.column("min", width=50, anchor="center")
         tree.heading("max", text="Max")
         tree.column("max", width=50, anchor="center")
-        tree.heading("min_tol", text="Допуск Min")
-        tree.column("min_tol", width=80, anchor="center")
-        tree.heading("max_tol", text="Допуск Max")
-        tree.column("max_tol", width=80, anchor="center")
+        tree.heading("min_tol", text="Допуск Min (абс.)")
+        tree.column("min_tol", width=90, anchor="center")
+        tree.heading("max_tol", text="Допуск Max (абс.)")
+        tree.column("max_tol", width=90, anchor="center")
+        tree.heading("min_tol_rel", text="Допуск Min (отн., %)")
+        tree.column("min_tol_rel", width=110, anchor="center")
+        tree.heading("max_tol_rel", text="Допуск Max (отн., %)")
+        tree.column("max_tol_rel", width=110, anchor="center")
 
         tree.pack(side="left", fill="both", expand=True)
 
@@ -4387,7 +4435,7 @@ class ChemicalCompositionTab(ttk.Frame):
         btn_frame.pack(side="left", fill="y", padx=5)
 
         def add_row():
-            tree.insert("", "end", values=["", "", "", "", "", ""])
+            tree.insert("", "end", values=["", "", "", "", "", "", "", ""])
             self._update_chart()
 
         def del_row():
@@ -4699,7 +4747,9 @@ class ChemicalCompositionTab(ttk.Frame):
                     elem.get("min_value", ""),
                     elem.get("max_value", ""),
                     elem.get("min_value_tolerance", ""),
-                    elem.get("max_value_tolerance", "")
+                    elem.get("max_value_tolerance", ""),
+                    elem.get("min_value_tolerance_relative", ""),
+                    elem.get("max_value_tolerance_relative", ""),
                 ]
             )
 
@@ -4737,6 +4787,9 @@ class ChemicalCompositionTab(ttk.Frame):
         source_name = (self.source_entry.get() or "").strip()
         comp_data["comment"] = self.comment_entry.get()
         comp_data["base_element"] = self.base_element_entry.get()
+
+        tol_type = (self.tolerance_type_combo.get() or "absolute").strip()
+        comp_data["tolerance_type"] = tol_type if tol_type in ("absolute", "relative") else "absolute"
 
         # Логика источника:
         # - Новый формат: source_ref_id указывает на SourceService (группа chemical_sources),
@@ -4781,6 +4834,10 @@ class ChemicalCompositionTab(ttk.Frame):
                 elem_data["min_value_tolerance"] = values["min_tol"]
             if values["max_tol"]:
                 elem_data["max_value_tolerance"] = values["max_tol"]
+            if values.get("min_tol_rel"):
+                elem_data["min_value_tolerance_relative"] = values["min_tol_rel"]
+            if values.get("max_tol_rel"):
+                elem_data["max_value_tolerance_relative"] = values["max_tol_rel"]
 
             elements_list.append(elem_data)
 
@@ -6261,7 +6318,7 @@ class MainApplication(tk.Tk):
                 pass
 
         title = "О приложении"
-        message = read_text_from_file("app_list.txt")
+        message = read_text_from_file("app_list.txt", plain=True)
         messagebox.showinfo(title, message, parent=self)
 
     def show_instructions(self):

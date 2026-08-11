@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { unitDisplayText } from "../lib/columnUnits";
+import { ScientificText } from "../lib/scientificNotation";
 
 type ColumnUnitContextMenuProps = {
   x: number;
@@ -83,7 +84,7 @@ export function ColumnUnitContextMenu({
                 <span className="column-unit-context-menu__marker" aria-hidden>
                   {isActive ? "●" : "○"}
                 </span>
-                {label}
+                <ScientificText>{label}</ScientificText>
               </button>
             </li>
           );

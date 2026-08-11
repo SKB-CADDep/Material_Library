@@ -30,6 +30,14 @@ def test_series_color_distinct():
     assert c0 != c1 != c11
 
 
+def test_class_color_unlimited():
+    c0 = SelectionService._class_color(0)
+    c10 = SelectionService._class_color(10)
+    c11 = SelectionService._class_color(11)
+    assert c0.startswith("#") and len(c0) == 7
+    assert c0 != c10 != c11
+
+
 def test_ashby_options_and_diagram_smoke():
     material = Material(
         data={
@@ -73,8 +81,7 @@ def test_ashby_options_and_diagram_smoke():
     assert len(result["series"]) == 1
     assert len(result["series"][0]["points"]) == 2
     assert result["series"][0]["color"].startswith("#")
-    assert result["class_legend"][0]["color"] == "#1f77b4"
-    # кривая — HSV, класс — tab10
+    assert result["class_legend"][0]["color"].startswith("#")
     assert result["series"][0]["color"] != result["class_legend"][0]["color"]
 
 

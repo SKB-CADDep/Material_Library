@@ -359,16 +359,6 @@ export function CalculationTable({
 
                       .join(" ")}
 
-                    title={
-
-                      canChangeUnit
-
-                        ? "ПКМ — смена единицы измерения"
-
-                        : undefined
-
-                    }
-
                     onContextMenu={(event) => {
 
                       if (!canChangeUnit || !unitConfig) {
@@ -395,7 +385,14 @@ export function CalculationTable({
 
                     <span className="calculation-table-header">
 
-                      <span className="calculation-table-header__text">
+                      <span
+                        className="calculation-table-header__text"
+                        title={
+                          canChangeUnit
+                            ? "ПКМ — смена единицы измерения"
+                            : undefined
+                        }
+                      >
 
                         <span className="calculation-table-header__symbol">
 

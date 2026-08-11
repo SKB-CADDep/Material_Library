@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { getAshbyOptions, postAshby } from "../api/selection";
+import { applyAshbyChartColors } from "../lib/chartColors";
 import type {
   AshbyAxisMeta,
   AshbyAxisOption,
@@ -3576,8 +3577,9 @@ export function AshbyTab() {
   const plotMutation = useMutation({
     mutationFn: postAshby,
     onSuccess: (data) => {
-      setPlotData(data);
-      const nextDomain = buildBaseDomain(data) ?? emptyDomain();
+      const colored = applyAshbyChartColors(data);
+      setPlotData(colored);
+      const nextDomain = buildBaseDomain(colored) ?? emptyDomain();
       setBaseDomain(nextDomain);
       setViewDomain(nextDomain);
       setToolMode("none");
