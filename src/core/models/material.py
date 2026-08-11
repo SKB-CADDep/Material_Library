@@ -9,14 +9,22 @@ from src.core.math.interpolation import MathUtils
 
 class Material:
     """
-    Материал на схеме property_groups:
+    Материал. Схема свойств:
 
-      property_groups[]:
-        - property_type: physical  → properties[{property_name, data}]
-        - property_type: mechanical → strength_groups[{strength_category, properties[…]}]
-        - property_type: chemical  → properties[{property_name: composition, data}]
+      physical_properties: {
+        properties: [{ property_name, temperature_value_pairs, value_unit, ... }, ...]
+      }
+      mechanical_properties: {
+        strength_category: [{
+          value_strength_category,
+          hardness: [{ unit_value, min_value, max_value }, ...],
+          hardness_unit?,
+          properties: [{ property_name, temperature_value_pairs, ... }, ...]
+        }]
+      }
+      chemical_properties: { composition: [...] }
 
-    Legacy physical_properties / mechanical_properties / chemical_properties
+    Legacy: physical_properties как dict {id: obj} и свойства прямо на КП
     нормализуются при загрузке.
     """
 
@@ -53,53 +61,25 @@ class Material:
                     "classification_subclass": "",
                 },
             },
-            Schema.PROPERTY_GROUPS: [
-                {Schema.PROPERTY_TYPE: Schema.TYPE_PHYSICAL, Schema.PROPERTIES: []},
-                {Schema.PROPERTY_TYPE: Schema.TYPE_MECHANICAL, Schema.STRENGTH_GROUPS: []},
-                {Schema.PROPERTY_TYPE: Schema.TYPE_CHEMICAL, Schema.PROPERTIES: []},
-            ],
+            Schema.PHYSICAL: {Schema.PROPERTIES: []},
+            Schema.MECHANICAL: {Schema.STRENGTH_CAT: []},
+            Schema.CHEMICAL: {Schema.COMPOSITION: []},
         }
 
     @staticmethod
-    def empty_strength_group(name=""):
+    def empty_strength_category(name=""):
         return {
-            Schema.STRENGTH_CAT: name,
-            "comment": "",
+            Schema.VAL_STR_CAT: name,
             Schema.PROPERTIES: [],
         }
 
     # ------------------------------------------------------------------
-    # property_groups helpers
+    # helpers для списка properties[{property_name, ...}]
     # ------------------------------------------------------------------
-
-    def get_property_groups(self):
-        groups = self.data.get(Schema.PROPERTY_GROUPS)
-        return groups if isinstance(groups, list) else []
-
-    def get_group(self, property_type):
-        for g in self.get_property_groups():
-            if isinstance(g, dict) and g.get(Schema.PROPERTY_TYPE) == property_type:
-                return g
-        return None
-
-    def ensure_group(self, property_type):
-        g = self.get_group(property_type)
-        if g is not None:
-            return g
-        if property_type == Schema.TYPE_MECHANICAL:
-            g = {Schema.PROPERTY_TYPE: property_type, Schema.STRENGTH_GROUPS: []}
-        else:
-            g = {Schema.PROPERTY_TYPE: property_type, Schema.PROPERTIES: []}
-        if Schema.PROPERTY_GROUPS not in self.data or not isinstance(
-            self.data.get(Schema.PROPERTY_GROUPS), list
-        ):
-            self.data[Schema.PROPERTY_GROUPS] = []
-        self.data[Schema.PROPERTY_GROUPS].append(g)
-        return g
 
     @staticmethod
     def find_named_prop(props, prop_name):
-        if not isinstance(props, list):
+        if not isinstance(props, list) or not prop_name:
             return None
         for item in props:
             if isinstance(item, dict) and item.get(Schema.PROP_NAME) == prop_name:
@@ -107,17 +87,11 @@ class Material:
         return None
 
     @staticmethod
-    def get_prop_data(prop_entry):
-        if not isinstance(prop_entry, dict):
-            return None
-        data = prop_entry.get(Schema.DATA)
-        return data if isinstance(data, dict) else None
-
-    @staticmethod
     def upsert_named_prop(props, prop_name, data):
         if not isinstance(props, list):
             props = []
-        payload = {Schema.PROP_NAME: prop_name, Schema.DATA: dict(data) if data else {}}
+        payload = dict(data) if data else {}
+        payload[Schema.PROP_NAME] = prop_name
         for i, item in enumerate(props):
             if isinstance(item, dict) and item.get(Schema.PROP_NAME) == prop_name:
                 props[i] = payload
@@ -138,60 +112,76 @@ class Material:
     def category_name(cat):
         if not isinstance(cat, dict):
             return ""
-        return (
-            cat.get(Schema.STRENGTH_CAT)
-            or cat.get(Schema.VAL_STR_CAT)
-            or ""
-        )
+        return cat.get(Schema.VAL_STR_CAT) or ""
 
     # ------------------------------------------------------------------
     # Physical
     # ------------------------------------------------------------------
 
-    def get_physical_properties_list(self):
-        g = self.get_group(Schema.TYPE_PHYSICAL)
-        if not g:
-            return []
-        props = g.get(Schema.PROPERTIES)
-        return props if isinstance(props, list) else []
+    def get_physical_list(self):
+        phys = self.data.get(Schema.PHYSICAL)
+        if isinstance(phys, dict):
+            props = phys.get(Schema.PROPERTIES)
+            return props if isinstance(props, list) else []
+        if isinstance(phys, list):
+            return phys
+        return []
 
     def get_physical_data(self, prop_name):
-        entry = self.find_named_prop(self.get_physical_properties_list(), prop_name)
-        return self.get_prop_data(entry)
+        return self.find_named_prop(self.get_physical_list(), prop_name)
 
     def set_physical_data(self, prop_name, data):
-        g = self.ensure_group(Schema.TYPE_PHYSICAL)
-        props = g.get(Schema.PROPERTIES)
+        phys = self.data.get(Schema.PHYSICAL)
+        if not isinstance(phys, dict):
+            phys = {Schema.PROPERTIES: []}
+            self.data[Schema.PHYSICAL] = phys
+        props = phys.get(Schema.PROPERTIES)
         if not isinstance(props, list):
             props = []
-        g[Schema.PROPERTIES] = self.upsert_named_prop(props, prop_name, data)
+        phys[Schema.PROPERTIES] = self.upsert_named_prop(props, prop_name, data)
 
     def remove_physical_data(self, prop_name):
-        g = self.get_group(Schema.TYPE_PHYSICAL)
-        if not g:
+        phys = self.data.get(Schema.PHYSICAL)
+        if not isinstance(phys, dict):
             return
-        g[Schema.PROPERTIES] = self.remove_named_prop(
-            g.get(Schema.PROPERTIES, []), prop_name
+        phys[Schema.PROPERTIES] = self.remove_named_prop(
+            phys.get(Schema.PROPERTIES, []), prop_name
         )
 
+    @staticmethod
+    def physical_data_from_raw(material_data, prop_name):
+        """Lookup из сырого dict (для графиков без Material)."""
+        if not isinstance(material_data, dict):
+            return None
+        phys = material_data.get(Schema.PHYSICAL)
+        if isinstance(phys, dict):
+            props = phys.get(Schema.PROPERTIES)
+            if isinstance(props, list):
+                return Material.find_named_prop(props, prop_name)
+            # legacy dict {id: obj}
+            prop = phys.get(prop_name)
+            return prop if isinstance(prop, dict) else None
+        if isinstance(phys, list):
+            return Material.find_named_prop(phys, prop_name)
+        return None
+
     # ------------------------------------------------------------------
-    # Mechanical / strength groups
+    # Mechanical / strength categories
     # ------------------------------------------------------------------
 
     def get_strength_categories(self):
-        """Список strength_groups (категорий прочности)."""
-        g = self.get_group(Schema.TYPE_MECHANICAL)
-        if not g:
-            return []
-        groups = g.get(Schema.STRENGTH_GROUPS)
-        return groups if isinstance(groups, list) else []
+        return self.data.get(Schema.MECHANICAL, {}).get(Schema.STRENGTH_CAT, []) or []
 
     @staticmethod
     def get_category_prop_data(cat, prop_name):
-        if not isinstance(cat, dict):
+        if not isinstance(cat, dict) or not prop_name:
             return None
-        entry = Material.find_named_prop(cat.get(Schema.PROPERTIES), prop_name)
-        return Material.get_prop_data(entry)
+        props = cat.get(Schema.PROPERTIES)
+        if isinstance(props, list):
+            return Material.find_named_prop(props, prop_name)
+        # legacy: свойство прямо на КП
+        prop = cat.get(prop_name)
+        return prop if isinstance(prop, dict) else None
 
     @staticmethod
     def set_category_prop_data(cat, prop_name, data):
@@ -201,6 +191,13 @@ class Material:
         if not isinstance(props, list):
             props = []
         cat[Schema.PROPERTIES] = Material.upsert_named_prop(props, prop_name, data)
+        # убрать legacy-ключ
+        existing = cat.get(prop_name)
+        if prop_name not in (
+            Schema.VAL_STR_CAT, Schema.PROPERTIES, Schema.REF_ID,
+            Schema.HARDNESS, Schema.HARDNESS_UNIT, "comment",
+        ) and isinstance(existing, dict):
+            del cat[prop_name]
 
     @staticmethod
     def remove_category_prop_data(cat, prop_name):
@@ -209,148 +206,43 @@ class Material:
         cat[Schema.PROPERTIES] = Material.remove_named_prop(
             cat.get(Schema.PROPERTIES, []), prop_name
         )
+        if prop_name in cat and isinstance(cat.get(prop_name), dict):
+            del cat[prop_name]
 
     @staticmethod
     def get_hardness_entries(cat):
-        data = Material.get_category_prop_data(cat, Schema.HARDNESS)
-        if data and isinstance(data.get(Schema.HARDNESS_VALUES), list):
-            return data[Schema.HARDNESS_VALUES]
-        # legacy fallbacks
-        if isinstance(cat, dict):
-            if isinstance(cat.get(Schema.HARDNESS), list):
-                return cat[Schema.HARDNESS]
-            hard_entry = Material.find_named_prop(cat.get(Schema.PROPERTIES), Schema.HARDNESS)
-            if hard_entry:
-                d = Material.get_prop_data(hard_entry) or {}
-                if isinstance(d.get("values"), list):
-                    return d["values"]
+        """Всегда возвращает список записей твёрдости."""
+        if not isinstance(cat, dict):
+            return []
+        hard = cat.get(Schema.HARDNESS)
+        if isinstance(hard, dict) and (
+            "min_value" in hard or "max_value" in hard or "unit_value" in hard
+        ):
+            return [hard]
+        if isinstance(hard, list):
+            return [h for h in hard if isinstance(h, dict)]
         return []
 
     @staticmethod
     def get_hardness_unit(cat, default="HB"):
-        data = Material.get_category_prop_data(cat, Schema.HARDNESS)
-        if data:
-            unit = data.get(Schema.HARDNESS_UNIT) or data.get("property_unit") or data.get("value_unit")
-            if unit:
-                return unit
-            vals = data.get(Schema.HARDNESS_VALUES) or []
-            if vals and isinstance(vals[0], dict) and vals[0].get("unit_value"):
-                return vals[0]["unit_value"]
-        if isinstance(cat, dict):
-            if cat.get(Schema.HARDNESS_UNIT):
-                return cat[Schema.HARDNESS_UNIT]
-            legacy = cat.get(Schema.HARDNESS)
-            if isinstance(legacy, list) and legacy:
-                return legacy[0].get("unit_value") or default
+        if not isinstance(cat, dict):
+            return default
+        unit = cat.get(Schema.HARDNESS_UNIT)
+        if unit:
+            return unit
+        entries = Material.get_hardness_entries(cat)
+        if entries and entries[0].get("unit_value"):
+            return entries[0]["unit_value"]
         return default
 
     @staticmethod
-    def set_hardness_entries(cat, values_list, unit="HB", comment=""):
-        Material.set_category_prop_data(
-            cat,
-            Schema.HARDNESS,
-            {
-                Schema.HARDNESS_VALUES: values_list or [],
-                Schema.HARDNESS_UNIT: unit,
-                "comment": comment or "",
-            },
-        )
-        if isinstance(cat, dict):
-            cat.pop(Schema.HARDNESS_UNIT, None)
-            if isinstance(cat.get(Schema.HARDNESS), list):
-                del cat[Schema.HARDNESS]
-
-    # ------------------------------------------------------------------
-    # Chemical
-    # ------------------------------------------------------------------
-
-    def get_compositions(self):
-        """Список data-объектов composition (мутабельные ссылки на JSON)."""
-        g = self.get_group(Schema.TYPE_CHEMICAL)
-        if not g:
-            return []
-        result = []
-        for item in g.get(Schema.PROPERTIES) or []:
-            if not isinstance(item, dict):
-                continue
-            if item.get(Schema.PROP_NAME) != Schema.COMPOSITION:
-                continue
-            data = self.get_prop_data(item)
-            if data is not None:
-                result.append(data)
-        return result
-
-    def get_composition_entries(self):
-        """Список обёрток {property_name, data} для composition."""
-        g = self.get_group(Schema.TYPE_CHEMICAL)
-        if not g:
-            return []
-        return [
-            item for item in (g.get(Schema.PROPERTIES) or [])
-            if isinstance(item, dict) and item.get(Schema.PROP_NAME) == Schema.COMPOSITION
-        ]
-
-    def set_compositions(self, composition_data_list):
-        g = self.ensure_group(Schema.TYPE_CHEMICAL)
-        props = [
-            {Schema.PROP_NAME: Schema.COMPOSITION, Schema.DATA: dict(d) if d else {}}
-            for d in (composition_data_list or [])
-        ]
-        # сохранить не-composition свойства, если появятся
-        other = [
-            p for p in (g.get(Schema.PROPERTIES) or [])
-            if isinstance(p, dict) and p.get(Schema.PROP_NAME) != Schema.COMPOSITION
-        ]
-        g[Schema.PROPERTIES] = other + props
-
-    def append_composition(self, data):
-        g = self.ensure_group(Schema.TYPE_CHEMICAL)
-        props = g.get(Schema.PROPERTIES)
-        if not isinstance(props, list):
-            props = []
-            g[Schema.PROPERTIES] = props
-        props.append({Schema.PROP_NAME: Schema.COMPOSITION, Schema.DATA: dict(data) if data else {}})
-
-    def delete_composition_at(self, index):
-        entries = self.get_composition_entries()
-        if index < 0 or index >= len(entries):
+    def set_hardness_entries(cat, values_list, unit="HB"):
+        """Пишет hardness всегда списком записей."""
+        if not isinstance(cat, dict):
             return
-        target = entries[index]
-        g = self.get_group(Schema.TYPE_CHEMICAL)
-        if not g:
-            return
-        props = g.get(Schema.PROPERTIES) or []
-        g[Schema.PROPERTIES] = [p for p in props if p is not target]
-
-    # ------------------------------------------------------------------
-    # Lookup used by UI (raw material_data dict without Material instance)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def physical_data_from_raw(material_data, prop_name):
-        if not isinstance(material_data, dict):
-            return None
-        for g in material_data.get(Schema.PROPERTY_GROUPS) or []:
-            if not isinstance(g, dict) or g.get(Schema.PROPERTY_TYPE) != Schema.TYPE_PHYSICAL:
-                continue
-            entry = Material.find_named_prop(g.get(Schema.PROPERTIES), prop_name)
-            return Material.get_prop_data(entry)
-        # legacy
-        phys = material_data.get(Schema.PHYSICAL)
-        if isinstance(phys, dict):
-            p = phys.get(prop_name)
-            return p if isinstance(p, dict) else None
-        if isinstance(phys, list):
-            for item in phys:
-                if isinstance(item, dict) and (
-                    item.get(Schema.PROP_NAME) == prop_name or item.get("property_id") == prop_name
-                ):
-                    return item.get(Schema.DATA) if isinstance(item.get(Schema.DATA), dict) else item
-        return None
-
-    @staticmethod
-    def category_prop_data_from_raw(cat, prop_name):
-        return Material.get_category_prop_data(cat, prop_name)
+        values_list = [v for v in (values_list or []) if isinstance(v, dict)]
+        cat[Schema.HARDNESS_UNIT] = unit
+        cat[Schema.HARDNESS] = values_list
 
     # ------------------------------------------------------------------
     # Interpolation / sources
@@ -447,9 +339,9 @@ class Material:
         return name
 
     def get_interpolated_property(self, prop_key, temp, category_idx=None):
-        data = self.get_physical_data(prop_key)
-        if data:
-            val = MathUtils.linear_interpolate(data.get(Schema.TEMP_PAIRS, []), temp)
+        prop = self.get_physical_data(prop_key)
+        if prop:
+            val = MathUtils.linear_interpolate(prop.get(Schema.TEMP_PAIRS, []), temp)
             if val is not None:
                 return val
 
@@ -460,31 +352,47 @@ class Material:
             else cats
         )
         for cat in target:
-            data = self.get_category_prop_data(cat, prop_key)
-            if data:
-                val = MathUtils.linear_interpolate(data.get(Schema.TEMP_PAIRS, []), temp)
+            prop = self.get_category_prop_data(cat, prop_key)
+            if prop:
+                val = MathUtils.linear_interpolate(prop.get(Schema.TEMP_PAIRS, []), temp)
                 if val is not None:
                     return val
         return None
 
     def get_source_info(self, prop_type, prop_key=None, category_idx=None, source_manager=None):
+        """Получает текстовое описание источника для свойства."""
+
         def resolve(container):
             if not isinstance(container, dict):
                 return None
             rid = container.get(Schema.REF_ID)
             if rid and source_manager:
-                return source_manager.get_name_by_id(rid)
-            return (
-                container.get("property_source")
-                or container.get("property_subsource")
-                or None
-            )
+                name = source_manager.get_name_by_id(rid)
+                # fallback, если id не найден в source.json
+                if name and name != "Неизвестный источник":
+                    return name
+            src = container.get("property_source")
+            if isinstance(src, str) and src.strip():
+                sub = container.get("property_subsource")
+                if sub:
+                    return f"{src.strip()} ({sub})"
+                return src.strip()
+            sub = container.get("property_subsource")
+            if isinstance(sub, str) and sub.strip():
+                return sub.strip()
+            return None
 
-        if prop_type in (Schema.PHYSICAL, Schema.TYPE_PHYSICAL):
-            data = self.get_physical_data(prop_key) if prop_key else None
-            return resolve(data) or "-"
+        if prop_type == Schema.PHYSICAL:
+            if prop_key:
+                return resolve(self.get_physical_data(prop_key)) or "-"
+            # без prop_key — первый заполненный источник среди физ. свойств
+            for prop in self.get_physical_list():
+                name = resolve(prop)
+                if name:
+                    return name
+            return "-"
 
-        if prop_type in (Schema.MECHANICAL, Schema.TYPE_MECHANICAL):
+        if prop_type == Schema.MECHANICAL:
             cats = self.get_strength_categories()
             if not cats:
                 return "-"
@@ -493,160 +401,95 @@ class Material:
                 if category_idx is not None and 0 <= category_idx < len(cats)
                 else cats[0]
             )
-            if prop_key and isinstance(cat, dict) and prop_key in cat:
-                prop = cat[prop_key]
-                if isinstance(prop, dict):
-                    rid = prop.get(Schema.REF_ID)
-                    if rid and source_manager:
-                        name = source_manager.get_name_by_id(rid)
-                        if name:
-                            return name
-                    src = prop.get("property_source")
-                    if isinstance(src, str) and src.strip():
-                        sub = prop.get("property_subsource")
-                        if sub:
-                            return f"{src} ({sub})" if src else f"({sub})"
-                        return src
+            # при prop_key — сначала источник свойства (новая схема)
+            if prop_key:
+                name = resolve(self.get_category_prop_data(cat, prop_key))
+                if name:
+                    return name
+            # НТД категории: REF_ID / legacy / первое свойство
             return self.get_category_source_label(cat, source_manager)
 
         return "-"
 
     # ------------------------------------------------------------------
-    # Legacy → property_groups
+    # Legacy → новая схема
     # ------------------------------------------------------------------
 
     def normalize_schema(self):
-        """Идемпотентно приводит self.data к property_groups."""
-        if isinstance(self.data.get(Schema.PROPERTY_GROUPS), list) and self.data[Schema.PROPERTY_GROUPS]:
-            # уже новая схема; подчистим legacy-ключи если остались
-            self._drop_legacy_roots()
-            return
+        self._normalize_physical()
+        self._normalize_mechanical()
 
-        groups = []
-
-        # physical
+    def _normalize_physical(self):
         phys = self.data.get(Schema.PHYSICAL)
-        phys_props = []
-        if isinstance(phys, dict):
-            for key, val in phys.items():
-                if isinstance(val, dict):
-                    phys_props.append({Schema.PROP_NAME: key, Schema.DATA: dict(val)})
-        elif isinstance(phys, list):
-            for item in phys:
-                if not isinstance(item, dict):
-                    continue
-                name = item.get(Schema.PROP_NAME) or item.get("property_id")
-                if not name:
-                    continue
-                data = item.get(Schema.DATA) if isinstance(item.get(Schema.DATA), dict) else {
-                    k: v for k, v in item.items() if k not in (Schema.PROP_NAME, "property_id")
-                }
-                phys_props.append({Schema.PROP_NAME: name, Schema.DATA: data})
-        groups.append({Schema.PROPERTY_TYPE: Schema.TYPE_PHYSICAL, Schema.PROPERTIES: phys_props})
+        if phys is None:
+            self.data[Schema.PHYSICAL] = {Schema.PROPERTIES: []}
+            return
+        if isinstance(phys, list):
+            # уже массив свойств на корне — обернуть
+            self.data[Schema.PHYSICAL] = {Schema.PROPERTIES: phys}
+            return
+        if not isinstance(phys, dict):
+            self.data[Schema.PHYSICAL] = {Schema.PROPERTIES: []}
+            return
+        if isinstance(phys.get(Schema.PROPERTIES), list):
+            return
+        # legacy: { density: {...}, ... }
+        props = []
+        for key, val in list(phys.items()):
+            if key == Schema.PROPERTIES or key == Schema.REF_ID:
+                continue
+            if isinstance(val, dict):
+                item = dict(val)
+                item[Schema.PROP_NAME] = key
+                props.append(item)
+        self.data[Schema.PHYSICAL] = {Schema.PROPERTIES: props}
 
-        # mechanical
-        strength_groups = []
+    def _normalize_mechanical(self):
         mech = self.data.get(Schema.MECHANICAL)
-        if isinstance(mech, dict):
-            cats = mech.get("strength_category") or mech.get(Schema.STRENGTH_GROUPS) or []
-            if isinstance(cats, list):
-                for cat in cats:
-                    if not isinstance(cat, dict):
-                        continue
-                    strength_groups.append(self._normalize_legacy_category(cat))
-        groups.append({
-            Schema.PROPERTY_TYPE: Schema.TYPE_MECHANICAL,
-            Schema.STRENGTH_GROUPS: strength_groups,
-        })
-
-        # chemical
-        chem_props = []
-        chem = self.data.get(Schema.CHEMICAL)
-        if isinstance(chem, dict):
-            comps = chem.get(Schema.COMPOSITION) or []
-            if isinstance(comps, list):
-                for comp in comps:
-                    if isinstance(comp, dict):
-                        chem_props.append({
-                            Schema.PROP_NAME: Schema.COMPOSITION,
-                            Schema.DATA: dict(comp),
-                        })
-        groups.append({Schema.PROPERTY_TYPE: Schema.TYPE_CHEMICAL, Schema.PROPERTIES: chem_props})
-
-        self.data[Schema.PROPERTY_GROUPS] = groups
-        self._drop_legacy_roots()
+        if not isinstance(mech, dict):
+            self.data[Schema.MECHANICAL] = {Schema.STRENGTH_CAT: []}
+            return
+        cats = mech.get(Schema.STRENGTH_CAT)
+        if not isinstance(cats, list):
+            mech[Schema.STRENGTH_CAT] = []
+            return
+        for cat in cats:
+            self._normalize_category(cat)
 
     @staticmethod
-    def _normalize_legacy_category(cat):
-        name = cat.get(Schema.STRENGTH_CAT) or cat.get(Schema.VAL_STR_CAT) or ""
-        out = {
-            Schema.STRENGTH_CAT: name,
-            "comment": cat.get("comment", ""),
-            Schema.PROPERTIES: [],
+    def _normalize_category(cat):
+        if not isinstance(cat, dict):
+            return
+        props = cat.get(Schema.PROPERTIES)
+        if not isinstance(props, list):
+            props = []
+            cat[Schema.PROPERTIES] = props
+
+        hard = cat.get(Schema.HARDNESS)
+        if isinstance(hard, dict) and (
+            "min_value" in hard or "max_value" in hard or "unit_value" in hard
+        ):
+            cat[Schema.HARDNESS] = [hard]
+        elif not isinstance(hard, list):
+            cat[Schema.HARDNESS] = []
+
+        reserved = {
+            Schema.VAL_STR_CAT, Schema.PROPERTIES, Schema.REF_ID,
+            Schema.HARDNESS, Schema.HARDNESS_UNIT,
+            "comment", "property_source", "property_subsource",
         }
-        if cat.get(Schema.REF_ID):
-            out[Schema.REF_ID] = cat[Schema.REF_ID]
-        if cat.get("property_subsource"):
-            out["property_subsource"] = cat["property_subsource"]
-        if cat.get("property_source"):
-            out["property_source"] = cat["property_source"]
 
-        props = []
-        # already new-ish properties list
-        if isinstance(cat.get(Schema.PROPERTIES), list):
-            for item in cat[Schema.PROPERTIES]:
-                if not isinstance(item, dict):
-                    continue
-                pname = item.get(Schema.PROP_NAME) or item.get("property_id")
-                if not pname:
-                    continue
-                if isinstance(item.get(Schema.DATA), dict):
-                    props.append({Schema.PROP_NAME: pname, Schema.DATA: dict(item[Schema.DATA])})
-                elif pname == Schema.HARDNESS and isinstance(item.get("values"), list):
-                    props.append({
-                        Schema.PROP_NAME: Schema.HARDNESS,
-                        Schema.DATA: {
-                            Schema.HARDNESS_VALUES: item["values"],
-                            Schema.HARDNESS_UNIT: item.get("property_unit") or item.get("value_unit") or "HB",
-                            "comment": item.get("comment", ""),
-                        },
-                    })
-                else:
-                    data = {k: v for k, v in item.items() if k not in (Schema.PROP_NAME, "property_id")}
-                    if pname == Schema.HARDNESS and Schema.HARDNESS_VALUES not in data and "values" in data:
-                        data[Schema.HARDNESS_VALUES] = data.pop("values")
-                    props.append({Schema.PROP_NAME: pname, Schema.DATA: data})
-        else:
-            reserved = {
-                Schema.STRENGTH_CAT, Schema.VAL_STR_CAT, Schema.PROPERTIES, Schema.REF_ID,
-                Schema.HARDNESS_UNIT, "comment", "property_source", "property_subsource",
-            }
-            if isinstance(cat.get(Schema.HARDNESS), list):
-                unit = cat.get(Schema.HARDNESS_UNIT) or (
-                    cat[Schema.HARDNESS][0].get("unit_value") if cat[Schema.HARDNESS] else "HB"
-                ) or "HB"
-                props.append({
-                    Schema.PROP_NAME: Schema.HARDNESS,
-                    Schema.DATA: {
-                        Schema.HARDNESS_VALUES: cat[Schema.HARDNESS],
-                        Schema.HARDNESS_UNIT: unit,
-                        "comment": "",
-                    },
-                })
-            for key, val in cat.items():
-                if key in reserved or key == Schema.HARDNESS:
-                    continue
-                if isinstance(val, dict) and (
-                    Schema.TEMP_PAIRS in val or "property_name" in val or "value_unit" in val
-                ):
-                    props.append({Schema.PROP_NAME: key, Schema.DATA: dict(val)})
-
-        out[Schema.PROPERTIES] = props
-        return out
-
-    def _drop_legacy_roots(self):
-        for key in (Schema.PHYSICAL, Schema.MECHANICAL, Schema.CHEMICAL):
-            self.data.pop(key, None)
+        for key, val in list(cat.items()):
+            if key in reserved:
+                continue
+            if isinstance(val, dict) and (
+                Schema.TEMP_PAIRS in val or "value_unit" in val or "property_unit" in val
+            ):
+                if Material.find_named_prop(props, key) is None:
+                    item = dict(val)
+                    item[Schema.PROP_NAME] = key
+                    props.append(item)
+                del cat[key]
 
     @staticmethod
     def normalize_metadata(data: dict) -> None:
@@ -675,16 +518,14 @@ class Material:
         self.normalize_schema()
         now = datetime.now().isoformat()
 
-        for entry in self.get_physical_properties_list():
-            data = self.get_prop_data(entry)
-            if data is not None:
-                data["property_last_updated"] = now
+        for prop in self.get_physical_list():
+            if isinstance(prop, dict):
+                prop["property_last_updated"] = now
 
         for cat in self.get_strength_categories():
-            for entry in cat.get(Schema.PROPERTIES) or []:
-                data = self.get_prop_data(entry)
-                if data is not None:
-                    data["property_last_updated"] = now
+            for prop in cat.get(Schema.PROPERTIES) or []:
+                if isinstance(prop, dict):
+                    prop["property_last_updated"] = now
 
         with open(save_path, 'w', encoding='utf-8') as f:
             json.dump(self.data, f, ensure_ascii=False, indent=2)

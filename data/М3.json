@@ -13,84 +13,77 @@
       "classification_subclass": ""
     }
   },
-  "property_groups": [
-    {
-      "property_type": "physical",
-      "properties": []
-    },
-    {
-      "property_type": "mechanical",
-      "strength_groups": []
-    },
-    {
-      "property_type": "chemical",
-      "properties": [
-        {
-          "property_name": "composition",
-          "data": {
-            "composition_source": "ГОСТ 859 - 2001",
-            "other_elements": [
-              {
-                "element": "Fe",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.05
-              },
-              {
-                "element": "Ni",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.2
-              },
-              {
-                "element": "S",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.01
-              },
-              {
-                "element": "As",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.01
-              },
-              {
-                "element": "Pb",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.05
-              },
-              {
-                "element": "O",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.08
-              },
-              {
-                "element": "Sb",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.05
-              },
-              {
-                "element": "Bi",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.003
-              },
-              {
-                "element": "Sn",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.05
-              }
-            ],
-            "comment": "",
-            "base_element": "Cu",
-            "source_ref_id": "b3bb13b7-1fd8-487c-ad7e-163320fbb4f9"
+  "physical_properties": {
+    "properties": []
+  },
+  "mechanical_properties": {
+    "strength_category": []
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 859 - 2001",
+        "composition_subsource": "",
+        "comment": "",
+        "base_element": "Cu",
+        "other_elements": [
+          {
+            "element": "Fe",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "Ni",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.2
+          },
+          {
+            "element": "S",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.01
+          },
+          {
+            "element": "As",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.01
+          },
+          {
+            "element": "Pb",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "O",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.08
+          },
+          {
+            "element": "Sb",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "Bi",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.003
+          },
+          {
+            "element": "Sn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
           }
-        }
-      ]
-    }
-  ]
+        ],
+        "source_ref_id": "b3bb13b7-1fd8-487c-ad7e-163320fbb4f9"
+      }
+    ]
+  }
 }

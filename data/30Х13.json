@@ -11,82 +11,66 @@
       "classification_subclass": ""
     }
   },
-  "property_groups": [
-    {
-      "property_type": "physical",
-      "properties": []
-    },
-    {
-      "property_type": "mechanical",
-      "strength_groups": [
-        {
-          "strength_category": "КП60",
-          "comment": "",
-          "properties": [
-            {
-              "property_name": "hardness",
-              "data": {
-                "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
-              }
-            }
-          ],
-          "source_ref_id": "1e7500b7-751d-45ec-ac0d-8010595ca34a"
-        }
-      ]
-    },
-    {
-      "property_type": "chemical",
-      "properties": [
-        {
-          "property_name": "composition",
-          "data": {
-            "composition_source": "ГОСТ 5632-2014",
-            "other_elements": [
-              {
-                "element": "C",
-                "unit_value": "%",
-                "min_value": 0.26,
-                "max_value": 0.35
-              },
-              {
-                "element": "Si",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.8
-              },
-              {
-                "element": "Mn",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.8
-              },
-              {
-                "element": "Cr",
-                "unit_value": "%",
-                "min_value": 12.0,
-                "max_value": 14.0
-              },
-              {
-                "element": "S",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.025
-              },
-              {
-                "element": "P",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.03
-              }
-            ],
-            "comment": "",
-            "base_element": "Fe",
-            "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"
+  "physical_properties": {
+    "properties": []
+  },
+  "mechanical_properties": {
+    "strength_category": [
+      {
+        "value_strength_category": "КП60",
+        "hardness": [],
+        "properties": [],
+        "hardness_unit": "HB",
+        "source_ref_id": "1e7500b7-751d-45ec-ac0d-8010595ca34a"
+      }
+    ]
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 5632-2014",
+        "other_elements": [
+          {
+            "element": "C",
+            "unit_value": "%",
+            "min_value": 0.26,
+            "max_value": 0.35
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.8
+          },
+          {
+            "element": "Mn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.8
+          },
+          {
+            "element": "Cr",
+            "unit_value": "%",
+            "min_value": 12.0,
+            "max_value": 14.0
+          },
+          {
+            "element": "S",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.025
+          },
+          {
+            "element": "P",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.03
           }
-        }
-      ]
-    }
-  ]
+        ],
+        "comment": "",
+        "base_element": "Fe",
+        "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"
+      }
+    ]
+  }
 }

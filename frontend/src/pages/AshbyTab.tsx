@@ -1,5 +1,6 @@
 import {
   Fragment,
+  memo,
   useCallback,
   useEffect,
   useId,
@@ -20,13 +21,11 @@ import {
   ResponsiveContainer,
   Scatter,
   ScatterChart,
-  Tooltip,
   usePlotArea,
   useXAxisScale,
   useYAxisScale,
   XAxis,
   YAxis,
-  type TooltipContentProps,
 } from "recharts";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { getAshbyOptions, postAshby } from "../api/selection";
@@ -68,10 +67,14 @@ const ASHBY_TOOLTIP_OFFSET = 10;
 /** Отступ текстовых координат курсора (без плашки) от указателя. */
 const ASHBY_CURSOR_COORDS_OFFSET = 12;
 /**
- * Если курсор ушёл дальше этого радиуса от точки — сбрасываем «залипшую»
- * плашку Recharts (иногда active остаётся true вне маркера).
+ * Радиус захвата точки для плашки (px в системе SVG).
+ * Крупнее маркера — плашка срабатывает и при мелком масштабе.
  */
-const ASHBY_POINT_TOOLTIP_STICK_PX = 30;
+const ASHBY_POINT_HIT_PX = 14;
+/** Пауза перед пересчётом позиции легенды после смены domain (мс). */
+const ASHBY_LEGEND_PLACE_DEBOUNCE_MS = 120;
+/** Зазор между графиком и боковой легендой при экспорте (px экрана). */
+const ASHBY_EXPORT_LEGEND_SIDE_GAP = 16;
 
 type AshbyCursorGeomCache = {
   svg: SVGSVGElement;
@@ -79,11 +82,38 @@ type AshbyCursorGeomCache = {
   canvasTop: number;
 };
 
+type AshbyExportLegendItem = {
+  label: string;
+  color: string;
+  kind: "series" | "class";
+  strokeDasharray?: string;
+};
+
+type AshbyLegendSidePanelLayout = {
+  title: string;
+  width: number;
+  height: number;
+  padding: number;
+  titleY: number;
+  titleFontSize: number;
+  fontSize: number;
+  markerW: number;
+  labelPad: number;
+  rows: Array<{
+    x: number;
+    y: number;
+    label: string;
+    color: string;
+    kind: "series" | "class";
+    strokeDasharray?: string;
+  }>;
+};
+
 type AshbyPointTip = {
   x: number;
   y: number;
-  materialLabel: string;
-  color: string;
+  /** Все материалы с этой координатой (совпадающие точки). */
+  materials: Array<{ label: string; color: string }>;
   /** Координата маркера в системе chart (как у Recharts Tooltip coordinate). */
   chartX: number;
   chartY: number;
@@ -121,6 +151,365 @@ function roundRectPath(
   ctx.arcTo(x, y + height, x, y, r);
   ctx.arcTo(x, y, x + width, y, r);
   ctx.closePath();
+}
+
+/** Легенда на экране прокручивается — для экспорта нужна боковая панель. */
+function isAshbyLegendListScrollable(overlay: HTMLElement): boolean {
+  const list = overlay.querySelector(".ashby-legend-overlay-list");
+  if (!(list instanceof HTMLElement)) {
+    return false;
+  }
+  return list.scrollHeight > list.clientHeight + 1;
+}
+
+function collectAshbyExportLegendItems(
+  overlay: HTMLElement,
+): AshbyExportLegendItem[] {
+  const items: AshbyExportLegendItem[] = [];
+  overlay.querySelectorAll(".ashby-legend-item").forEach((item) => {
+    const itemEl = item as HTMLElement;
+    const label = itemEl.querySelector(
+      ".ashby-legend-label",
+    ) as HTMLElement | null;
+    if (!label) {
+      return;
+    }
+    const markerSvg = itemEl.querySelector("svg");
+    const circle = markerSvg?.querySelector("circle");
+    const rect = markerSvg?.querySelector("rect");
+    const line = markerSvg?.querySelector("line");
+    const color =
+      circle?.getAttribute("fill") ||
+      rect?.getAttribute("fill") ||
+      line?.getAttribute("stroke") ||
+      "#3D5A80";
+    items.push({
+      label: label.textContent?.trim() ?? "",
+      color,
+      kind: rect ? "class" : "series",
+      strokeDasharray: line?.getAttribute("stroke-dasharray") || undefined,
+    });
+  });
+  return items;
+}
+
+function readAshbyLegendOverlayTitle(overlay: HTMLElement): string {
+  const title = overlay.querySelector(
+    ".ashby-legend-overlay-title",
+  ) as HTMLElement | null;
+  return title?.textContent?.trim() || "Элементы на графике";
+}
+
+/** Раскладка полной легенды справа от графика (только для экспорта).
+ * Высота ограничена низом графика: лишние пункты уходят во 2-ю, 3-ю… колонки.
+ */
+function measureAshbyLegendSidePanel(
+  items: AshbyExportLegendItem[],
+  title: string,
+  maxHeight: number,
+): AshbyLegendSidePanelLayout {
+  const padding = 12;
+  const titleFontSize = 14;
+  const fontSize = 13;
+  const markerW = 28;
+  const labelPad = Math.round((0.25 * 96) / 2.54);
+  const rowGap = 6;
+  const colGap = 16;
+  const rowHeight = Math.max(18, Math.ceil(fontSize * 1.4));
+  const titleBlock = titleFontSize + 10;
+  const listTop = padding + titleBlock;
+
+  const canvas = document.createElement("canvas");
+  const measureCtx = canvas.getContext("2d");
+  let maxLabel = 80;
+  let titleWidth = 80;
+  if (measureCtx) {
+    measureCtx.font = `500 ${titleFontSize}px system-ui, -apple-system, sans-serif`;
+    titleWidth = measureCtx.measureText(title).width;
+    measureCtx.font = `400 ${fontSize}px system-ui, -apple-system, sans-serif`;
+    for (const item of items) {
+      maxLabel = Math.max(maxLabel, measureCtx.measureText(item.label).width);
+    }
+  }
+
+  const colInnerW = markerW + labelPad + maxLabel;
+  const availableListH = Math.max(
+    rowHeight,
+    maxHeight - listTop - padding,
+  );
+  const rowsPerCol = Math.max(
+    1,
+    Math.floor((availableListH + rowGap) / (rowHeight + rowGap)),
+  );
+  const colCount = Math.max(1, Math.ceil(items.length / rowsPerCol));
+  const contentW = colCount * colInnerW + Math.max(0, colCount - 1) * colGap;
+  const width = Math.ceil(padding * 2 + Math.max(contentW, titleWidth));
+
+  const rows = items.map((item, index) => {
+    const col = Math.floor(index / rowsPerCol);
+    const row = index % rowsPerCol;
+    return {
+      ...item,
+      x: padding + col * (colInnerW + colGap),
+      y: listTop + row * (rowHeight + rowGap) + rowHeight / 2,
+    };
+  });
+
+  const tallestRows = Math.min(rowsPerCol, items.length);
+  const height = Math.ceil(
+    Math.min(
+      maxHeight,
+      listTop +
+        tallestRows * rowHeight +
+        Math.max(0, tallestRows - 1) * rowGap +
+        padding,
+    ),
+  );
+
+  return {
+    title,
+    width,
+    height,
+    padding,
+    titleY: padding + titleFontSize / 2,
+    titleFontSize,
+    fontSize,
+    markerW,
+    labelPad,
+    rows,
+  };
+}
+
+function drawExportLegendMarker(
+  ctx: CanvasRenderingContext2D,
+  item: Pick<AshbyExportLegendItem, "color" | "kind" | "strokeDasharray">,
+  mx: number,
+  cy: number,
+  markerW: number,
+): void {
+  const color = item.color || "#3D5A80";
+  if (item.kind === "class") {
+    const mh = 12;
+    const my = cy - mh / 2;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(mx, my, markerW, mh);
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mx, my, markerW, mh);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const mh = 14;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  if (item.strokeDasharray) {
+    ctx.setLineDash(
+      item.strokeDasharray
+        .split(/[\s,]+/)
+        .map(Number)
+        .filter((n) => Number.isFinite(n)),
+    );
+  } else {
+    ctx.setLineDash([]);
+  }
+  ctx.beginPath();
+  ctx.moveTo(mx + 1, cy);
+  ctx.lineTo(mx + markerW - 1, cy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(mx + markerW / 2, cy, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawLegendSidePanelToContext(
+  ctx: CanvasRenderingContext2D,
+  layout: AshbyLegendSidePanelLayout,
+  ox: number,
+  oy: number,
+): void {
+  ctx.save();
+  roundRectPath(ctx, ox, oy, layout.width, layout.height, 6);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.strokeStyle = "#d8dce3";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#242930";
+  ctx.font = `500 ${layout.titleFontSize}px system-ui, -apple-system, sans-serif`;
+  ctx.textBaseline = "middle";
+  ctx.fillText(layout.title, ox + layout.padding, oy + layout.titleY);
+
+  for (const row of layout.rows) {
+    const mx = ox + row.x;
+    const cy = oy + row.y;
+    drawExportLegendMarker(ctx, row, mx, cy, layout.markerW);
+    ctx.fillStyle = "#242930";
+    ctx.font = `400 ${layout.fontSize}px system-ui, -apple-system, sans-serif`;
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      row.label,
+      mx + layout.markerW + layout.labelPad,
+      cy,
+    );
+  }
+  ctx.restore();
+}
+
+function appendExportLegendMarkerSvg(
+  group: SVGElement,
+  item: Pick<AshbyExportLegendItem, "color" | "kind" | "strokeDasharray">,
+  mx: number,
+  cy: number,
+  markerW: number,
+  scaleX: number,
+  scaleY: number,
+): void {
+  const color = item.color || "#3D5A80";
+  if (item.kind === "class") {
+    const mh = 12 * scaleY;
+    group.appendChild(
+      svgEl("rect", {
+        x: mx,
+        y: cy - mh / 2,
+        width: markerW,
+        height: mh,
+        rx: 2 * scaleX,
+        fill: color,
+        "fill-opacity": 0.45,
+        stroke: color,
+        "stroke-opacity": 0.85,
+        "stroke-width": 1 * scaleX,
+      }),
+    );
+    return;
+  }
+  group.appendChild(
+    svgEl("line", {
+      x1: mx + scaleX,
+      y1: cy,
+      x2: mx + markerW - scaleX,
+      y2: cy,
+      stroke: color,
+      "stroke-width": 2 * scaleX,
+      "stroke-linecap": "round",
+      ...(item.strokeDasharray
+        ? { "stroke-dasharray": item.strokeDasharray }
+        : {}),
+    }),
+  );
+  group.appendChild(
+    svgEl("circle", {
+      cx: mx + markerW / 2,
+      cy,
+      r: 4 * scaleX,
+      fill: color,
+      stroke: color,
+    }),
+  );
+}
+
+/** Полная легенда справа от графика в координатах SVG. */
+function appendLegendSidePanelSvg(
+  parent: SVGElement,
+  layout: AshbyLegendSidePanelLayout,
+  ox: number,
+  oy: number,
+  scaleX: number,
+  scaleY: number,
+): { width: number; height: number } {
+  const width = layout.width * scaleX;
+  const height = layout.height * scaleY;
+  const group = svgEl("g", { class: "ashby-legend-export-side" });
+
+  group.appendChild(
+    svgEl("rect", {
+      x: ox,
+      y: oy,
+      width,
+      height,
+      rx: 6 * scaleX,
+      ry: 6 * scaleY,
+      fill: "#ffffff",
+      stroke: "#d8dce3",
+      "stroke-width": 1 * scaleX,
+    }),
+  );
+
+  const title = svgEl("text", {
+    x: ox + layout.padding * scaleX,
+    y: oy + layout.titleY * scaleY,
+    fill: "#242930",
+    "font-size": layout.titleFontSize * scaleY,
+    "font-weight": "500",
+    "font-family": "system-ui, -apple-system, sans-serif",
+    "dominant-baseline": "middle",
+  });
+  title.textContent = layout.title;
+  group.appendChild(title);
+
+  const markerW = layout.markerW * scaleX;
+  for (const row of layout.rows) {
+    const mx = ox + row.x * scaleX;
+    const cy = oy + row.y * scaleY;
+    appendExportLegendMarkerSvg(
+      group,
+      row,
+      mx,
+      cy,
+      markerW,
+      scaleX,
+      scaleY,
+    );
+    const text = svgEl("text", {
+      x: mx + markerW + layout.labelPad * scaleX,
+      y: cy,
+      fill: "#242930",
+      "font-size": layout.fontSize * scaleY,
+      "font-family": "system-ui, -apple-system, sans-serif",
+      "dominant-baseline": "middle",
+    });
+    text.textContent = row.label;
+    group.appendChild(text);
+  }
+
+  parent.appendChild(group);
+  return { width, height };
+}
+
+function resolveAshbyExportLegend(
+  root: HTMLElement,
+  maxHeight: number,
+): {
+  overlay: HTMLElement | null;
+  sidePanel: AshbyLegendSidePanelLayout | null;
+} {
+  const overlay = root.querySelector(
+    ".ashby-legend-overlay",
+  ) as HTMLElement | null;
+  if (!overlay) {
+    return { overlay: null, sidePanel: null };
+  }
+  if (!isAshbyLegendListScrollable(overlay)) {
+    return { overlay, sidePanel: null };
+  }
+  const items = collectAshbyExportLegendItems(overlay);
+  if (items.length === 0) {
+    return { overlay, sidePanel: null };
+  }
+  return {
+    overlay,
+    sidePanel: measureAshbyLegendSidePanel(
+      items,
+      readAshbyLegendOverlayTitle(overlay),
+      Math.max(120, maxHeight),
+    ),
+  };
 }
 
 /** Рисует HTML-легенду на canvas по фактическому положению на экране. */
@@ -225,10 +614,22 @@ function drawLegendOverlayToContext(
         ctx.fillStyle = color;
         ctx.lineWidth = 2;
         ctx.lineCap = "round";
+        const dash = line?.getAttribute("stroke-dasharray");
+        if (dash) {
+          ctx.setLineDash(
+            dash
+              .split(/[\s,]+/)
+              .map(Number)
+              .filter((n) => Number.isFinite(n)),
+          );
+        } else {
+          ctx.setLineDash([]);
+        }
         ctx.beginPath();
         ctx.moveTo(mx + 1, my + mh / 2);
         ctx.lineTo(mx + mw - 1, my + mh / 2);
         ctx.stroke();
+        ctx.setLineDash([]);
         ctx.beginPath();
         ctx.arc(mx + mw / 2, my + mh / 2, 4, 0, Math.PI * 2);
         ctx.fill();
@@ -290,11 +691,16 @@ async function exportAshbyChartPng(root: HTMLElement): Promise<void> {
     return;
   }
 
-  const width = root.clientWidth;
-  const height = root.clientHeight;
-  if (width <= 0 || height <= 0) {
+  const chartW = root.clientWidth;
+  const chartH = root.clientHeight;
+  if (chartW <= 0 || chartH <= 0) {
     return;
   }
+
+  const { overlay, sidePanel } = resolveAshbyExportLegend(root, chartH);
+  const sideGap = sidePanel ? ASHBY_EXPORT_LEGEND_SIDE_GAP : 0;
+  const width = chartW + sideGap + (sidePanel?.width ?? 0);
+  const height = chartH;
 
   const scale = Math.min(2, window.devicePixelRatio || 2);
   const canvas = document.createElement("canvas");
@@ -319,11 +725,10 @@ async function exportAshbyChartPng(root: HTMLElement): Promise<void> {
     svgRect.height,
   );
 
-  const legend = root.querySelector(
-    ".ashby-legend-overlay",
-  ) as HTMLElement | null;
-  if (legend) {
-    drawLegendOverlayToContext(ctx, legend, root);
+  if (sidePanel) {
+    drawLegendSidePanelToContext(ctx, sidePanel, chartW + sideGap, 0);
+  } else if (overlay) {
+    drawLegendOverlayToContext(ctx, overlay, root);
   }
 
   await new Promise<void>((resolve, reject) => {
@@ -386,6 +791,8 @@ function exportAshbyChartSvg(root: HTMLElement): void {
   const scaleX = vbW / displayW;
   const scaleY = vbH / displayH;
 
+  const { overlay, sidePanel } = resolveAshbyExportLegend(root, displayH);
+
   const ns = "http://www.w3.org/2000/svg";
   const rootSvg = document.createElementNS(ns, "svg");
   rootSvg.setAttribute("xmlns", ns);
@@ -427,13 +834,11 @@ function exportAshbyChartSvg(root: HTMLElement): void {
     }
   });
 
-  const legend = root.querySelector(
-    ".ashby-legend-overlay",
-  ) as HTMLElement | null;
-  if (legend) {
+  // Короткая легенда без скролла — поверх графика, как на экране.
+  if (overlay && !sidePanel) {
     appendLegendSvgGroupRelativeToSvg(
       contentGroup,
-      legend,
+      overlay,
       svgRect,
       scaleX,
       scaleY,
@@ -460,10 +865,34 @@ function exportAshbyChartSvg(root: HTMLElement): void {
     const bbox = contentGroup.getBBox();
     if (bbox.width > 0 && bbox.height > 0) {
       const pad = 8;
-      finalVbX = bbox.x - pad;
-      finalVbY = bbox.y - pad;
-      finalVbW = bbox.width + pad * 2;
-      finalVbH = bbox.height + pad * 2;
+      if (sidePanel) {
+        const gapSvg = ASHBY_EXPORT_LEGEND_SIDE_GAP * scaleX;
+        const panelX = bbox.x + bbox.width + gapSvg;
+        const panelY = bbox.y;
+        const panelSize = appendLegendSidePanelSvg(
+          contentGroup,
+          sidePanel,
+          panelX,
+          panelY,
+          scaleX,
+          scaleY,
+        );
+        finalVbX = Math.min(bbox.x, panelX) - pad;
+        finalVbY = Math.min(bbox.y, panelY) - pad;
+        finalVbW =
+          Math.max(bbox.x + bbox.width, panelX + panelSize.width) -
+          finalVbX +
+          pad;
+        finalVbH =
+          Math.max(bbox.y + bbox.height, panelY + panelSize.height) -
+          finalVbY +
+          pad;
+      } else {
+        finalVbX = bbox.x - pad;
+        finalVbY = bbox.y - pad;
+        finalVbW = bbox.width + pad * 2;
+        finalVbH = bbox.height + pad * 2;
+      }
     }
   } catch {
     // оставляем исходный viewBox
@@ -695,6 +1124,11 @@ function appendLegendSvgGroupRelativeToSvg(
             stroke: color,
             "stroke-width": 2 * scaleX,
             "stroke-linecap": "round",
+            ...(line?.getAttribute("stroke-dasharray")
+              ? {
+                  "stroke-dasharray": line.getAttribute("stroke-dasharray")!,
+                }
+              : {}),
           }),
         );
         group.appendChild(
@@ -810,67 +1244,32 @@ function formatAshbyAxisReadout(
     : `${safeSymbol} = ${valueLabel}`;
 }
 
-function isAshbyAxisTooltipName(name: unknown): boolean {
-  const normalized = String(name ?? "")
-    .trim()
-    .toLowerCase();
-  return (
-    normalized === "" ||
-    normalized === "x" ||
-    normalized === "y" ||
-    normalized === "value"
-  );
-}
-
-/** Имя материала из payload Scatter (игнорируем name="x"/"y" у осей). */
-function pickAshbyMaterialLabel(
-  items: ReadonlyArray<{
-    name?: unknown;
-    dataKey?: unknown;
-    payload?: unknown;
-    color?: unknown;
+function collectAshbyMaterialsAtPoint(
+  seriesList: ReadonlyArray<{
+    label: string;
+    color: string;
+    points: Array<{ x: number; y: number }>;
   }>,
-): { label: string; color: string } {
-  for (const entry of items) {
-    const raw = (entry.payload ?? {}) as {
-      materialLabel?: string;
-      label?: string;
-    };
-    const fromPayload = String(
-      raw.materialLabel ?? raw.label ?? "",
-    ).trim();
-    if (fromPayload && !isAshbyAxisTooltipName(fromPayload)) {
-      return {
-        label: fromPayload,
-        color: String(entry.color || "#242930"),
-      };
+  x: number,
+  y: number,
+): Array<{ label: string; color: string }> {
+  const found: Array<{ label: string; color: string }> = [];
+  const seen = new Set<string>();
+  for (const series of seriesList) {
+    const hit = series.points.some(
+      (point) => point.x === x && point.y === y,
+    );
+    if (!hit) {
+      continue;
     }
-  }
-  for (const entry of items) {
-    const name = String(entry.name ?? "").trim();
-    const dataKey = String(entry.dataKey ?? "").trim().toLowerCase();
-    if (
-      name &&
-      !isAshbyAxisTooltipName(name) &&
-      dataKey !== "x" &&
-      dataKey !== "y"
-    ) {
-      return {
-        label: name,
-        color: String(entry.color || "#242930"),
-      };
+    const label = series.label.trim();
+    if (!label || seen.has(label)) {
+      continue;
     }
+    seen.add(label);
+    found.push({ label, color: series.color || "#242930" });
   }
-  for (const entry of items) {
-    const name = String(entry.name ?? "").trim();
-    if (name && !isAshbyAxisTooltipName(name)) {
-      return {
-        label: name,
-        color: String(entry.color || "#242930"),
-      };
-    }
-  }
-  return { label: "", color: "#242930" };
+  return found;
 }
 
 function axisCaptionFromOption(
@@ -1139,7 +1538,11 @@ function AshbyAxisLabels({
 }
 
 /** Hull для Recharts 3: scale через hooks (паритет fill alpha=0.15). */
-function HullPolygons({ hulls }: { hulls: AshbyHull[] }) {
+const HullPolygons = memo(function HullPolygons({
+  hulls,
+}: {
+  hulls: AshbyHull[];
+}) {
   const xScale = useXAxisScale();
   const yScale = useYAxisScale();
   const plotArea = usePlotArea();
@@ -1190,7 +1593,7 @@ function HullPolygons({ hulls }: { hulls: AshbyHull[] }) {
       </g>
     </g>
   );
-}
+});
 
 const ASHBY_SECTION_LABEL_STYLE: CSSProperties = {
   fontSize: 14,
@@ -1306,7 +1709,49 @@ type AshbyLegendItem = {
   value: string;
   color: string;
   kind: "series" | "class";
+  /** Штрих линии при совпадении координат с другой серией. */
+  strokeDasharray?: string;
 };
+
+/** Паттерны штриха для серий с одинаковыми точками (первая — сплошная). */
+const ASHBY_OVERLAP_DASHES = ["", "8 4", "2 3", "10 3 2 3", "1 2 6 2"] as const;
+
+function ashbyPointsSignature(
+  points: Array<{ x: number; y: number }>,
+): string {
+  return points
+    .map((point) => `${point.x.toFixed(6)}:${point.y.toFixed(6)}`)
+    .join("|");
+}
+
+/** Индекс совпадения внутри группы одинаковых кривых → dasharray. */
+function buildAshbyOverlapDashBySeriesId(
+  seriesList: Array<{ id: string; points: Array<{ x: number; y: number }> }>,
+): Map<string, string | undefined> {
+  const groups = new Map<string, string[]>();
+  for (const series of seriesList) {
+    if (series.points.length === 0) {
+      continue;
+    }
+    const key = ashbyPointsSignature(series.points);
+    const ids = groups.get(key);
+    if (ids) {
+      ids.push(series.id);
+    } else {
+      groups.set(key, [series.id]);
+    }
+  }
+  const result = new Map<string, string | undefined>();
+  for (const ids of groups.values()) {
+    ids.forEach((id, index) => {
+      result.set(
+        id,
+        ASHBY_OVERLAP_DASHES[index % ASHBY_OVERLAP_DASHES.length] || undefined,
+      );
+    });
+  }
+  return result;
+}
 
 type AshbyLegendPlacement = { top: number; left: number };
 
@@ -1325,8 +1770,8 @@ type AshbyLegendGeometry = {
 };
 
 /** Шаг сетки кандидатов позиции легенды (чем меньше — тем точнее поиск «дыры»). */
-const ASHBY_LEGEND_GRID_COLS = 11;
-const ASHBY_LEGEND_GRID_ROWS = 11;
+const ASHBY_LEGEND_GRID_COLS = 7;
+const ASHBY_LEGEND_GRID_ROWS = 7;
 
 function legendRectContainsPoint(rect: AshbyLegendRect, point: AshbyPlotPoint): boolean {
   return (
@@ -1411,7 +1856,7 @@ function segmentIntersectsLegendRect(
 /** Прореживает/досэмплирует полилинию, чтобы ловить пересечения посередине сегментов. */
 function samplePolylinePoints(
   points: AshbyPlotPoint[],
-  stepPx = 8,
+  stepPx = 16,
 ): { points: AshbyPlotPoint[]; segments: Array<[AshbyPlotPoint, AshbyPlotPoint]> } {
   const sampled: AshbyPlotPoint[] = [];
   const segments: Array<[AshbyPlotPoint, AshbyPlotPoint]> = [];
@@ -1427,7 +1872,7 @@ function samplePolylinePoints(
     const dy = next.y - prev.y;
     const dist = Math.hypot(dx, dy);
     if (dist > stepPx) {
-      const count = Math.min(48, Math.ceil(dist / stepPx));
+      const count = Math.min(24, Math.ceil(dist / stepPx));
       for (let s = 1; s < count; s += 1) {
         const t = s / count;
         sampled.push({ x: prev.x + dx * t, y: prev.y + dy * t });
@@ -1609,13 +2054,16 @@ function buildAshbyLegend(data: AshbyResponse | null): AshbyLegendItem[] {
   if (!data) {
     return [];
   }
+  const plotted = data.series.filter((series) => series.points.length > 0);
+  const overlapDash = buildAshbyOverlapDashBySeriesId(plotted);
   const items: AshbyLegendItem[] = [];
-  for (const series of data.series) {
+  for (const series of plotted) {
     items.push({
       id: `series:${series.id}`,
       value: series.label,
       color: series.color,
       kind: "series",
+      strokeDasharray: overlapDash.get(series.id),
     });
   }
   const classItems =
@@ -1626,6 +2074,9 @@ function buildAshbyLegend(data: AshbyResponse | null): AshbyLegendItem[] {
           color: hull.color,
         }));
   for (const item of classItems) {
+    if (!item.class_name?.trim()) {
+      continue;
+    }
     items.push({
       id: `class:${item.class_name}`,
       value: `Класс: ${item.class_name}`,
@@ -1637,7 +2088,13 @@ function buildAshbyLegend(data: AshbyResponse | null): AshbyLegendItem[] {
 }
 
 /** Маркер серии: короткая линия + кружок. */
-function AshbyLegendSeriesMarker({ color }: { color: string }) {
+function AshbyLegendSeriesMarker({
+  color,
+  strokeDasharray,
+}: {
+  color: string;
+  strokeDasharray?: string;
+}) {
   const stroke = color || "#3D5A80";
   const w = 28;
   const h = 14;
@@ -1664,6 +2121,7 @@ function AshbyLegendSeriesMarker({ color }: { color: string }) {
         stroke={stroke}
         strokeWidth={2}
         strokeLinecap="round"
+        strokeDasharray={strokeDasharray || undefined}
       />
       <circle cx={w / 2} cy={7} r={4} fill={stroke} stroke={stroke} strokeWidth={1} />
     </svg>
@@ -1709,98 +2167,7 @@ function AshbyLegendClassSwatch({ color }: { color: string }) {
   );
 }
 
-/**
- * Репортер точки для Recharts Tooltip: сам плашку не рисует.
- * Плашку рендерит родитель, чтобы можно было сбросить «залипание» active.
- */
-function AshbyPointTooltipReporter({
-  active,
-  payload,
-  coordinate,
-  onReport,
-}: TooltipContentProps<number, string> & {
-  onReport: (tip: AshbyPointTip | null) => void;
-}) {
-  const onReportRef = useRef(onReport);
-  onReportRef.current = onReport;
-  const lastKeyRef = useRef<string | null>(null);
-
-  useLayoutEffect(() => {
-    if (!active || !coordinate || !payload || payload.length === 0) {
-      if (lastKeyRef.current !== null) {
-        lastKeyRef.current = null;
-        onReportRef.current(null);
-      }
-      return;
-    }
-    const items = payload.filter((entry) => entry && entry.type !== "none");
-    if (items.length === 0) {
-      if (lastKeyRef.current !== null) {
-        lastKeyRef.current = null;
-        onReportRef.current(null);
-      }
-      return;
-    }
-
-    const first = items[0];
-    const raw = (first.payload ?? {}) as {
-      x?: number;
-      y?: number;
-      materialLabel?: string;
-      label?: string;
-    };
-    let x = Number(raw.x);
-    let y = Number(raw.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      for (const entry of items) {
-        const key = String(entry.dataKey ?? "");
-        const numeric =
-          typeof entry.value === "number" ? entry.value : Number(entry.value);
-        if (!Number.isFinite(numeric)) {
-          continue;
-        }
-        if (key === "x") {
-          x = numeric;
-        } else if (key === "y") {
-          y = numeric;
-        }
-      }
-    }
-    if (
-      !Number.isFinite(x) ||
-      !Number.isFinite(y) ||
-      !Number.isFinite(coordinate.x) ||
-      !Number.isFinite(coordinate.y)
-    ) {
-      if (lastKeyRef.current !== null) {
-        lastKeyRef.current = null;
-        onReportRef.current(null);
-      }
-      return;
-    }
-
-    const { label: materialLabel, color } = pickAshbyMaterialLabel(items);
-    const chartX = Math.round(coordinate.x);
-    const chartY = Math.round(coordinate.y);
-    const key = `${materialLabel}|${x}|${y}|${chartX}|${chartY}|${color}`;
-    if (lastKeyRef.current === key) {
-      return;
-    }
-    lastKeyRef.current = key;
-    onReportRef.current({
-      x,
-      y,
-      materialLabel,
-      color,
-      chartX,
-      chartY,
-    });
-  }, [active, payload, coordinate]);
-
-  return null;
-}
-
-/** Белая плашка у точки (материал + Y/X). */
+/** Белая плашка у точки (материалы + Y/X). */
 function AshbyPointTipPlaque({
   tip,
   xAxis,
@@ -1835,15 +2202,20 @@ function AshbyPointTipPlaque({
         boxSizing: "border-box",
       }}
     >
-      {tip.materialLabel ? (
-        <div
-          style={{
-            marginBottom: 4,
-            fontWeight: 500,
-            color: tip.color,
-          }}
-        >
-          {tip.materialLabel}
+      {tip.materials.length > 0 ? (
+        <div style={{ marginBottom: 4 }}>
+          {tip.materials.map((material, index) => (
+            <div
+              key={`${material.label}:${material.color}`}
+              style={{
+                fontWeight: 500,
+                color: material.color,
+                marginBottom: index === tip.materials.length - 1 ? 0 : 2,
+              }}
+            >
+              {material.label}
+            </div>
+          ))}
         </div>
       ) : null}
       <div>{formatAshbyAxisReadout(yAxis, tip.y)}</div>
@@ -1922,28 +2294,57 @@ function AshbyCursorScaleReporter({
   return null;
 }
 
+/** Высота «шапки» легенды (заголовок + внутренние отступы плашки). */
+const ASHBY_LEGEND_CHROME_PX = 52;
+/** Легенда не выше этой доли высоты поля графика. */
+const ASHBY_LEGEND_MAX_CHART_RATIO = 0.55;
+
 function AshbyLegendOverlay({
   items,
   placement,
+  chartHeight,
   overlayRef,
 }: {
   items: AshbyLegendItem[];
   placement: AshbyLegendPlacement | null;
+  chartHeight: number;
   overlayRef: RefObject<HTMLDivElement | null>;
 }) {
+  const top = placement?.top ?? ASHBY_LEGEND_PADDING;
+  const availableBelow = Math.max(
+    120,
+    chartHeight - top - ASHBY_LEGEND_PADDING,
+  );
+  const maxBoxHeight = Math.max(
+    120,
+    Math.min(
+      availableBelow,
+      Math.floor(chartHeight * ASHBY_LEGEND_MAX_CHART_RATIO),
+    ),
+  );
+  const listMaxHeight = Math.max(72, maxBoxHeight - ASHBY_LEGEND_CHROME_PX);
+
   return (
     <div
       ref={overlayRef}
       className="ashby-legend-overlay"
       aria-label="Цвета элементов на графике"
+      onWheel={(event) => {
+        // Не зумить график, пока крутим список легенды.
+        event.stopPropagation();
+      }}
       style={{
         position: "absolute",
         ...(placement
           ? { top: placement.top, left: placement.left, right: "auto" }
-          : { top: ASHBY_LEGEND_PADDING, right: ASHBY_LEGEND_PADDING, left: "auto" }),
+          : {
+              top: ASHBY_LEGEND_PADDING,
+              right: ASHBY_LEGEND_PADDING,
+              left: "auto",
+            }),
         width: "max-content",
         maxWidth: "calc(100% - 24px)",
-        maxHeight: "calc(100% - 24px)",
+        maxHeight: maxBoxHeight,
         display: "flex",
         flexDirection: "column",
         padding: "10px 10px 8px",
@@ -1954,7 +2355,7 @@ function AshbyLegendOverlay({
         boxSizing: "border-box",
         overflow: "hidden",
         zIndex: 3,
-        pointerEvents: "none",
+        pointerEvents: items.length > 0 ? "auto" : "none",
       }}
     >
       <div
@@ -1966,6 +2367,7 @@ function AshbyLegendOverlay({
           fontWeight: 500,
           color: "#242930",
           whiteSpace: "nowrap",
+          flex: "0 0 auto",
         }}
       >
         Элементы на графике
@@ -1977,9 +2379,17 @@ function AshbyLegendOverlay({
           margin: 0,
           padding: "4px 4px 8px",
           listStyle: "none",
-          overflow: "auto",
+          // Явный maxHeight — иначе flex+maxHeight родителя часто не даёт scroll.
+          maxHeight: listMaxHeight,
+          height: "auto",
+          overflowX: "hidden",
+          overflowY: "auto",
+          flex: "0 1 auto",
+          minHeight: 0,
           width: "max-content",
           maxWidth: "100%",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {items.length === 0 ? (
@@ -2002,7 +2412,10 @@ function AshbyLegendOverlay({
               {item.kind === "class" ? (
                 <AshbyLegendClassSwatch color={item.color} />
               ) : (
-                <AshbyLegendSeriesMarker color={item.color} />
+                <AshbyLegendSeriesMarker
+                  color={item.color}
+                  strokeDasharray={item.strokeDasharray}
+                />
               )}
               <span
                 className="ashby-legend-label"
@@ -2027,11 +2440,13 @@ function AshbyLegendPlacementReporter({
   data,
   domain,
   legendSize,
+  toolMode,
   onPlacementChange,
 }: {
   data: AshbyResponse | null;
   domain: AxisDomain;
   legendSize: { width: number; height: number };
+  toolMode: ChartToolMode;
   onPlacementChange: (placement: AshbyLegendPlacement) => void;
 }) {
   const plotArea = usePlotArea();
@@ -2042,16 +2457,21 @@ function AshbyLegendPlacementReporter({
     if (!plotArea || !xScale || !yScale || legendSize.width <= 0 || legendSize.height <= 0) {
       return;
     }
-
-    const geometry = buildLegendGeometry(
-      data,
-      (value) => xScale(value) ?? undefined,
-      (value) => yScale(value) ?? undefined,
-    );
-
-    onPlacementChange(
-      findBestLegendPlacement(plotArea, legendSize, geometry),
-    );
+    const delay =
+      toolMode === "none"
+        ? ASHBY_LEGEND_PLACE_DEBOUNCE_MS
+        : ASHBY_LEGEND_PLACE_DEBOUNCE_MS * 2;
+    const timer = window.setTimeout(() => {
+      const geometry = buildLegendGeometry(
+        data,
+        (value) => xScale(value) ?? undefined,
+        (value) => yScale(value) ?? undefined,
+      );
+      onPlacementChange(
+        findBestLegendPlacement(plotArea, legendSize, geometry),
+      );
+    }, delay);
+    return () => window.clearTimeout(timer);
   }, [
     plotArea?.x,
     plotArea?.y,
@@ -2066,6 +2486,7 @@ function AshbyLegendPlacementReporter({
     domain.y.domain[1],
     legendSize.width,
     legendSize.height,
+    toolMode,
     onPlacementChange,
   ]);
 
@@ -2085,7 +2506,6 @@ function AshbyChart({
   interactionEnabled,
   onDomainPreview,
   onDomainCommit,
-  onXAxisBandChange,
 }: {
   data: AshbyResponse | null;
   domain: AxisDomain;
@@ -2099,8 +2519,8 @@ function AshbyChart({
   interactionEnabled: boolean;
   onDomainPreview: (next: AxisDomain) => void;
   onDomainCommit: (next: AxisDomain) => void;
-  onXAxisBandChange: (band: { left: number; width: number }) => void;
 }) {
+  const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const legendOverlayRef = useRef<HTMLDivElement>(null);
   const cursorScaleBridgeRef = useRef<AshbyCursorScaleBridge | null>(null);
@@ -2119,8 +2539,18 @@ function AshbyChart({
   const toolModeRef = useRef(toolMode);
   const pointTipRef = useRef<AshbyPointTip | null>(null);
   const dismissedTipKeyRef = useRef<string | null>(null);
+  const plottedSeriesRef = useRef<
+    Array<{
+      id: string;
+      label: string;
+      color: string;
+      points: Array<{ x: number; y: number }>;
+    }>
+  >([]);
+  const domainRafRef = useRef<number | null>(null);
+  const pendingDomainRef = useRef<AxisDomain | null>(null);
   const [pointTip, setPointTip] = useState<AshbyPointTip | null>(null);
-  /** X на всю колонку; Y фиксирована и не зависит от классов. */
+  /** Размер поля графика: ширина/высота по доступному месту до края страницы. */
   const [chartSize, setChartSize] = useState({ width: 560, height: 580 });
   const [legendSize, setLegendSize] = useState({ width: 280, height: 120 });
   const [legendPlacement, setLegendPlacement] = useState<AshbyLegendPlacement | null>(
@@ -2133,8 +2563,11 @@ function AshbyChart({
   pointTipRef.current = pointTip;
 
   const pointTipKey = useCallback((tip: AshbyPointTip) => {
+    const materialsKey = tip.materials
+      .map((item) => `${item.label}:${item.color}`)
+      .join(";");
     return [
-      tip.materialLabel,
+      materialsKey,
       tip.x,
       tip.y,
       Math.round(tip.chartX),
@@ -2166,15 +2599,7 @@ function AshbyChart({
       }
       dismissedTipKeyRef.current = null;
       const prev = pointTipRef.current;
-      if (
-        prev &&
-        prev.x === tip.x &&
-        prev.y === tip.y &&
-        prev.chartX === tip.chartX &&
-        prev.chartY === tip.chartY &&
-        prev.materialLabel === tip.materialLabel &&
-        prev.color === tip.color
-      ) {
+      if (prev && pointTipKey(prev) === key) {
         return;
       }
       pointTipRef.current = tip;
@@ -2275,25 +2700,6 @@ function AshbyChart({
         geom = refreshCursorGeomCache();
       }
 
-      // Сброс залипшей плашки: курсор ушёл от точки, а Recharts ещё держит active.
-      const tip = pointTipRef.current;
-      if (tip && geom) {
-        const tipScreenX = geom.canvasLeft + tip.chartX;
-        const tipScreenY = geom.canvasTop + tip.chartY;
-        const dx = pending.clientX - tipScreenX;
-        const dy = pending.clientY - tipScreenY;
-        const stick = ASHBY_POINT_TOOLTIP_STICK_PX;
-        if (dx * dx + dy * dy > stick * stick) {
-          clearPointTip(pointTipKey(tip));
-        } else {
-          hideCursorReadout();
-          return;
-        }
-      } else if (tip) {
-        hideCursorReadout();
-        return;
-      }
-
       const labelEl = cursorLabelRef.current;
       const yLineEl = cursorYLineRef.current;
       const xLineEl = cursorXLineRef.current;
@@ -2323,8 +2729,66 @@ function AshbyChart({
         local.y < plotArea.y ||
         local.y > plotArea.y + plotArea.height
       ) {
+        if (pointTipRef.current) {
+          clearPointTip(pointTipKey(pointTipRef.current));
+        }
         labelEl.style.visibility = "hidden";
         return;
+      }
+
+      // Свой hit-test: ближайшая точка в радиусе (не зависит от размера маркера Recharts).
+      const hitR2 = ASHBY_POINT_HIT_PX * ASHBY_POINT_HIT_PX;
+      let bestDist2 = hitR2;
+      let best: {
+        x: number;
+        y: number;
+        chartX: number;
+        chartY: number;
+      } | null = null;
+      for (const series of plottedSeriesRef.current) {
+        for (const point of series.points) {
+          const cx = xScale?.(point.x);
+          const cy = yScale?.(point.y);
+          if (cx == null || cy == null) {
+            continue;
+          }
+          const dx = local.x - cx;
+          const dy = local.y - cy;
+          const dist2 = dx * dx + dy * dy;
+          if (dist2 <= bestDist2) {
+            bestDist2 = dist2;
+            best = {
+              x: point.x,
+              y: point.y,
+              chartX: Math.round(cx),
+              chartY: Math.round(cy),
+            };
+          }
+        }
+      }
+
+      if (best) {
+        const materials = collectAshbyMaterialsAtPoint(
+          plottedSeriesRef.current,
+          best.x,
+          best.y,
+        );
+        handlePointTipReport({
+          x: best.x,
+          y: best.y,
+          materials:
+            materials.length > 0
+              ? materials
+              : [{ label: "", color: "#242930" }],
+          chartX: best.chartX,
+          chartY: best.chartY,
+        });
+        hideCursorReadout();
+        return;
+      }
+
+      if (pointTipRef.current) {
+        clearPointTip(pointTipKey(pointTipRef.current));
       }
 
       const dataX = invertScale(
@@ -2373,6 +2837,7 @@ function AshbyChart({
     clearPointTip,
     pointTipKey,
     clientToSvgLocal,
+    handlePointTipReport,
   ]);
 
   const handleCursorMove = useCallback(
@@ -2445,8 +2910,11 @@ function AshbyChart({
     const updateLegendSize = () => {
       const { width, height } = el.getBoundingClientRect();
       if (width > 0 && height > 0) {
+        // Размер для размещения = видимая плашка (уже с maxHeight), не scrollHeight.
         setLegendSize((prev) =>
-          prev.width === width && prev.height === height ? prev : { width, height },
+          prev.width === width && prev.height === height
+            ? prev
+            : { width, height },
         );
       }
     };
@@ -2457,30 +2925,29 @@ function AshbyChart({
     return () => {
       observer.disconnect();
     };
-  }, [legendItems]);
+  }, [legendItems, chartSize.height, legendPlacement?.top]);
 
   useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) {
+    const stage = stageRef.current;
+    if (!stage) {
       return;
     }
 
-    // Фиксированная высота поля графика (не привязана к левой панели / классам)
-    const FIXED_HEIGHT = 580;
-
     const updateSize = () => {
-      const availableWidth = el.clientWidth;
-      // Ось X — как раньше: почти на всю ширину средней колонки
-      const width = Math.max(280, Math.floor(availableWidth));
-      const height = FIXED_HEIGHT;
+      const width = Math.max(280, Math.floor(stage.clientWidth));
+      const height = Math.max(280, Math.floor(stage.clientHeight));
       if (width > 0 && height > 0) {
-        setChartSize({ width, height });
+        setChartSize((prev) =>
+          prev.width === width && prev.height === height
+            ? prev
+            : { width, height },
+        );
       }
     };
 
     updateSize();
     const observer = new ResizeObserver(updateSize);
-    observer.observe(el);
+    observer.observe(stage);
     window.addEventListener("resize", updateSize);
     return () => {
       observer.disconnect();
@@ -2488,10 +2955,75 @@ function AshbyChart({
     };
   }, []);
 
-  const plottedSeries = (data?.series ?? []).filter(
-    (series) => series.points.length > 0,
+  const domainLiveRef = useRef(domain);
+  domainLiveRef.current = domain;
+
+  const scheduleDomainUpdate = useCallback(
+    (update: AxisDomain | ((prev: AxisDomain) => AxisDomain)) => {
+      const base = pendingDomainRef.current ?? domainLiveRef.current;
+      pendingDomainRef.current =
+        typeof update === "function" ? update(base) : update;
+      if (domainRafRef.current !== null) {
+        return;
+      }
+      domainRafRef.current = requestAnimationFrame(() => {
+        domainRafRef.current = null;
+        const pending = pendingDomainRef.current;
+        pendingDomainRef.current = null;
+        if (pending) {
+          onDomainPreview(pending);
+        }
+      });
+    },
+    [onDomainPreview],
+  );
+
+  const commitDomainUpdate = useCallback(
+    (next: AxisDomain) => {
+      pendingDomainRef.current = null;
+      if (domainRafRef.current !== null) {
+        cancelAnimationFrame(domainRafRef.current);
+        domainRafRef.current = null;
+      }
+      onDomainCommit(next);
+    },
+    [onDomainCommit],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (domainRafRef.current !== null) {
+        cancelAnimationFrame(domainRafRef.current);
+      }
+    };
+  }, []);
+
+  const plottedSeries = useMemo(
+    () => (data?.series ?? []).filter((series) => series.points.length > 0),
+    [data],
+  );
+  plottedSeriesRef.current = plottedSeries;
+  const overlapDashById = useMemo(
+    () => buildAshbyOverlapDashBySeriesId(plottedSeries),
+    [plottedSeries],
   );
   const hulls = data?.hulls ?? [];
+
+  const scatterModels = useMemo(
+    () =>
+      plottedSeries.map((item) => ({
+        id: item.id,
+        label: item.label,
+        color: item.color,
+        strokeDasharray: overlapDashById.get(item.id),
+        data: item.points.map((point) => ({
+          x: point.x,
+          y: point.y,
+          materialLabel: item.label,
+        })),
+      })),
+    [plottedSeries, overlapDashById],
+  );
 
   useEffect(() => {
     if (plottedSeries.length === 0) {
@@ -2499,16 +3031,6 @@ function AshbyChart({
       dismissedTipKeyRef.current = null;
     }
   }, [plottedSeries.length, clearPointTip]);
-
-  const renderPointTooltip = useCallback(
-    (props: TooltipContentProps<number, string>) => (
-      <AshbyPointTooltipReporter
-        {...props}
-        onReport={handlePointTipReport}
-      />
-    ),
-    [handlePointTipReport],
-  );
 
   /** Невидимые точки, чтобы оси/сетка рисовались даже без данных. */
   const axisSeed = [
@@ -2550,6 +3072,7 @@ function AshbyChart({
 
   // React onWheel — passive, preventDefault не блокирует скролл страницы.
   // Нативный listener с { passive: false } нужен, чтобы зум не крутил страницу.
+  // Над легендой preventDefault не ставим — иначе не крутится список.
   useEffect(() => {
     const el = canvasRef.current;
     if (!el) {
@@ -2557,6 +3080,14 @@ function AshbyChart({
     }
     const onWheel = (event: WheelEvent) => {
       if (!interactionEnabled) {
+        return;
+      }
+      const legend = legendOverlayRef.current;
+      if (
+        legend &&
+        event.target instanceof Node &&
+        legend.contains(event.target)
+      ) {
         return;
       }
       event.preventDefault();
@@ -2569,168 +3100,175 @@ function AshbyChart({
 
   return (
     <div className="ashby-chart-inner">
-      <div
-        ref={canvasRef}
-        className={
-          toolMode === "pan"
-            ? "ashby-chart-canvas ashby-chart-canvas--pan"
-            : toolMode === "zoom"
-              ? "ashby-chart-canvas ashby-chart-canvas--zoom"
-              : "ashby-chart-canvas"
-        }
-        style={{
-          position: "relative",
-          width: "100%",
-          height: chartSize.height,
-        }}
-        onMouseMove={handleCursorMove}
-        onMouseLeave={() => {
-          hideCursorReadout();
-          clearPointTip();
-          dismissedTipKeyRef.current = null;
-        }}
-        onMouseEnter={() => {
-          cursorGeomCacheRef.current = null;
-        }}
-        onWheel={(event) => {
-          if (!interactionEnabled || toolMode !== "none") {
-            return;
-          }
-          event.preventDefault();
-          const factor = wheelZoomFactor(event.deltaY, event.deltaMode);
-          onDomainCommit({
-            x: zoomDomain(domain.x, factor),
-            y: zoomDomain(domain.y, factor),
-          });
-        }}
-      >
-        {/* График; легенда поверх с прозрачностью (pointer-events: none). */}
+      <div className="ashby-chart-stage" ref={stageRef}>
         <div
-          className="ashby-chart-layer"
+          ref={canvasRef}
+          className={
+            toolMode === "pan"
+              ? "ashby-chart-canvas ashby-chart-canvas--pan"
+              : toolMode === "zoom"
+                ? "ashby-chart-canvas ashby-chart-canvas--zoom"
+                : "ashby-chart-canvas"
+          }
           style={{
             position: "relative",
-            zIndex: 1,
-            width: "100%",
-            height: "100%",
+            width: chartSize.width,
+            height: chartSize.height,
+          }}
+          onMouseMove={handleCursorMove}
+          onMouseLeave={() => {
+            hideCursorReadout();
+            clearPointTip();
+            dismissedTipKeyRef.current = null;
+          }}
+          onMouseEnter={() => {
+            cursorGeomCacheRef.current = null;
+          }}
+          onWheel={(event) => {
+            if (!interactionEnabled || toolMode !== "none") {
+              return;
+            }
+            const legend = legendOverlayRef.current;
+            if (
+              legend &&
+              event.target instanceof Node &&
+              legend.contains(event.target)
+            ) {
+              return;
+            }
+            event.preventDefault();
+            const factor = wheelZoomFactor(event.deltaY, event.deltaMode);
+            scheduleDomainUpdate((prev) => ({
+              x: zoomDomain(prev.x, factor),
+              y: zoomDomain(prev.y, factor),
+            }));
           }}
         >
-          <ResponsiveContainer width={chartSize.width} height={chartSize.height}>
-            <ScatterChart margin={{ ...ASHBY_CHART_MARGIN }}>
-              <AshbyChartTitle title={title} />
-              <AshbyAxisLabels
-                xLabel={xLabel}
-                yLabel={yLabel}
-                yAxisWidth={yAxisWidth}
-              />
-              <CartesianGrid strokeDasharray="4 4" strokeOpacity={0.7} />
-              <XAxis
-                type="number"
-                dataKey="x"
-                name=""
-                domain={domain.x.domain}
-                ticks={viewAxisTicks.x.ticks}
-                allowDataOverflow
-                tickCount={8}
-                tickFormatter={(value) =>
-                  formatAdaptiveTickLabel(Number(value), viewAxisTicks.x.step)
-                }
-              />
-              <YAxis
-                type="number"
-                dataKey="y"
-                name=""
-                width={yAxisWidth}
-                domain={domain.y.domain}
-                ticks={viewAxisTicks.y.ticks}
-                allowDataOverflow
-                tickCount={8}
-                tickFormatter={(value) =>
-                  formatAdaptiveTickLabel(Number(value), viewAxisTicks.y.step)
-                }
-              />
-              {plottedSeries.length > 0 && toolMode === "none" && (
-                <Tooltip
-                  cursor={{ strokeDasharray: "3 3" }}
-                  wrapperStyle={{ display: "none" }}
-                  content={renderPointTooltip}
+          {/* График; легенда поверх с прозрачностью (pointer-events: none). */}
+          <div
+            className="ashby-chart-layer"
+            style={{
+              position: "relative",
+              zIndex: 1,
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <ResponsiveContainer width={chartSize.width} height={chartSize.height}>
+              <ScatterChart margin={{ ...ASHBY_CHART_MARGIN }}>
+                <AshbyChartTitle title={title} />
+                <AshbyAxisLabels
+                  xLabel={xLabel}
+                  yLabel={yLabel}
+                  yAxisWidth={yAxisWidth}
                 />
-              )}
-              {hulls.length > 0 && <HullPolygons hulls={hulls} />}
-              {plottedSeries.length === 0 && (
-                <Scatter
-                  id="ashby-axis-seed"
-                  data={axisSeed}
-                  fill="transparent"
-                  stroke="none"
-                  legendType="none"
-                  isAnimationActive={false}
+                <CartesianGrid strokeDasharray="4 4" strokeOpacity={0.7} />
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  name=""
+                  domain={domain.x.domain}
+                  ticks={viewAxisTicks.x.ticks}
+                  allowDataOverflow
+                  tickCount={8}
+                  tickFormatter={(value) =>
+                    formatAdaptiveTickLabel(Number(value), viewAxisTicks.x.step)
+                  }
                 />
-              )}
-              {plottedSeries.map((item) => (
-                <Scatter
-                  key={item.id}
-                  id={item.id}
-                  name={item.label}
-                  data={item.points.map((point) => ({
-                    ...point,
-                    materialLabel: item.label,
-                  }))}
-                  fill={item.color}
-                  stroke={item.color}
-                  line={{ stroke: item.color, strokeWidth: 1.5 }}
-                  lineType="joint"
-                  legendType="none"
-                  isAnimationActive={false}
+                <YAxis
+                  type="number"
+                  dataKey="y"
+                  name=""
+                  width={yAxisWidth}
+                  domain={domain.y.domain}
+                  ticks={viewAxisTicks.y.ticks}
+                  allowDataOverflow
+                  tickCount={8}
+                  tickFormatter={(value) =>
+                    formatAdaptiveTickLabel(Number(value), viewAxisTicks.y.step)
+                  }
                 />
-              ))}
-              <AshbyCursorScaleReporter
-                domain={domain}
-                bridgeRef={cursorScaleBridgeRef}
-              />
-              <AshbyChartInteraction
-                mode={toolMode}
-                enabled={interactionEnabled}
-                domain={domain}
-                onDomainPreview={onDomainPreview}
-                onDomainCommit={onDomainCommit}
-              />
-              <AshbyXAxisBandReporter onBandChange={onXAxisBandChange} />
-              <AshbyLegendPlacementReporter
-                data={data}
-                domain={domain}
-                legendSize={legendSize}
-                onPlacementChange={handleLegendPlacementChange}
-              />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-        <AshbyLegendOverlay
-          items={legendItems}
-          placement={legendPlacement}
-          overlayRef={legendOverlayRef}
-        />
-        <div
-          className="ashby-tooltip-portal"
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 30,
-            pointerEvents: "none",
-          }}
-        >
-          {pointTip ? (
-            <AshbyPointTipPlaque
-              tip={pointTip}
-              xAxis={xAxis}
-              yAxis={yAxis}
-            />
-          ) : null}
-          <AshbyCursorCoordsLabel
-            labelRef={cursorLabelRef}
-            yLineRef={cursorYLineRef}
-            xLineRef={cursorXLineRef}
+                {hulls.length > 0 && <HullPolygons hulls={hulls} />}
+                {plottedSeries.length === 0 && (
+                  <Scatter
+                    id="ashby-axis-seed"
+                    data={axisSeed}
+                    fill="transparent"
+                    stroke="none"
+                    legendType="none"
+                    isAnimationActive={false}
+                  />
+                )}
+                {scatterModels.map((item) => (
+                  <Scatter
+                    key={item.id}
+                    id={item.id}
+                    name={item.label}
+                    data={item.data}
+                    fill={item.color}
+                    stroke={item.color}
+                    line={{
+                      stroke: item.color,
+                      strokeWidth: item.strokeDasharray ? 2 : 1.5,
+                      ...(item.strokeDasharray
+                        ? { strokeDasharray: item.strokeDasharray }
+                        : {}),
+                    }}
+                    lineType="joint"
+                    legendType="none"
+                    isAnimationActive={false}
+                  />
+                ))}
+                <AshbyCursorScaleReporter
+                  domain={domain}
+                  bridgeRef={cursorScaleBridgeRef}
+                />
+                <AshbyChartInteraction
+                  mode={toolMode}
+                  enabled={interactionEnabled}
+                  domain={domain}
+                  onDomainPreview={scheduleDomainUpdate}
+                  onDomainCommit={commitDomainUpdate}
+                />
+                <AshbyLegendPlacementReporter
+                  data={data}
+                  domain={domain}
+                  legendSize={legendSize}
+                  toolMode={toolMode}
+                  onPlacementChange={handleLegendPlacementChange}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+          <AshbyLegendOverlay
+            items={legendItems}
+            placement={legendPlacement}
+            chartHeight={chartSize.height}
+            overlayRef={legendOverlayRef}
           />
+          <div
+            className="ashby-tooltip-portal"
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 30,
+              pointerEvents: "none",
+            }}
+          >
+            {pointTip ? (
+              <AshbyPointTipPlaque
+                tip={pointTip}
+                xAxis={xAxis}
+                yAxis={yAxis}
+              />
+            ) : null}
+            <AshbyCursorCoordsLabel
+              labelRef={cursorLabelRef}
+              yLineRef={cursorYLineRef}
+              xLineRef={cursorXLineRef}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -2818,7 +3356,9 @@ function AshbyChartInteraction({
   mode: ChartToolMode;
   enabled: boolean;
   domain: AxisDomain;
-  onDomainPreview: (next: AxisDomain) => void;
+  onDomainPreview: (
+    next: AxisDomain | ((prev: AxisDomain) => AxisDomain),
+  ) => void;
   onDomainCommit: (next: AxisDomain) => void;
 }) {
   const plotArea = usePlotArea();
@@ -3049,10 +3589,10 @@ function AshbyChartInteraction({
             plotArea.height,
             true,
           );
-          onDomainCommit({
-            x: zoomDomainAt(domain.x, factor, pivotX),
-            y: zoomDomainAt(domain.y, factor, pivotY),
-          });
+          onDomainPreview((prev) => ({
+            x: zoomDomainAt(prev.x, factor, pivotX),
+            y: zoomDomainAt(prev.y, factor, pivotY),
+          }));
         }}
       />
       {box && box.width > 2 && box.height > 2 ? (
@@ -3180,29 +3720,9 @@ function AshbyToolbarButton({
   );
 }
 
-/** Сообщает границы области данных (= ось X) для выравнивания панели. */
-function AshbyXAxisBandReporter({
-  onBandChange,
-}: {
-  onBandChange: (band: { left: number; width: number }) => void;
-}) {
-  const plotArea = usePlotArea();
-
-  useEffect(() => {
-    if (!plotArea || plotArea.width <= 0) {
-      return;
-    }
-    onBandChange({ left: plotArea.x, width: plotArea.width });
-  }, [plotArea?.x, plotArea?.width, onBandChange]);
-
-  return null;
-}
-
 function AshbyChartToolbar({
   enabled,
   mode,
-  xAxisLeft,
-  xAxisWidth,
   onHome,
   onModeChange,
   onZoomIn,
@@ -3211,8 +3731,6 @@ function AshbyChartToolbar({
 }: {
   enabled: boolean;
   mode: ChartToolMode;
-  xAxisLeft: number;
-  xAxisWidth: number;
   onHome: () => void;
   onModeChange: (mode: ChartToolMode) => void;
   onZoomIn: () => void;
@@ -3221,8 +3739,6 @@ function AshbyChartToolbar({
 }) {
   /** Расстояние между кнопками. */
   const buttonGap = "0.3cm";
-  const xAxisCenter =
-    xAxisWidth > 0 ? xAxisLeft + xAxisWidth / 2 : undefined;
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const [saveMenuPos, setSaveMenuPos] = useState<{ left: number; top: number } | null>(
     null,
@@ -3230,20 +3746,25 @@ function AshbyChartToolbar({
   const saveMenuRef = useRef<HTMLDivElement>(null);
   const saveButtonWrapRef = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => {
-    if (!saveMenuOpen) {
-      setSaveMenuPos(null);
-      return;
-    }
+  function updateSaveMenuPos() {
     const wrap = saveButtonWrapRef.current;
     if (!wrap) {
       return;
     }
     const rect = wrap.getBoundingClientRect();
+    // Меню слева от вертикальной панели
     setSaveMenuPos({
-      left: rect.left + rect.width / 2,
-      top: rect.top - 6,
+      left: rect.left - 8,
+      top: rect.top + rect.height / 2,
     });
+  }
+
+  useLayoutEffect(() => {
+    if (!saveMenuOpen) {
+      setSaveMenuPos(null);
+      return;
+    }
+    updateSaveMenuPos();
   }, [saveMenuOpen]);
 
   useEffect(() => {
@@ -3267,26 +3788,15 @@ function AshbyChartToolbar({
         setSaveMenuOpen(false);
       }
     }
-    function onReposition() {
-      const wrap = saveButtonWrapRef.current;
-      if (!wrap) {
-        return;
-      }
-      const rect = wrap.getBoundingClientRect();
-      setSaveMenuPos({
-        left: rect.left + rect.width / 2,
-        top: rect.top - 6,
-      });
-    }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", updateSaveMenuPos);
+    window.addEventListener("scroll", updateSaveMenuPos, true);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("scroll", onReposition, true);
+      window.removeEventListener("resize", updateSaveMenuPos);
+      window.removeEventListener("scroll", updateSaveMenuPos, true);
     };
   }, [saveMenuOpen]);
 
@@ -3297,11 +3807,11 @@ function AshbyChartToolbar({
         className="ashby-toolbar-spacer"
         aria-hidden
         style={{
-          display: "inline-block",
-          width: buttonGap,
-          minWidth: buttonGap,
+          display: "block",
+          width: 1,
+          height: buttonGap,
+          minHeight: buttonGap,
           flex: `0 0 ${buttonGap}`,
-          height: 1,
         }}
       />
     );
@@ -3324,7 +3834,7 @@ function AshbyChartToolbar({
               position: "fixed",
               left: saveMenuPos.left,
               top: saveMenuPos.top,
-              transform: "translate(-50%, -100%)",
+              transform: "translate(-100%, -50%)",
               minWidth: 120,
               padding: 4,
               border: "1px solid #d8dce3",
@@ -3357,17 +3867,11 @@ function AshbyChartToolbar({
         position: "relative",
         zIndex: 100,
         display: "inline-flex",
-        flexDirection: "row",
+        flexDirection: "column",
         flexWrap: "nowrap",
         alignItems: "center",
         justifyContent: "center",
         gap: 0,
-        ...(xAxisCenter != null
-          ? {
-              marginLeft: xAxisCenter,
-              transform: "translateX(-50%)",
-            }
-          : {}),
       }}
     >
       <AshbyToolbarButton
@@ -3475,23 +3979,12 @@ export function AshbyTab() {
   const [selectedArea, setSelectedArea] = useState("Все");
   const [xProp, setXProp] = useState("");
   const [yProp, setYProp] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [plotData, setPlotData] = useState<AshbyResponse | null>(null);
   const [baseDomain, setBaseDomain] = useState<AxisDomain | null>(null);
   const [viewDomain, setViewDomain] = useState<AxisDomain | null>(null);
   const [toolMode, setToolMode] = useState<ChartToolMode>("none");
-  const [xAxisBand, setXAxisBand] = useState({ left: 0, width: 0 });
   const [axesReady, setAxesReady] = useState(false);
-
-  const handleXAxisBandChange = useCallback(
-    (band: { left: number; width: number }) => {
-      setXAxisBand((prev) =>
-        prev.left === band.left && prev.width === band.width ? prev : band,
-      );
-    },
-    [],
-  );
 
   const areasParam =
     selectedArea && selectedArea !== "Все" ? [selectedArea] : undefined;
@@ -3536,16 +4029,6 @@ export function AshbyTab() {
       return next;
     });
   }, [classPool]);
-
-  const filteredClasses = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) {
-      return classPool;
-    }
-    return classPool.filter((className) =>
-      className.toLowerCase().includes(query),
-    );
-  }, [classPool, searchQuery]);
 
   const xOptions = useMemo(
     () => axes.filter((axis) => axis.key !== yProp),
@@ -3828,22 +4311,6 @@ export function AshbyTab() {
             </div>
           </div>
 
-          <div className="ashby-field">
-            <label htmlFor="ashby-class-search" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
-              Поиск структурного класса:
-            </label>
-            <div className="ashby-control-shell">
-              <input
-                id="ashby-class-search"
-                className="input ashby-field-control"
-                type="search"
-                value={searchQuery}
-                disabled={!workspace}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-          </div>
-
           <div
             className="ashby-selection-stack"
             style={{
@@ -3872,7 +4339,7 @@ export function AshbyTab() {
                 aria-label="Выберите классы"
                 style={ASHBY_CLASS_LIST_STYLE}
               >
-                {filteredClasses.map((className) => (
+                {classPool.map((className) => (
                   <li
                     key={className}
                     className="ashby-class-row"
@@ -3899,7 +4366,7 @@ export function AshbyTab() {
                 ))}
                 {workspace &&
                   !optionsQuery.isLoading &&
-                  filteredClasses.length === 0 && (
+                  classPool.length === 0 && (
                     <li
                       className="ashby-listbox-empty"
                       style={ASHBY_CLASS_ROW_STYLE}
@@ -3990,13 +4457,10 @@ export function AshbyTab() {
                 interactionEnabled={hasPlottedPoints}
                 onDomainPreview={setViewDomain}
                 onDomainCommit={setViewDomain}
-                onXAxisBandChange={handleXAxisBandChange}
               />
               <AshbyChartToolbar
                 enabled={hasPlottedPoints}
                 mode={toolMode}
-                xAxisLeft={xAxisBand.left}
-                xAxisWidth={xAxisBand.width}
                 onHome={handleHome}
                 onModeChange={setToolMode}
                 onZoomIn={() => handleZoom(0.8)}

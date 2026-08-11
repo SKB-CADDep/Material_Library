@@ -15,111 +15,96 @@
       "classification_subclass": ""
     }
   },
-  "property_groups": [
-    {
-      "property_type": "physical",
-      "properties": []
-    },
-    {
-      "property_type": "mechanical",
-      "strength_groups": [
-        {
-          "strength_category": "КП40",
-          "comment": "",
-          "properties": [
-            {
-              "property_name": "hardness",
-              "data": {
-                "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "property_type": "chemical",
-      "properties": [
-        {
-          "property_name": "composition",
-          "data": {
-            "composition_source": "ГОСТ 19281 - 2014",
-            "other_elements": [
-              {
-                "element": "C",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.12
-              },
-              {
-                "element": "Si",
-                "unit_value": "%",
-                "min_value": 0.8,
-                "max_value": 1.1
-              },
-              {
-                "element": "Mn",
-                "unit_value": "%",
-                "min_value": 0.5,
-                "max_value": 0.8
-              },
-              {
-                "element": "Ni",
-                "unit_value": "%",
-                "min_value": 0.5,
-                "max_value": 0.8
-              },
-              {
-                "element": "S",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.035
-              },
-              {
-                "element": "P",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.03
-              },
-              {
-                "element": "Cr",
-                "unit_value": "%",
-                "min_value": 0.6,
-                "max_value": 0.9
-              },
-              {
-                "element": "V",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.12
-              },
-              {
-                "element": "N",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.008
-              },
-              {
-                "element": "Cu",
-                "unit_value": "%",
-                "min_value": 0.4,
-                "max_value": 0.6
-              },
-              {
-                "element": "As",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.08
-              }
-            ],
-            "comment": "",
-            "base_element": "Fe",
-            "source_ref_id": "414c9f07-8174-4fd0-94fd-f67ab8e46b54"
+  "physical_properties": {
+    "properties": []
+  },
+  "mechanical_properties": {
+    "strength_category": [
+      {
+        "value_strength_category": "КП40",
+        "hardness": [],
+        "properties": [],
+        "hardness_unit": "HB"
+      }
+    ]
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 19281 - 2014",
+        "composition_subsource": "",
+        "comment": "",
+        "base_element": "Fe",
+        "other_elements": [
+          {
+            "element": "C",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.12
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.8,
+            "max_value": 1.1
+          },
+          {
+            "element": "Mn",
+            "unit_value": "%",
+            "min_value": 0.5,
+            "max_value": 0.8
+          },
+          {
+            "element": "Ni",
+            "unit_value": "%",
+            "min_value": 0.5,
+            "max_value": 0.8
+          },
+          {
+            "element": "S",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.035
+          },
+          {
+            "element": "P",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.03
+          },
+          {
+            "element": "Cr",
+            "unit_value": "%",
+            "min_value": 0.6,
+            "max_value": 0.9
+          },
+          {
+            "element": "V",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.12
+          },
+          {
+            "element": "N",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.008
+          },
+          {
+            "element": "Cu",
+            "unit_value": "%",
+            "min_value": 0.4,
+            "max_value": 0.6
+          },
+          {
+            "element": "As",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.08
           }
-        }
-      ]
-    }
-  ]
+        ],
+        "source_ref_id": "414c9f07-8174-4fd0-94fd-f67ab8e46b54"
+      }
+    ]
+  }
 }

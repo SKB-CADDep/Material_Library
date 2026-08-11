@@ -22,560 +22,315 @@
       "comment": ""
     }
   },
-  "property_groups": [
-    {
-      "property_type": "physical",
-      "properties": [
-        {
-          "property_name": "modulus_elasticity",
-          "data": {
+  "physical_properties": {
+    "properties": [
+      {
+        "property_name": "modulus_elasticity",
+        "temperature_value_pairs": [
+          [20.0, 202000.0],
+          [100.0, 196000.0],
+          [200.0, 188000.0],
+          [300.0, 180000.0],
+          [400.0, 171000.0],
+          [500.0, 164000.0],
+          [600.0, 155000.0],
+          [700.0, 147000.0]
+        ],
+        "value_unit": "МПа",
+        "comment": "",
+        "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+        "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+      },
+      {
+        "property_name": "coefficient_linear_expansion",
+        "temperature_value_pairs": [
+          [400.0, 17.1],
+          [500.0, 17.4],
+          [600.0, 17.8],
+          [700.0, 18.2],
+          [800.0, 18.6]
+        ],
+        "value_unit": "10^-6/C",
+        "comment": "",
+        "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+        "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+      },
+      {
+        "property_name": "coefficient_thermal_conductivity",
+        "temperature_value_pairs": [
+          [100.0, 15.0],
+          [200.0, 17.0],
+          [300.0, 18.0],
+          [400.0, 20.0],
+          [500.0, 22.0],
+          [600.0, 23.0],
+          [700.0, 25.0]
+        ],
+        "value_unit": "Вт/(м*С)",
+        "comment": "",
+        "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+        "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+      },
+      {
+        "property_name": "density",
+        "temperature_value_pairs": [
+          [20.0, 7900.0]
+        ],
+        "value_unit": "кг/м3",
+        "comment": ""
+      },
+      {
+        "property_name": "specific_heat",
+        "temperature_value_pairs": [
+          [100.0, 515.0],
+          [200.0, 532.0],
+          [300.0, 548.0],
+          [400.0, 561.0],
+          [500.0, 578.0],
+          [600.0, 595.0]
+        ],
+        "value_unit": "Дж/(кг*С)",
+        "comment": ""
+      }
+    ]
+  },
+  "mechanical_properties": {
+    "strength_category": [
+      {
+        "value_strength_category": "КП22",
+        "hardness": [
+          {
+            "unit_value": "HB",
+            "min_value": 143.0,
+            "max_value": 179.0
+          }
+        ],
+        "properties": [
+          {
+            "property_name": "yield_strength",
             "temperature_value_pairs": [
-              [
-                20.0,
-                202000.0
-              ],
-              [
-                100.0,
-                196000.0
-              ],
-              [
-                200.0,
-                188000.0
-              ],
-              [
-                300.0,
-                180000.0
-              ],
-              [
-                400.0,
-                171000.0
-              ],
-              [
-                500.0,
-                164000.0
-              ],
-              [
-                600.0,
-                155000.0
-              ],
-              [
-                700.0,
-                147000.0
-              ]
+              [20.0, 215.0],
+              [500.0, 171.0],
+              [600.0, 166.0],
+              [650.0, 112.0]
             ],
             "value_unit": "МПа",
             "comment": "",
             "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
             "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-          }
-        },
-        {
-          "property_name": "coefficient_linear_expansion",
-          "data": {
+          },
+          {
+            "property_name": "tensile_strength",
             "temperature_value_pairs": [
-              [
-                400.0,
-                17.1
-              ],
-              [
-                500.0,
-                17.4
-              ],
-              [
-                600.0,
-                17.8
-              ],
-              [
-                700.0,
-                18.2
-              ],
-              [
-                800.0,
-                18.6
-              ]
+              [20.0, 607.0],
+              [500.0, 480.0],
+              [600.0, 460.0],
+              [650.0, 430.0]
             ],
-            "value_unit": "10^-6/C",
+            "value_unit": "МПа",
             "comment": "",
             "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
             "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-          }
-        },
-        {
-          "property_name": "coefficient_thermal_conductivity",
-          "data": {
+          },
+          {
+            "property_name": "impact_strength",
             "temperature_value_pairs": [
-              [
-                100.0,
-                15.0
-              ],
-              [
-                200.0,
-                17.0
-              ],
-              [
-                300.0,
-                18.0
-              ],
-              [
-                400.0,
-                20.0
-              ],
-              [
-                500.0,
-                22.0
-              ],
-              [
-                600.0,
-                23.0
-              ],
-              [
-                700.0,
-                25.0
-              ]
+              [20.0, 205.0]
             ],
-            "value_unit": "Вт/(м*С)",
+            "value_unit": "Дж/см2",
             "comment": "",
             "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
             "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-          }
-        },
-        {
-          "property_name": "density",
-          "data": {
+          },
+          {
+            "property_name": "tensile_strength_limit_10_thousands_hours",
             "temperature_value_pairs": [
-              [
-                20.0,
-                7900.0
-              ]
+              [550.0, 255.0],
+              [600.0, 196.0],
+              [650.0, 127.0],
+              [700.0, 66.0]
             ],
-            "value_unit": "кг/м3",
-            "comment": ""
-          }
-        },
-        {
-          "property_name": "specific_heat",
-          "data": {
-            "temperature_value_pairs": [
-              [
-                100.0,
-                515.0
-              ],
-              [
-                200.0,
-                532.0
-              ],
-              [
-                300.0,
-                548.0
-              ],
-              [
-                400.0,
-                561.0
-              ],
-              [
-                500.0,
-                578.0
-              ],
-              [
-                600.0,
-                595.0
-              ]
-            ],
-            "value_unit": "Дж/(кг*С)",
-            "comment": ""
-          }
-        }
-      ]
-    },
-    {
-      "property_type": "mechanical",
-      "strength_groups": [
-        {
-          "strength_category": "КП22",
-          "comment": "",
-          "properties": [
-            {
-              "property_name": "hardness",
-              "data": {
-                "hardness_values": [
-                  {
-                    "unit_value": "HB",
-                    "min_value": 143.0,
-                    "max_value": 179.0
-                  }
-                ],
-                "hardness_unit": "HB",
-                "comment": ""
-              }
-            },
-            {
-              "property_name": "yield_strength",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    20.0,
-                    215.0
-                  ],
-                  [
-                    500.0,
-                    171.0
-                  ],
-                  [
-                    600.0,
-                    166.0
-                  ],
-                  [
-                    650.0,
-                    112.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-              }
-            },
-            {
-              "property_name": "tensile_strength",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    20.0,
-                    607.0
-                  ],
-                  [
-                    500.0,
-                    480.0
-                  ],
-                  [
-                    600.0,
-                    460.0
-                  ],
-                  [
-                    650.0,
-                    430.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-              }
-            },
-            {
-              "property_name": "impact_strength",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    20.0,
-                    205.0
-                  ]
-                ],
-                "value_unit": "Дж/см2",
-                "comment": "",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-              }
-            },
-            {
-              "property_name": "tensile_strength_limit_10_thousands_hours",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    550.0,
-                    255.0
-                  ],
-                  [
-                    600.0,
-                    196.0
-                  ],
-                  [
-                    650.0,
-                    127.0
-                  ],
-                  [
-                    700.0,
-                    66.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-              }
-            },
-            {
-              "property_name": "tensile_strength_limit_100_thousands_hours",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    550.0,
-                    206.0
-                  ],
-                  [
-                    600.0,
-                    147.0
-                  ],
-                  [
-                    650.0,
-                    93.0
-                  ],
-                  [
-                    700.0,
-                    47.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
-              }
-            },
-            {
-              "property_name": "tensile_strength_limit_200_thousands_hours",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    550.0,
-                    202.0
-                  ],
-                  [
-                    600.0,
-                    138.0
-                  ],
-                  [
-                    650.0,
-                    85.0
-                  ],
-                  [
-                    700.0,
-                    38.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "Определение значений длительной прочности при 200 тыс. часов"
-              }
-            },
-            {
-              "property_name": "tensile_strength_limit_250_thousands_hours",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    550.0,
-                    194.0
-                  ],
-                  [
-                    600.0,
-                    135.0
-                  ],
-                  [
-                    650.0,
-                    82.0
-                  ],
-                  [
-                    700.0,
-                    37.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "Определение значений длительной прочности при 200 тыс. часов"
-              }
-            },
-            {
-              "property_name": "сreep_strain_rate_1_100_thousands_hours",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    550.0,
-                    157.0
-                  ],
-                  [
-                    600.0,
-                    88.0
-                  ],
-                  [
-                    650.0,
-                    49.0
-                  ],
-                  [
-                    700.0,
-                    22.0
-                  ]
-                ],
-                "value_unit": "МПа",
-                "comment": "",
-                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
-                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
-              }
-            },
-            {
-              "property_name": "decrement_oscillations_at_800",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    20.0,
-                    21.0
-                  ],
-                  [
-                    400.0,
-                    3.0
-                  ],
-                  [
-                    500.0,
-                    5.0
-                  ],
-                  [
-                    650.0,
-                    12.0
-                  ]
-                ],
-                "value_unit": "-",
-                "comment": "",
-                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
-                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
-              }
-            },
-            {
-              "property_name": "decrement_oscillations_at_1200",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    20.0,
-                    32.0
-                  ],
-                  [
-                    400.0,
-                    4.0
-                  ],
-                  [
-                    500.0,
-                    5.0
-                  ],
-                  [
-                    650.0,
-                    14.0
-                  ]
-                ],
-                "value_unit": "-",
-                "comment": "",
-                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
-                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
-              }
-            },
-            {
-              "property_name": "decrement_oscillations_at_1600",
-              "data": {
-                "temperature_value_pairs": [
-                  [
-                    20.0,
-                    42.0
-                  ],
-                  [
-                    400.0,
-                    4.0
-                  ]
-                ],
-                "value_unit": "-",
-                "comment": "",
-                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
-                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
-              }
-            }
-          ],
-          "source_ref_id": "161b43d6-98a9-4176-bf08-8683a16ad4bc"
-        }
-      ]
-    },
-    {
-      "property_type": "chemical",
-      "properties": [
-        {
-          "property_name": "composition",
-          "data": {
-            "composition_source": "ГОСТ 5632-2014",
-            "other_elements": [
-              {
-                "element": "C",
-                "unit_value": "%",
-                "min_value": 0.06,
-                "max_value": 0.12,
-                "min_value_tolerance": "0.05",
-                "max_value_tolerance": "0.13"
-              },
-              {
-                "element": "Si",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.8,
-                "min_value_tolerance": "0",
-                "max_value_tolerance": "0.85"
-              },
-              {
-                "element": "Mn",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 1.0,
-                "min_value_tolerance": "0",
-                "max_value_tolerance": "1.04"
-              },
-              {
-                "element": "S",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.02,
-                "min_value_tolerance": "0",
-                "max_value_tolerance": "0.025"
-              },
-              {
-                "element": "P",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.035,
-                "min_value_tolerance": "0",
-                "max_value_tolerance": "0.040"
-              },
-              {
-                "element": "Cr",
-                "unit_value": "%",
-                "min_value": 15.0,
-                "max_value": 17.0,
-                "min_value_tolerance": "14.8",
-                "max_value_tolerance": "17.2"
-              },
-              {
-                "element": "Ni",
-                "unit_value": "%",
-                "min_value": 12.5,
-                "max_value": 14.5,
-                "min_value_tolerance": "12.35",
-                "max_value_tolerance": "14.65"
-              },
-              {
-                "element": "Mo",
-                "unit_value": "%",
-                "min_value": 2.0,
-                "max_value": 2.5,
-                "min_value_tolerance": "1.9",
-                "max_value_tolerance": "2.6"
-              },
-              {
-                "element": "Nb",
-                "unit_value": "%",
-                "min_value": 0.9,
-                "max_value": 1.3,
-                "min_value_tolerance": "0.88",
-                "max_value_tolerance": "1.32"
-              }
-            ],
-            "composition_subsource": "",
+            "value_unit": "МПа",
             "comment": "",
-            "base_element": "Fe",
-            "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          },
+          {
+            "property_name": "tensile_strength_limit_100_thousands_hours",
+            "temperature_value_pairs": [
+              [550.0, 206.0],
+              [600.0, 147.0],
+              [650.0, 93.0],
+              [700.0, 47.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          },
+          {
+            "property_name": "tensile_strength_limit_200_thousands_hours",
+            "temperature_value_pairs": [
+              [550.0, 202.0],
+              [600.0, 138.0],
+              [650.0, 85.0],
+              [700.0, 38.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "property_subsource": "Определение значений длительной прочности при 200 тыс. часов"
+          },
+          {
+            "property_name": "tensile_strength_limit_250_thousands_hours",
+            "temperature_value_pairs": [
+              [550.0, 194.0],
+              [600.0, 135.0],
+              [650.0, 82.0],
+              [700.0, 37.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "property_subsource": "Определение значений длительной прочности при 200 тыс. часов"
+          },
+          {
+            "property_name": "сreep_strain_rate_1_100_thousands_hours",
+            "temperature_value_pairs": [
+              [550.0, 157.0],
+              [600.0, 88.0],
+              [650.0, 49.0],
+              [700.0, 22.0]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
+          },
+          {
+            "property_name": "decrement_oscillations_at_800",
+            "temperature_value_pairs": [
+              [20.0, 21.0],
+              [400.0, 3.0],
+              [500.0, 5.0],
+              [650.0, 12.0]
+            ],
+            "value_unit": "-",
+            "comment": "",
+            "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+            "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+          },
+          {
+            "property_name": "decrement_oscillations_at_1200",
+            "temperature_value_pairs": [
+              [20.0, 32.0],
+              [400.0, 4.0],
+              [500.0, 5.0],
+              [650.0, 14.0]
+            ],
+            "value_unit": "-",
+            "comment": "",
+            "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+            "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+          },
+          {
+            "property_name": "decrement_oscillations_at_1600",
+            "temperature_value_pairs": [
+              [20.0, 42.0],
+              [400.0, 4.0]
+            ],
+            "value_unit": "-",
+            "comment": "",
+            "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+            "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
           }
-        }
-      ]
-    }
-  ]
+        ],
+        "hardness_unit": "HB",
+        "source_ref_id": "161b43d6-98a9-4176-bf08-8683a16ad4bc"
+      }
+    ]
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 5632-2014",
+        "composition_subsource": "",
+        "comment": "",
+        "base_element": "Fe",
+        "other_elements": [
+          {
+            "element": "C",
+            "unit_value": "%",
+            "min_value": 0.06,
+            "max_value": 0.12,
+            "min_value_tolerance": "0.05",
+            "max_value_tolerance": "0.13"
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.8,
+            "min_value_tolerance": "0",
+            "max_value_tolerance": "0.85"
+          },
+          {
+            "element": "Mn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 1.0,
+            "min_value_tolerance": "0",
+            "max_value_tolerance": "1.04"
+          },
+          {
+            "element": "S",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.02,
+            "min_value_tolerance": "0",
+            "max_value_tolerance": "0.025"
+          },
+          {
+            "element": "P",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.035,
+            "min_value_tolerance": "0",
+            "max_value_tolerance": "0.040"
+          },
+          {
+            "element": "Cr",
+            "unit_value": "%",
+            "min_value": 15.0,
+            "max_value": 17.0,
+            "min_value_tolerance": "14.8",
+            "max_value_tolerance": "17.2"
+          },
+          {
+            "element": "Ni",
+            "unit_value": "%",
+            "min_value": 12.5,
+            "max_value": 14.5,
+            "min_value_tolerance": "12.35",
+            "max_value_tolerance": "14.65"
+          },
+          {
+            "element": "Mo",
+            "unit_value": "%",
+            "min_value": 2.0,
+            "max_value": 2.5,
+            "min_value_tolerance": "1.9",
+            "max_value_tolerance": "2.6"
+          },
+          {
+            "element": "Nb",
+            "unit_value": "%",
+            "min_value": 0.9,
+            "max_value": 1.3,
+            "min_value_tolerance": "0.88",
+            "max_value_tolerance": "1.32"
+          }
+        ],
+        "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"
+      }
+    ]
+  }
 }
