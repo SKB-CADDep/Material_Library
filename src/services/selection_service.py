@@ -42,7 +42,8 @@ _TEMPERATURE_AXIS = {
     "kind": "temperature",
 }
 
-# Палитра заливки классов — как class_colors в AshbyDiagramTab (main.py)
+# Палитра заливки классов — как class_colors в AshbyDiagramTab (main.py).
+# 40 цветов (×4 от tab10): первые 10 — прежние, далее дополнительные насыщенные.
 _ASHBY_CLASS_COLORS = [
     "#1f77b4",
     "#ff7f0e",
@@ -54,6 +55,36 @@ _ASHBY_CLASS_COLORS = [
     "#7f7f7f",
     "#bcbd22",
     "#17becf",
+    "#393b79",
+    "#637939",
+    "#8c6d31",
+    "#843c39",
+    "#7b4173",
+    "#3182bd",
+    "#e6550d",
+    "#31a354",
+    "#756bb1",
+    "#636363",
+    "#6b6ecf",
+    "#b5cf6b",
+    "#e7ba52",
+    "#d6616b",
+    "#ce6dbd",
+    "#9c9ede",
+    "#cedb9c",
+    "#e7cb94",
+    "#e7969c",
+    "#de9ed6",
+    "#08519c",
+    "#a63603",
+    "#006d2c",
+    "#54278f",
+    "#252525",
+    "#6baed6",
+    "#fd8d3c",
+    "#74c476",
+    "#9e9ac8",
+    "#969696",
 ]
 
 
@@ -260,7 +291,7 @@ class SelectionService:
 
         for i, cat in enumerate(cats):
             strength = Material.category_name(cat) or "N/A"
-            hardness_list = cat.get("hardness") or []
+            hardness_list = Material.get_hardness_entries(cat)
             cat_source = material.get_category_source_label(cat, source_manager)
             cat_ref = cat.get(Schema.REF_ID) if isinstance(cat, dict) else None
 
@@ -343,7 +374,10 @@ class SelectionService:
         if x_prop not in allowed or y_prop not in allowed:
             raise ValueError("Неизвестный ключ свойства оси")
 
-        selected_classes = list(dict.fromkeys(class_names))
+        # Пустой classification_class не участвует в Эшби (ни опции, ни серии, ни легенда).
+        selected_classes = [
+            name for name in dict.fromkeys(class_names) if str(name).strip()
+        ]
         x_is_mech = self._properties.is_mechanical(x_prop)
         y_is_mech = self._properties.is_mechanical(y_prop)
 
@@ -354,13 +388,15 @@ class SelectionService:
 
         for idx_class, class_name in enumerate(selected_classes):
             class_color = _ASHBY_CLASS_COLORS[idx_class % len(_ASHBY_CLASS_COLORS)]
-            class_legend.append({"class_name": class_name, "color": class_color})
             class_points: list[tuple[float, float]] = []
+            series_before = len(series)
 
             for material in repository.materials:
                 if not self._matches_area(material, None, areas):
                     continue
-                if self._classification_class(material) != class_name:
+                material_class = self._classification_class(material)
+                # Материалы без класса пропускаем; после заполнения class они появятся сами.
+                if not material_class or material_class != class_name:
                     continue
 
                 material_id = material.data.get("material_id", "") or material.filename
@@ -373,51 +409,45 @@ class SelectionService:
                             if isinstance(cat, dict)
                             else ""
                         )
-                        base_label = (
-                            f"{material.get_display_name()} {cat_name}".strip()
-                        )
                         points = self._ashby_series_points(
                             material, cat_idx, x_prop, y_prop
                         )
-                        curve_color = self._series_color(series_index)
-                        series_index += 1
-                        if points:
-                            class_points.extend(
-                                (p["x"], p["y"]) for p in points
-                            )
-                            label = base_label
-                        else:
-                            label = f"{base_label} (нет данных)"
+                        if not points:
+                            continue
+                        class_points.extend((p["x"], p["y"]) for p in points)
                         series.append(
                             {
                                 "id": f"{material_id}:{cat_idx}",
-                                "label": label,
+                                "label": (
+                                    f"{material.get_display_name()} {cat_name}".strip()
+                                ),
                                 "class_name": class_name,
-                                "color": curve_color,
+                                "color": self._series_color(series_index),
                                 "points": points,
                             }
                         )
+                        series_index += 1
                 else:
-                    base_label = material.get_display_name()
                     points = self._ashby_series_points(
                         material, None, x_prop, y_prop
                     )
-                    curve_color = self._series_color(series_index)
-                    series_index += 1
-                    if points:
-                        class_points.extend((p["x"], p["y"]) for p in points)
-                        label = base_label
-                    else:
-                        label = f"{base_label} (нет данных)"
+                    if not points:
+                        continue
+                    class_points.extend((p["x"], p["y"]) for p in points)
                     series.append(
                         {
                             "id": material_id,
-                            "label": label,
+                            "label": material.get_display_name(),
                             "class_name": class_name,
-                            "color": curve_color,
+                            "color": self._series_color(series_index),
                             "points": points,
                         }
                     )
+                    series_index += 1
+
+            # В легенду классов — только если есть хотя бы одна серия с точками.
+            if len(series) > series_before:
+                class_legend.append({"class_name": class_name, "color": class_color})
 
             hull = self._compute_convex_hull(class_points)
             if len(hull) >= 3:
@@ -567,18 +597,9 @@ class SelectionService:
         prop_key: str,
         cat_idx: int | None,
     ) -> list:
-        if self._properties.is_physical(prop_key):
-            prop_data = material.data.get(Schema.PHYSICAL, {}).get(prop_key, {})
-            if isinstance(prop_data, dict):
-                return prop_data.get(Schema.TEMP_PAIRS, []) or []
-            return []
-
-        if self._properties.is_mechanical(prop_key) and cat_idx is not None:
-            cats = material.get_strength_categories()
-            if 0 <= cat_idx < len(cats):
-                prop_data = cats[cat_idx].get(prop_key, {})
-                if isinstance(prop_data, dict):
-                    return prop_data.get(Schema.TEMP_PAIRS, []) or []
+        prop_data = self._get_property_container(material, prop_key, cat_idx)
+        if isinstance(prop_data, dict):
+            return prop_data.get(Schema.TEMP_PAIRS, []) or []
         return []
 
     def _ashby_axis_value(
@@ -648,17 +669,13 @@ class SelectionService:
                 "approx" (линейная экстраполяция по двум ближайшим точкам),
                 либо None, если значение не может быть определено.
         """
-        data_container = None
-
-        if self._properties.is_physical(prop_key):
-            data_container = material.data.get(Schema.PHYSICAL, {}).get(prop_key)
-        elif self._properties.is_mechanical(prop_key):
-            cats = material.get_strength_categories()
-            if cat_idx is not None and 0 <= cat_idx < len(cats):
-                data_container = cats[cat_idx].get(prop_key)
-        else:
+        if not (
+            self._properties.is_physical(prop_key)
+            or self._properties.is_mechanical(prop_key)
+        ):
             return None, None
 
+        data_container = self._get_property_container(material, prop_key, cat_idx)
         if not data_container:
             return None, None
 
@@ -726,11 +743,11 @@ class SelectionService:
         cat_idx: int | None = None,
     ) -> dict[str, Any] | None:
         if self._properties.is_physical(prop_key):
-            return material.data.get(Schema.PHYSICAL, {}).get(prop_key)
+            return material.get_physical_data(prop_key)
         if self._properties.is_mechanical(prop_key):
             cats = material.get_strength_categories()
             if cat_idx is not None and 0 <= cat_idx < len(cats):
-                return cats[cat_idx].get(prop_key)
+                return Material.get_category_prop_data(cats[cat_idx], prop_key)
         return None
 
     def _get_scalar_value(

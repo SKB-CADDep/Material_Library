@@ -1,23 +1,20 @@
-type PropertyContainer = {
-  is_acceptance?: boolean;
-};
+import { findNamedProp } from "./namedProperties";
 
 function readIsAcceptance(container: unknown): boolean {
   if (!container || typeof container !== "object") {
     return false;
   }
-  return Boolean((container as PropertyContainer).is_acceptance);
+  return Boolean((container as { is_acceptance?: boolean }).is_acceptance);
 }
 
 export function buildColumnAcceptance(
   columns: { key: string }[],
   category: Record<string, unknown> | undefined,
 ): Set<string> {
-  const cat = category ?? {};
   const keys = new Set<string>();
 
   for (const col of columns) {
-    if (readIsAcceptance(cat[col.key])) {
+    if (readIsAcceptance(findNamedProp(category, col.key))) {
       keys.add(col.key);
     }
   }

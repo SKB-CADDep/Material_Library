@@ -1,5 +1,9 @@
 import type { PropertySourceFields } from "../pages/PropertySourceSelect";
 import type { SourceItem, SourcesTabType } from "../types/api";
+import {
+  findNamedProp,
+  resolvePropertyFromContainers,
+} from "./namedProperties";
 
 export type CalculationColumnSourceRef = {
   label: string;
@@ -14,15 +18,11 @@ function readPropertyContainer(
   physicalProperties: Record<string, unknown> | undefined,
   category: Record<string, unknown> | undefined,
 ): PropertySourceFields | undefined {
-  const physical = physicalProperties?.[key];
-  if (physical && typeof physical === "object") {
-    return physical as PropertySourceFields;
-  }
-  const mechanical = category?.[key];
-  if (mechanical && typeof mechanical === "object") {
-    return mechanical as PropertySourceFields;
-  }
-  return undefined;
+  return resolvePropertyFromContainers(
+    key,
+    physicalProperties,
+    category,
+  ) as PropertySourceFields | undefined;
 }
 
 function indexInSources(sourceId: string, sources: SourceItem[]): number {
@@ -97,7 +97,7 @@ export function buildColumnSourceRefs(
     }
 
     const categoryRefId = String(category?.source_ref_id ?? "").trim();
-    if (categoryRefId && !physicalProperties?.[col.key]) {
+    if (categoryRefId && !findNamedProp(physicalProperties, col.key)) {
       map[col.key] = refFromSourceId(
         categoryRefId,
         strengthSources,

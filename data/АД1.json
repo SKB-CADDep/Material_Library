@@ -11,72 +11,64 @@
       "classification_subclass": ""
     }
   },
-  "property_groups": [
-    {
-      "property_type": "physical",
-      "properties": []
-    },
-    {
-      "property_type": "mechanical",
-      "strength_groups": []
-    },
-    {
-      "property_type": "chemical",
-      "properties": [
-        {
-          "property_name": "composition",
-          "data": {
-            "composition_source": "ГОСТ 4784 - 97",
-            "other_elements": [
-              {
-                "element": "Fe",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.3
-              },
-              {
-                "element": "Si",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.3
-              },
-              {
-                "element": "Mn",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.025
-              },
-              {
-                "element": "Ti",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.15
-              },
-              {
-                "element": "Cu",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.05
-              },
-              {
-                "element": "Mg",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.05
-              },
-              {
-                "element": "Zn",
-                "unit_value": "%",
-                "min_value": 0.0,
-                "max_value": 0.1
-              }
-            ],
-            "comment": "",
-            "base_element": "Al",
-            "source_ref_id": "f25318cf-5971-4b02-9bcd-2e9da2c28b15"
+  "physical_properties": {
+    "properties": []
+  },
+  "mechanical_properties": {
+    "strength_category": []
+  },
+  "chemical_properties": {
+    "composition": [
+      {
+        "composition_source": "ГОСТ 4784 - 97",
+        "other_elements": [
+          {
+            "element": "Fe",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.3
+          },
+          {
+            "element": "Si",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.3
+          },
+          {
+            "element": "Mn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.025
+          },
+          {
+            "element": "Ti",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.15
+          },
+          {
+            "element": "Cu",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "Mg",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.05
+          },
+          {
+            "element": "Zn",
+            "unit_value": "%",
+            "min_value": 0.0,
+            "max_value": 0.1
           }
-        }
-      ]
-    }
-  ]
+        ],
+        "comment": "",
+        "base_element": "Al",
+        "source_ref_id": "f25318cf-5971-4b02-9bcd-2e9da2c28b15"
+      }
+    ]
+  }
 }
