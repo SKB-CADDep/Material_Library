@@ -39,8 +39,9 @@ export function PropertySourceSelect({
   return (
     <select
       id={id}
-      className="input"
+      className="input property-field-wrap"
       value={value}
+      title={value || undefined}
       onChange={(e) => {
         const name = e.target.value;
         const matched = sources.find((src) => src.name_source === name);

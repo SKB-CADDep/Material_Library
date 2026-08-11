@@ -7,10 +7,20 @@
     --accent: #3D5A80;
     --accent-hover: #2E4A6B;
     --danger: #B42318;
+    --danger-soft: #fef3f2;
+    --danger-border: #fecdca;
     --success: #1F6B4A;
     --radius: 6px;
     --accent-soft: #E8EEF4;
     --warning: #9A6700;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --editor-label-width: 180px;
+    --font-size-tab: 13px;
+    --font-weight-semibold: 600;
 }
 
 body{
@@ -1086,22 +1096,6 @@ select {
     background-color: var(--bg);
   }
 
-  .editor-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px 16px;
-    padding: 12px 16px;
-    background-color: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .editor-toolbar .button-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
   .editor-feedback {
     margin: 0;
     padding: 8px 16px;
@@ -1120,15 +1114,15 @@ select {
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
-    padding: 8px 12px 0;
+    padding: var(--space-sm) var(--space-md) 0;
     background-color: var(--accent-soft);
     border-bottom: 1px solid var(--border);
   }
 
   .editor-subtab {
     display: inline-block;
-    padding: 8px 14px;
-    font-size: 13px;
+    padding: var(--space-sm) 14px;
+    font-size: var(--font-size-tab);
     font-weight: 500;
     color: var(--text-muted);
     text-decoration: none;
@@ -1154,10 +1148,115 @@ select {
 
   .editor-tab-panel {
     flex: 1;
-    padding: 16px;
+    padding: var(--space-lg);
     background-color: var(--surface);
     border-top: none;
     overflow: auto;
+  }
+
+  /* B5v: состояния внутри panel (loading / error / empty) */
+  .editor-panel-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    min-height: 240px;
+    padding: var(--space-xl) var(--space-lg);
+  }
+
+  .editor-panel-state .error-card {
+    max-width: 520px;
+    width: 100%;
+    padding: var(--space-xl);
+    background: var(--danger-soft);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+
+  .editor-panel-state .error-card h2 {
+    margin: 0 0 var(--space-sm);
+    font-size: 18px;
+    color: var(--danger);
+  }
+
+  .editor-panel-state .error-message {
+    margin: 0 0 var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    font-size: 14px;
+    color: var(--danger);
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: var(--radius);
+    word-break: break-word;
+  }
+
+  .editor-panel-state .retry-button {
+    margin-top: 0;
+  }
+
+  .editor-page--centered {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+  }
+
+  .editor-page__header {
+    margin: 0;
+    padding: var(--space-md) var(--space-lg);
+    font-size: 20px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    background-color: var(--surface);
+  }
+
+  .editor-page--centered .loading-container,
+  .editor-page--centered .error-container {
+    flex: 1;
+    min-height: 280px;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md) var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .editor-toolbar .button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .editor-toolbar .button-group button {
+    font-size: var(--font-size-tab);
+  }
+
+  .editor-mode-badge {
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    white-space: nowrap;
+  }
+
+  fieldset.editor-readonly-scope {
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .tab-placeholder {
@@ -1183,22 +1282,9 @@ select {
 
   .general-form {
     width: 100%;
-    max-width: none
+    max-width: none;
   }
 
-  .general-form .form-row {
-    display: grid;
-    grid-template-columns: 180px minmax(0, 1fr);
-    gap: 6px 8px;
-    align-items: center;
-  }
-  
-  .general-form .form-row label {
-    min-width: unset;
-    width: auto;
-    text-align: left;
-  }
-  
   .general-form .form-row > select,
   .general-form .form-row > input.input,
   .general-form .form-row > input[type="text"],
@@ -1227,21 +1313,21 @@ select {
   .form-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-md);
   }
 
   .form-section {
     margin: 0;
-    padding: 12px 14px 14px;
+    padding: var(--space-md) 14px 14px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--bg);
   }
 
   .form-section legend {
-    padding: 0 6px;
-    font-size: 13px;
-    font-weight: 600;
+    padding: 0 var(--space-sm);
+    font-size: var(--font-size-tab);
+    font-weight: var(--font-weight-semibold);
     color: var(--text);
   }
 
@@ -1259,82 +1345,149 @@ select {
   }
 
   .form-row label {
-    min-width: 220px;
+    min-width: var(--editor-label-width);
   }
 
   .add-row label {
-    min-width: 220px;
+    min-width: var(--editor-label-width);
   }
 
-  /* РћР±РµСЂС‚РєР° РґР»СЏ РІСЃРµР№ СЃРµРєС†РёРё: С‚Р°Р±Р»РёС†Р° | РіСЂР°С„РёРє ~50/50 */
+
+  .general-form .form-row,
+  .physical-properties-form .property-section-fields .form-row {
+    display: grid;
+    grid-template-columns: var(--editor-label-width) minmax(0, 1fr);
+    gap: 6px var(--space-sm);
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  .general-form .form-row label,
+  .physical-properties-form .property-section-fields .form-row label {
+    min-width: unset;
+    width: auto;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .physical-properties-form .property-section-fields .form-row :is(input, select, textarea) {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+    color: var(--text);
+    box-sizing: border-box;
+  }
+
+  .physical-properties-form .property-section-fields .form-row :is(input, select, textarea):focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
+  }
+
 .property-section-layout {
   display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-xl);
   align-items: stretch;
   width: 100%;
 }
 
-
-/* РЎС‚РёР»Рё РґР»СЏ label */
-.property-section-fields .form-row label {
-  font-size: 14px;
-  color: var(--text);
-  font-weight: 500;
-}
-
-/* РЎС‚РёР»Рё РґР»СЏ input/select */
-.property-section-fields .form-row input,
-.property-section-fields .form-row select {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 14px;
-  background-color: var(--surface);
-  color: var(--text);
-}
-
-.property-section-fields .form-row input:focus,
-.property-section-fields .form-row select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
-}
-
-/* РџСЂР°РІР°СЏ РєРѕР»РѕРЅРєР° СЃ РіСЂР°С„РёРєРѕРј */
 .property-section-chart {
-  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 480px;
   flex: 1 1 0;
   min-width: 0;
   box-sizing: border-box;
   background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 12px;
 }
 
-/* Р”Р»СЏ С‚Р°Р±Р»РёС†С‹ СЃ РґР°РЅРЅС‹РјРё (РµСЃР»Рё РѕРЅР° РµСЃС‚СЊ РІ property-section-fields) */
-.property-section-fields table {
+.property-section-chart .recharts-responsive-container {
+  flex: 1 1 auto;
+  min-height: 440px;
+}
+
+.property-chart-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 440px;
+  align-self: stretch;
+}
+
+.property-chart-y-axis-label {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 42px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  padding: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.property-chart-tooltip {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.property-chart-tooltip p {
+  margin: 0;
+}
+
+.property-chart-tooltip p + p {
+  margin-top: 4px;
+}
+
+.property-section-fields table:not(.data-table--temperature-pairs) {
   width: 100%;
   border-collapse: collapse;
   margin-top: 16px;
   font-size: 14px;
 }
 
-.property-section-fields table th,
-.property-section-fields table td {
+.property-section-fields table:not(.data-table--temperature-pairs) th,
+.property-section-fields table:not(.data-table--temperature-pairs) td {
   padding: 8px 12px;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
 
-.property-section-fields table th {
+.property-section-fields table:not(.data-table--temperature-pairs) th {
   font-weight: 600;
   color: var(--text);
   background-color: var(--bg);
 }
 
-.property-section-fields table td {
+.property-section-fields table:not(.data-table--temperature-pairs) td {
   color: var(--text-muted);
 }
 
@@ -1369,22 +1522,121 @@ select {
   align-items: stretch;
 }
 
-/* РўР°Р±Р»РёС†Р° + РіСЂР°С„РёРє: СЂР°РІРЅС‹Рµ РєРѕР»РѕРЅРєРё РєР°Рє РІ Tkinter */
-.property-section-layout:has(.property-section-chart) > .property-section-fields,
-.property-section-layout:has(.property-section-chart) > .property-section-chart {
-  flex: 1 1 0;
-  max-width: calc(50% - 12px);
+/* Физ./мех. (T–value): узкая форма слева, график на оставшуюся ширину (47-V5/V6) */
+.property-section-layout:has(.property-section-chart):has(.table-wrapper--temperature-pairs) > .property-section-fields {
+  flex: 0 1 26rem;
+  max-width: min(100%, 26rem);
+  min-width: min(100%, 18rem);
+  align-self: stretch;
 }
 
-.property-section-fields .table-wrapper {
+.property-section-layout:has(.property-section-chart):has(.table-wrapper--temperature-pairs) > .property-section-chart {
+  flex: 1 1 0;
+  max-width: none;
+  min-width: 0;
+}
+
+/* Хим. состав и прочие широкие таблицы: ~50/50 с графиком */
+.property-section-layout:has(.property-section-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-fields,
+.property-section-layout:has(.property-section-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-chart {
+  flex: 1 1 0;
+  max-width: calc(50% - 12px);
+  min-width: 0;
+}
+
+.property-section-fields .table-wrapper:not(.table-wrapper--temperature-pairs) {
   width: 100%;
   align-self: stretch;
   overflow-x: auto;
 }
 
-.property-section-chart {
-  flex: 1 1 0;
+/* 47-V6: T–value таблица на всю ширину левой колонки (~26rem) */
+.property-section-fields .table-wrapper--temperature-pairs {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  flex: 0 0 auto;
+  overflow: hidden;
+  margin-top: var(--space-md);
+}
+
+.property-section-fields .table-wrapper--temperature-pairs .data-table-container {
+  flex: 1 1 auto;
+  width: auto;
   min-width: 0;
+  overflow: hidden;
+}
+
+.property-section-fields table.data-table--temperature-pairs {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.property-section-fields table.data-table--temperature-pairs .data-table__col-temperature {
+  width: 36%;
+}
+
+.property-section-fields table.data-table--temperature-pairs .data-table__col-value {
+  width: 64%;
+}
+
+.property-section-fields table.data-table--temperature-pairs th,
+.property-section-fields table.data-table--temperature-pairs td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.property-section-fields table.data-table--temperature-pairs th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+.property-section-fields table.data-table--temperature-pairs td {
+  color: var(--text);
+}
+
+.property-section-fields .data-table--temperature-pairs .table-cell-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.property-section-fields .data-table--temperature-pairs .table-empty {
+  padding: 12px 8px;
+  font-size: 13px;
+}
+
+.physical-properties-form .property-section-fields .form-row:has([id$="_comment"]) {
+  align-items: start;
+}
+
+.physical-properties-form .property-section-fields .form-row:has([id$="_comment"]) label {
+  padding-top: 6px;
+}
+
+.physical-properties-form .property-section-fields .property-field-wrap,
+.physical-properties-form .property-section-fields .property-field-multiline {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.physical-properties-form .property-section-fields .property-field-multiline {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  max-height: 14rem;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.35;
+  white-space: pre-wrap;
 }
 
 /* РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ С‚Р°Р±Р»РёС†С‹ */

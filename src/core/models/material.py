@@ -491,10 +491,28 @@ class Material:
                     props.append(item)
                 del cat[key]
 
+    @staticmethod
+    def normalize_metadata(data: dict) -> None:
+        meta = data.get(Schema.METADATA)
+        if not isinstance(meta, dict):
+            return
+        alts = meta.get(Schema.NAME_ALT)
+        if isinstance(alts, str):
+            meta[Schema.NAME_ALT] = [
+                part.strip() for part in alts.split(",") if part.strip()
+            ]
+        elif alts is None:
+            meta[Schema.NAME_ALT] = []
+        elif isinstance(alts, list):
+            meta[Schema.NAME_ALT] = [
+                str(part).strip() for part in alts if str(part).strip()
+            ]
+
     def save(self, filepath=None):
         save_path = filepath or self.filepath
         if not save_path:
             raise ValueError("Путь не указан")
+        self.normalize_metadata(self.data)
         self.filepath = save_path
         self.filename = os.path.basename(save_path)
         self.normalize_schema()

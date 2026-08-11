@@ -128,6 +128,7 @@ class SelectionService:
                     "label": label,
                     "unit": unit,
                     "unit_type": meta.get("unit_type"),
+                    "display_symbol": symbol
                 }
             )
         return columns

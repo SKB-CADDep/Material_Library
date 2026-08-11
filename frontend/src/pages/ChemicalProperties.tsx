@@ -1,24 +1,19 @@
+import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { useState, useRef, useEffect } from "react";
-import { getSources } from "../api/sources";
-import { useQuery } from "@tanstack/react-query";
 import elements_catalog from '../config/elements_catalog.json'
 import { UnitSelect } from "./UnitSelect";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 import { RequiredMark } from "../components/RequiredMark";
 import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
+import {
+  ChemicalCompositionChart,
+  buildElementChartData,
+  type ChartMode,
+} from "../components/ChemicalCompositionChart";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
+  readOnly?: boolean;
 };
 
 type ChemicalElement = {
@@ -43,14 +38,6 @@ type ChemicalPropertiesData = {
   composition?: CompositionEntry[];
 };
 
-type ElementChartPoint = {
-  name: string;
-  value: number;
-  /** Для log-шкалы: 0 недопустим, рисуем ε, в tooltip — value */
-  displayValue: number;
-  fill: string;
-};
-
 type Elements = {
   symbol: string;
   display_symbol: string;
@@ -58,147 +45,25 @@ type Elements = {
   color: string | null;
   influence: string | null;
   min?: number | null;
-}
+};
 
 type ElementsCatalog = {
   shema_version?: string;
   elements: Elements[];
-}
-
-type ChartMode = "min" | "max";
-
-
-const elements = elements_catalog as ElementsCatalog;
-
-
-function buildElementChartData(
-  elementss: ChemicalElement[],
-  baseElement: string,
-  mode: ChartMode,
-): ElementChartPoint[] {
-  const plotData: ElementChartPoint[] = [];
-  let total = 0;
-
-  for (const el of elementss) {
-    const sym = el.element?.trim();
-    if (!sym) continue;
-
-    const raw = mode === "max" ? el.max_value : el.min_value;
-    const value = typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
-    if (value > 0) total += value;
-
-    plotData.push({
-      name: sym,
-      value,
-      displayValue: value > 0 ? value : 0.0001,
-      fill: elements.elements.find(el => el.symbol === sym)?.color ?? "#3D5A80",
-    });
-  }
-
-  const baseSym = baseElement.trim() || "Основа";
-  const basePercent = Math.max(0, 100 - total);
-  plotData.push({
-    name: baseSym,
-    value: basePercent,
-    displayValue: basePercent > 0 ? basePercent : 0.0001,
-    fill: elements.elements.find(el => el.symbol === baseSym)?.color ?? "#3D5A80",
-  });
-
-  plotData.sort((a, b) => a.value - b.value);
-  return plotData;
-}
-
-
-
-type ElementDistributionChartProps = {
-  data: ElementChartPoint[];
-  unit: string;
-  mode: ChartMode;
-  onModeChange: (mode: ChartMode) => void;
 };
 
-
-
-function ElementDistributionChart({
-  data,
-  unit,
-  mode,
-  onModeChange,
-}: ElementDistributionChartProps) {
-  const height = Math.max(280, data.length * 36);
-
-  return (
-    <div className="property-section-chart">
-      <div className="form-row" style={{ marginBottom: 8 }}>
-        <label className="checkbox-item" htmlFor="chem_chart_min">
-          <input
-            id="chem_chart_min"
-            type="checkbox"
-            checked={mode === "min"}
-            onChange={() => onModeChange("min")}
-          />
-          Min
-        </label>
-        <label className="checkbox-item" htmlFor="chem_chart_max">
-          <input
-            id="chem_chart_max"
-            type="checkbox"
-            checked={mode === "max"}
-            onChange={() => onModeChange("max")}
-          />
-          Max
-        </label>
-      </div>
-      {data.length === 0 ? (
-        <p className="tab-placeholder">Нет данных для графика</p>
-      ) : (
-        <ResponsiveContainer width="100%" height={height}>
-          <BarChart
-            layout="vertical"
-            data={data}
-            margin={{ left: 8, right: 48, top: 8, bottom: 8 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis
-              type="number"
-              scale="log"
-              domain={[0.0001, "auto"]}
-              allowDataOverflow
-            />
-            <YAxis type="category" dataKey="name" width={48} />
-            <Tooltip
-              formatter={(_value, _name, item) => {
-                const point = item?.payload as ElementChartPoint | undefined;
-                const v = point?.value ?? 0;
-                const text =
-                  v < 0.1 ? v.toFixed(4).replace(/\.?0+$/, "") : v.toFixed(2);
-                return [`${text} ${unit}`, mode === "max" ? "Max" : "Min"];
-              }}
-            />
-            <Bar dataKey="displayValue" name="value" maxBarSize={22}>
-              {data.map((entry) => (
-                <Cell key={entry.name} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      )}
-    </div>
-  );
-}
+const elements = elements_catalog as ElementsCatalog;
 
 export function ChemicalProperties({
   material,
   onDraftChange,
+  readOnly = false,
 }: ChemicalPropertiesProps) {
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
   }
   
-  const result = useQuery({
-    queryKey: ["sources"],
-    queryFn: getSources,
-  });
+  const result = useSourcesCatalog();
   const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
   const [chartMode, setChartMode] = useState<ChartMode>("max");
   
@@ -236,7 +101,6 @@ export function ChemicalProperties({
   const menuRef = useRef<HTMLDivElement>(null);
   
   
-  // Обработчик клика вне меню
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -248,7 +112,7 @@ export function ChemicalProperties({
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
   
-  // Добавление новой пустой строки
+
 const handleAddRow = () => {
   const newElement: ChemicalElement = {
     element: "",
@@ -275,7 +139,7 @@ const handleAddRow = () => {
   });
 };
 
-// Удаление строки
+
 const handleRemoveRow = () => {
   if (selectedRowIndex === null) return; // Ничего не выбрано
 
@@ -296,18 +160,16 @@ const handleRemoveRow = () => {
     },
   });
 
-  // Сбрасываем выделение после удаления
+
   setSelectedRowIndex(null);
 };
 
-// Обработчик выбора элемента из меню (обновленный)
 const handleElementSelect = (element: Elements) => {
   if (!contextMenu) return;
 
   const { rowIndex } = contextMenu;
 
   if (rowIndex === null) {
-    // РЕЖИМ ДОБАВЛЕНИЯ
     const newElement: ChemicalElement = {
       element: element.symbol,
       unit_value: chartUnit,
@@ -332,7 +194,6 @@ const handleElementSelect = (element: Elements) => {
       },
     });
   } else {
-    // РЕЖИМ РЕДАКТИРОВАНИЯ существующей строки
     onDraftChange({
       ...material,
       chemical_properties: {
@@ -356,8 +217,8 @@ const handleElementSelect = (element: Elements) => {
   setContextMenu(null);
 };
 
-// Обработчик правого клика (обновленный)
 const handleRowContextMenu = (e: React.MouseEvent, index: number) => {
+  if (readOnly) return;
   e.preventDefault();
   setContextMenu({
     x: e.clientX,
@@ -372,7 +233,7 @@ const handleAddButtonContextMenu = (e: React.MouseEvent) => {
   setContextMenu({
     x: e.clientX,
     y: e.clientY,
-    rowIndex: null, // null = режим добавления
+    rowIndex: null,
   });
 };
 
@@ -419,6 +280,7 @@ useEffect(() => {
             type="button"
             className="table-control-btn"
             title="Добавить набор состава"
+            disabled={readOnly}
             onClick={() => {
               const prev = chemical_properties.composition ?? [];
               const newIndex = prev.length;
@@ -444,7 +306,7 @@ useEffect(() => {
             type="button"
             className="table-control-btn"
             title="Удалить набор состава"
-            disabled={(chemical_properties.composition?.length ?? 0) === 0}
+            disabled={readOnly || (chemical_properties.composition?.length ?? 0) === 0}
             onClick={() => {
               const prev = chemical_properties.composition ?? [];
               if (prev.length === 0) return;
@@ -472,7 +334,7 @@ useEffect(() => {
         </div>
       </div>
       <div className="form-stack">
-        <fieldset className="form-section">
+        <fieldset className="form-section" disabled={readOnly}>
           <legend>Данные источника</legend>
           <div className="property-section-layout">
             <div className="property-section-fields">
@@ -619,7 +481,10 @@ useEffect(() => {
           </div>
         </fieldset>
         <div className="property-section-layout">
-          <div className="property-section-fields">
+          <fieldset
+            className="editor-readonly-scope property-section-fields"
+            disabled={readOnly}
+          >
           <legend>Элементы(ПКМ для выбора из списка)</legend>
             <div className="table-wrapper">
             
@@ -861,18 +726,21 @@ useEffect(() => {
     ))}
   </div>
 )}
-          </div>
-          <ElementDistributionChart
+          </fieldset>
+          <div className="property-section-chart">
+          <ChemicalCompositionChart
             data={chartData}
             unit={chartUnit}
             mode={chartMode}
             onModeChange={setChartMode}
           />
+          </div>
         </div>
         <div className="note-field">
       <label className="note-label">Примечание</label>
       <textarea
         className="note-textarea"
+        disabled={readOnly}
         value={
           chemical_properties.composition?.[compositionSourceIndex]
             ?.note ?? ""

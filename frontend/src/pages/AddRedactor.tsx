@@ -1,15 +1,19 @@
 import { useState, useMemo, useEffect } from "react";
 import { useWorkspace } from "../context/WorkSpaceContext";
+import { useClassificationCatalog } from "../hooks/useClassificationCatalog";
+import { ClassificationFieldset } from "../components/ClassificationFieldset";
 
 type AddRedactorProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
+  readOnly?: boolean;
 };
 
-export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
+export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRedactorProps) {
   const [newArea, setNewArea] = useState("");
   const [localAddedAreas, setLocalAddedAreas] = useState<string[]>([]);
   const { workspace } = useWorkspace();
+  const classificationQuery = useClassificationCatalog();
 
   const materialKey =
     (material as { material_id?: string } | undefined)?.material_id ?? null;
@@ -67,6 +71,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
             type="text"
             value={metadata.name_material_standard ?? ""}
             className="input"
+            disabled={readOnly}
             onChange={(event) => {
                 const text = event.target.value;
                 onDraftChange({
@@ -84,6 +89,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
             type="text"
             value={alternative}
             className="input"
+            disabled={readOnly}
             onChange={(event) => {
                 const text = event.target.value;
                 onDraftChange({
@@ -101,6 +107,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
             type="text"
             value={metadata.comment ?? ""}
             className="input"
+            disabled={readOnly}
             onChange={(event) => {
               const text = event.target.value;
               onDraftChange({
@@ -111,59 +118,19 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
           />
         </div>
 
-        <fieldset className="form-section">
-          <legend>Классификация</legend>
-          <div className="form-row">
-            <label htmlFor="category">Категория:</label>
-            <input
-              id="category"
-              type="text"
-              value={metadata.classification?.classification_category ?? ""}
-              className="input"
-              onChange={(event) => {
-                const text = event.target.value;
-                onDraftChange({
-                  ...material,
-                  metadata: { ...metadata, classification:{...metadata.classification, classification_category: text }
-                },});
-              }}
-            />
-          </div>
-          <div className="form-row">
-            <label htmlFor="class">Структурный класс:</label>
-            <input
-              id="class"
-              type="text"
-              value={metadata.classification?.classification_class ?? ""}
-              className="input"
-              onChange={(event) => {
-                const text = event.target.value;
-                onDraftChange({
-                    ...material,
-                    metadata: { ...metadata, classification:{...metadata.classification, classification_class: text }
-                  },});
-              }}
-            />
-          </div>
-          <div className="form-row">
-            <label htmlFor="subclass">Подкласс:</label>
-            <input
-              id="subclass"
-              type="text"
-              value={metadata.classification?.classification_subclass ?? ""}
-              className="input"
-              onChange={(event) => {
-                const text = event.target.value;
-                onDraftChange({
-                    ...material,
-                    metadata: { ...metadata, classification:{...metadata.classification, classification_subclass: text }
-                  },});
-              }}
-            />
-          </div>
-        </fieldset>
-
-        <fieldset className="form-section">
+        <ClassificationFieldset
+          classification={metadata.classification ?? {}}
+          catalog={classificationQuery.data}
+          isLoading={classificationQuery.isLoading}
+          readOnly={readOnly}
+          onChange={(classification) =>
+            onDraftChange({
+              ...material,
+              metadata: { ...metadata, classification },
+            })
+          }
+        />
+        <fieldset className="form-section" disabled={readOnly}>
           <legend>Области применения</legend>
           {areas.length === 0 && (
             <p className="tab-placeholder tab-placeholder--inline">
@@ -204,11 +171,13 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
               type="text"
               className="input"
               value={newArea}
+              disabled={readOnly}
               onChange={(e) => setNewArea(e.target.value)}
             />
             <button
               type="button"
               className="button-secondary"
+              disabled={readOnly}
               onClick={() => {
                 const trimmed = newArea.trim();
                 if (!trimmed || areas.includes(trimmed)) return;
@@ -233,7 +202,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
           </div>
         </fieldset>
 
-        <fieldset className="form-section">
+        <fieldset className="form-section" disabled={readOnly}>
           <legend>Параметры применения</legend>
           <div className="form-row">
             <label htmlFor="temperature">Температура применения ДО, °C:</label>
@@ -242,6 +211,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
               type="number"
               value={metadata.temperature_application?.value ?? ""}
               className="input"
+              disabled={readOnly}
               onChange={(event) => {
                 const raw = event.target.value;
                 const value = raw === "" ? "": Number(raw);
@@ -259,6 +229,7 @@ export function AddRedactor({ material, onDraftChange }: AddRedactorProps) {
               type="text"
               value={metadata.temperature_application?.comment ?? ""}
               className="input"
+              disabled={readOnly}
               onChange={(event) => {
                 const text = event.target.value;
                 onDraftChange({

@@ -2,14 +2,14 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { getUnits } from "../api/units";
 import { TEMPERATURE_UNIT_TYPE } from "../lib/calculationColumnHeader";
-import type { SingleCalculationColumn, UnitResponse } from "../types/api";
+import type { UnitResponse } from "../types/api";
 
 type UseColumnUnitConfigsOptions = {
   includeTemperature?: boolean;
 };
 
 export function useColumnUnitConfigs(
-  columns: SingleCalculationColumn[],
+  columns: Array<{unit_type?: string|null}>,
   options: UseColumnUnitConfigsOptions = {},
 ) {
   const unitTypes = useMemo(() => {

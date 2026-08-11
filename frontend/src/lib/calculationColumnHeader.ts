@@ -4,7 +4,16 @@ import { unitDisplayText } from "./columnUnits";
 /** unit_type из units_registry.json для колонки температуры. */
 export const TEMPERATURE_UNIT_TYPE = "Температура";
 
-export function splitCalculationColumnHeader(col: SingleCalculationColumn): {
+export type ColumnHeaderMeta = {
+  key: string;
+  label: string;
+  display_symbol?: string;
+  unit: string;
+  unit_type?: string | null;
+  temperature_dependent?: boolean
+}
+
+export function splitCalculationColumnHeader(col: Pick<ColumnHeaderMeta, "label" | "unit">): {
   symbol: string;
   unit: string;
 } {
@@ -28,7 +37,7 @@ export function splitCalculationColumnHeader(col: SingleCalculationColumn): {
 }
 
 export function calculationColumnSymbol(
-  col: SingleCalculationColumn,
+  col: ColumnHeaderMeta,
 ): string {
   const fromApi = col.display_symbol?.trim();
   if (fromApi) {

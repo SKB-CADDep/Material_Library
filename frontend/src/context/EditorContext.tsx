@@ -9,6 +9,8 @@ type EditorContextValue = {
     setSelectedId: (id: string | null) => void;
     isNewMaterial: boolean;
     setIsNewMaterial: (next: boolean) => void;
+    isEditing: boolean;
+    setIsEditing: (next: boolean) => void;
     resetEditor:() => void;
 }
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -16,10 +18,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [isNewMaterial, setIsNewMaterial] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     function resetEditor() {
         setDraft(null);
         setSelectedId(null);
         setIsNewMaterial(false);
+        setIsEditing(false);
       }
     const value: EditorContextValue = {
         draft,
@@ -28,6 +32,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         setSelectedId,
         isNewMaterial,
         setIsNewMaterial,
+        isEditing,
+        setIsEditing,
         resetEditor
     }
   

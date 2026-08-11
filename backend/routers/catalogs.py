@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from backend.dependencies import AppState, get_state
-from backend.schemas import PropertiesResponse, HardnessColumnsResponse, HardnessConvertResponse, HardnessConvertRequest, UnitResponse
+from backend.schemas import PropertiesResponse, HardnessColumnsResponse, HardnessConvertResponse, HardnessConvertRequest, UnitResponse, ClassificationResponse
 from src.services.unit_manager import UnitManager
+from src.services.classification_catalog import get_classification_catalog
 
 router = APIRouter(tags=["Catalogs"])
 
@@ -10,6 +11,10 @@ def get_properties(state: AppState=Depends(get_state)):
     physical = state.properties.physical_items()
     mechanical = state.properties.mechanical_items()
     return PropertiesResponse(physical=physical, mechanical=mechanical)
+
+@router.get("/catalogs/classification", response_model=ClassificationResponse)
+def get_classification():
+    return get_classification_catalog().to_response()
 
 @router.get("/catalogs/hardness/columns", response_model=HardnessColumnsResponse)
 def get_columns(state: AppState=Depends(get_state)):

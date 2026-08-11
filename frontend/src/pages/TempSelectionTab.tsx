@@ -1,9 +1,26 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useQuery } from "@tanstack/react-query";
 import { postTemperatureSelection } from "../api/selection";
 import { SelectionTable } from "../components/SelectionTable";
+import { useColumnUnitConfigs } from "../hooks/useColumnUnitConfigs";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { mergeColumnUnits } from "../lib/columnUnits";
+import { syncHardnessColumnUnits } from "../lib/formatSelectionCellValue";
+import {
+  ALL_NTD_FILTER,
+  collectNtdFilterOptions,
+  filterRowsByNtd,
+} from "../lib/ntdFilter";
+import {
+  type SelectionSortColumn,
+  type SelectionSortState,
+  sortSelectionRows,
+  toggleSortDirection,
+} from "../lib/sortSelectionRows";
+
+const TEMPERATURE_DEBOUNCE_MS = 300;
 
 
 const PROP_TYPE_OPTIONS = [
@@ -19,16 +36,29 @@ export function TempSelectionTab() {
   const { workspace } = useWorkspace();
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [propType, setPropType] = useState<PropType>("physical");
-  const [temperature, setTemperature] = useState("20");
+  const [temperatureInput, setTemperatureInput] = useState("20");
+  const debouncedTemperature = useDebouncedValue(
+    temperatureInput,
+    TEMPERATURE_DEBOUNCE_MS,
+  );
+  const [sortState, setSortState] = useState<SelectionSortState>(null);
+  const [selectedNtd, setSelectedNtd] = useState(ALL_NTD_FILTER);
+  const [columnUnits, setColumnUnits] = useState<Record<string, string>>({});
 
   const areaOptions = workspace?.application_areas ?? [];
 
   const result = useQuery({
-    queryKey: ["selection", "temperature", propType, selectedAreas, temperature],
+    queryKey: [
+      "selection",
+      "temperature",
+      propType,
+      selectedAreas,
+      debouncedTemperature,
+    ],
     queryFn: () =>
       postTemperatureSelection({
         prop_type: propType,
-        temperature: Number(temperature) || 0,
+        temperature: Number(debouncedTemperature) || 0,
         ...(selectedAreas.length > 0 ? { areas: selectedAreas } : {}),
       }),
     enabled: Boolean(workspace),
@@ -36,6 +66,64 @@ export function TempSelectionTab() {
 
   const columns = result.data?.columns ?? [];
   const rows = result.data?.rows ?? [];
+  const ntdOptions = useMemo(() => collectNtdFilterOptions(rows), [rows]);
+  const { configs: unitConfigs } = useColumnUnitConfigs(columns, {
+    includeTemperature: true,
+  });
+
+  useEffect(() => {
+    setSortState(null);
+    setSelectedNtd(ALL_NTD_FILTER);
+  }, [propType, debouncedTemperature, selectedAreas]);
+
+  useEffect(() => {
+    if (!selectedNtd) {
+      return;
+    }
+    if (!ntdOptions.includes(selectedNtd)) {
+      setSelectedNtd(ALL_NTD_FILTER);
+    }
+  }, [ntdOptions, selectedNtd]);
+
+  useEffect(() => {
+    setColumnUnits({});
+  }, [propType]);
+
+  useEffect(() => {
+    if (columns.length === 0) {
+      return;
+    }
+    setColumnUnits((prev) => mergeColumnUnits(columns, prev, unitConfigs));
+  }, [columns, unitConfigs]);
+
+  const filteredRows = useMemo(
+    () => filterRowsByNtd(rows, selectedNtd),
+    [rows, selectedNtd],
+  );
+
+  const displayRows = useMemo(() => {
+    if (!sortState || filteredRows.length === 0) {
+      return filteredRows;
+    }
+    return sortSelectionRows(filteredRows, sortState.column, sortState.direction);
+  }, [filteredRows, sortState]);
+
+  const handleSortColumn = (column: SelectionSortColumn) => {
+    setSortState((prev) => {
+      if (prev?.column === column) {
+        return { column, direction: toggleSortDirection(prev.direction) };
+      }
+      return { column, direction: "asc" };
+    });
+  };
+
+  const handleColumnUnitChange = (columnKey: string, unit: string) => {
+    setColumnUnits((prev) =>
+      propType === "hardness"
+        ? syncHardnessColumnUnits(columnKey, unit, prev)
+        : { ...prev, [columnKey]: unit },
+    );
+  };
 
   return (
     <div className="temp-selection-tab">
@@ -74,10 +162,37 @@ export function TempSelectionTab() {
             id="temperature-input"
             type="number"
             className="input"
-            value={temperature}
-            onChange={(event) => setTemperature(event.target.value)}
+            value={temperatureInput}
+            onChange={(event) => setTemperatureInput(event.target.value)}
           />
         </div>
+
+        <div className="selection-control selection-control--ntd">
+          <label htmlFor="ntd-filter-select">НТД:</label>
+          <select
+            id="ntd-filter-select"
+            className="input"
+            value={selectedNtd}
+            onChange={(event) => setSelectedNtd(event.target.value)}
+            disabled={ntdOptions.length === 0}
+            title={
+              ntdOptions.length === 0
+                ? "Нет данных для фильтрации по НТД"
+                : undefined
+            }
+          >
+            <option value={ALL_NTD_FILTER}>Все</option>
+            {ntdOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <p className="selection-unit-hint">
+          ПКМ по заголовку свойства — смена единицы измерения
+        </p>
       </div>
 
       <section className="selection-body">
@@ -99,9 +214,26 @@ export function TempSelectionTab() {
           <p className="tab-placeholder">Нет данных для отображения</p>
         )}
 
-        {workspace && result.isSuccess && rows.length > 0 && (
+        {workspace &&
+          result.isSuccess &&
+          rows.length > 0 &&
+          filteredRows.length === 0 && (
+            <p className="tab-placeholder">
+              Нет строк для выбранного НТД
+            </p>
+          )}
+
+        {workspace && result.isSuccess && filteredRows.length > 0 && (
           <div className="selection-table-panel">
-              <SelectionTable scrollColumns={columns} rows={rows}/>
+              <SelectionTable
+                scrollColumns={columns}
+                rows={displayRows}
+                unitConfigs={unitConfigs}
+                columnUnits={columnUnits}
+                onColumnUnitChange={handleColumnUnitChange}
+                sortState={sortState}
+                onSortColumn={handleSortColumn}
+              />
           </div>
         )}
       </section>

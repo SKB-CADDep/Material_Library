@@ -1,28 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useEffect, useState } from "react";
 import { UnitSelect } from "./UnitSelect";
-import { getSources } from "../api/sources";
-import { useQuery } from "@tanstack/react-query";
+import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import {
   PropertySourceSelect,
   isOrphanSource,
   resolvePropertySourceName,
 } from "./PropertySourceSelect";
-import { chartValueLabel, yLabelWithUnit } from "./chartLabels";
+import { yLabelWithUnit } from "./chartLabels";
 import {
   formatCategoryOptionLabel,
   resolveCategorySourceName,
 } from "../lib/strengthCategory";
 import { RequiredMark } from "../components/RequiredMark";
 import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
+import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart";
+import { PropertyCommentField } from "../components/PropertyCommentField";
+import { TemperatureValueTable } from "../components/TemperatureValueTable";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { computeNiceAxisFromValues, formatTickLabel } from "../utils/chartTicks";
 import {
@@ -34,6 +27,7 @@ import {
 type MechanicalPropertiesTabProps = {
   material: Record<string, unknown> | undefined;
   onDraftChange: (next: Record<string, unknown>) => void;
+  readOnly?: boolean;
 };
 
 type PropertyData = NamedProperty;
@@ -69,10 +63,6 @@ function parsePairNumber(raw: string): number {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-function formatPairNumber(value: number): string {
-  return Number.isFinite(value) ? String(value) : "";
-}
-/** Температурозависимые мех. свойства: от предела текучести до выносливости (как в Tkinter / catalog). */
 const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
   {
     key: "yield_strength",
@@ -191,78 +181,6 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
 }
 
 
-function TemperatureGraph({
-  data,
-  yLabel = "Значение",
-}: {
-  data: ChartPoint[];
-  yLabel?: string;
-}) {
-  const axes = useMemo(() => {
-    if (data.length === 0) {
-      return null;
-    }
-    const x = computeNiceAxisFromValues(data.map((point) => point.temperature));
-    const y = computeNiceAxisFromValues(data.map((point) => point.value));
-    if (!x || !y) {
-      return null;
-    }
-    return { x, y };
-  }, [data]);
-
-  if (!axes) {
-    return <p className="tab-placeholder">Нет данных для графика</p>;
-  }
-
-  const { x, y } = axes;
-
-  return (
-    <ResponsiveContainer width="100%" height={400}>
-      <LineChart
-        data={data}
-        margin={{ left: 8, right: 16, top: 8, bottom: 24 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis
-          type="number"
-          domain={x.domain}
-          dataKey="temperature"
-          label={{ value: "T, °C", position: "insideBottom", offset: -5 }}
-          ticks={x.ticks}
-          tickFormatter={formatTickLabel}
-        />
-        <YAxis
-          width={72}
-          domain={y.domain}
-          label={{ value: yLabel, angle: -90, position: "insideLeft" }}
-          ticks={y.ticks}
-          tickFormatter={formatTickLabel}
-        />
-        <Tooltip
-          formatter={(value) => [value, chartValueLabel(yLabel)]}
-          labelFormatter={(label) => `Температура: ${label} °C`}
-        />
-        <Line
-          type="linear"
-          dataKey="value"
-          stroke="#3D5A80"
-          strokeWidth={2}
-          dot={{ fill: "#3D5A80", r: 4 }}
-          activeDot={{ r: 6 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  );
-}
-type TemperatureValueTableProps = {
-  pairs: Array<[number, number]> | undefined;
-  onChangeValue?: (rowIndex: number, raw: string) => void;
-  onChangeTemperature?: (rowIndex: number, raw: string) => void;
-  selectedRowIndex?: number | null;
-  onRowSelect?: (index: number) => void;
-  onAddRow?: () => void;
-  onDeleteRow?: () => void;
-};
 function MechTemperatureGraph({
   prop,
   data,
@@ -273,119 +191,10 @@ function MechTemperatureGraph({
   const { labels } = useUnitLabels(prop.unitType);
 
   return (
-    <TemperatureGraph
+    <PropertyTemperatureLineChart
       data={toChartData(data?.temperature_value_pairs)}
       yLabel={yLabelWithUnit(prop.yLabel, data?.value_unit, labels)}
     />
-  );
-}
-function TemperatureValueTable({
-  pairs,
-  onChangeValue,
-  onChangeTemperature,
-  selectedRowIndex,
-  onRowSelect,
-  onAddRow,
-  onDeleteRow
-}: TemperatureValueTableProps){
-  const isRowSelectionEnabled = Boolean(onRowSelect);
-  return (
-    <div className="table-wrapper">
-      <div className="data-table-container">
-        <table  className={
-            isRowSelectionEnabled
-              ? "data-table data-table--selectable-rows"
-              : "data-table"
-          }>
-          <thead>
-            <tr>
-              <th>T, °C</th>
-              <th>Значение</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(pairs ?? []).length === 0 ? (
-              <tr>
-                <td colSpan={2} className="table-empty">
-                  Нет точек — нажмите «+», чтобы добавить пару T–значение
-                </td>
-              </tr>
-            ) : (
-              (pairs ?? []).map(([temperature, value], index) => (
-              <tr key={index} className={
-                selectedRowIndex === index ? "table-row-selected" : ""
-              }>
-                <td  className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
-                  onClick={
-                    isRowSelectionEnabled
-                      ? () => onRowSelect?.(index)
-                      : undefined
-                  }>
-                  <input
-                    type="number"
-                    readOnly={!onChangeTemperature}
-                    value={formatPairNumber(temperature)}
-                    onChange={
-                      onChangeTemperature
-                        ? (e) => onChangeTemperature(index, e.target.value)
-                        : undefined
-                    }
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                    className="table-cell-input"
-                  />
-                </td>
-                <td className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
-                  onClick={
-                    isRowSelectionEnabled
-                      ? () => onRowSelect?.(index)
-                      : undefined
-                  }>
-                  <input
-                    type="number"
-                    readOnly={!onChangeValue}
-                    onChange={
-                      onChangeValue
-                        ? (e) => onChangeValue(index, e.target.value)
-                        : undefined
-                    }
-                    value={formatPairNumber(value)}
-                    className="table-cell-input"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </td>
-              </tr>
-            ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="table-controls">
-        <button
-          type="button"
-          className="table-control-btn"
-          title="Добавить пару"
-          onClick={() => onAddRow?.()}
-          disabled={!onAddRow}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="table-control-btn"
-          title={
-            selectedRowIndex == null
-              ? "Сначала выберите строку"
-              : "Удалить пару"
-          }
-          disabled={selectedRowIndex == null || !onDeleteRow}
-          onClick={() => onDeleteRow?.()}
-        >
-          −
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -421,11 +230,9 @@ function patchCategoryProperty(
 export function MechanicalPropertiesTab({
   material,
   onDraftChange,
+  readOnly = false,
 }: MechanicalPropertiesTabProps) {
-  const result = useQuery({
-    queryKey: ["sources"],
-    queryFn: getSources,
-  });
+  const result = useSourcesCatalog();
   const mechanicalSources = result.data?.strength_sources ?? [];
   const propertySources = result.data?.property_sources ?? [];
   const propertySourceNames = propertySources.map((src) => src.name_source);
@@ -499,6 +306,7 @@ export function MechanicalPropertiesTab({
             type="button"
             className="table-control-btn"
             title="Добавить категорию прочности"
+            disabled={readOnly}
             onClick={() => {
               const prev = mechanical_properties.strength_category ?? [];
               const newIndex = prev.length;
@@ -526,7 +334,7 @@ export function MechanicalPropertiesTab({
             type="button"
             className="table-control-btn"
             title="Удалить категорию прочности"
-            disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
+            disabled={readOnly || (mechanical_properties.strength_category?.length ?? 0) === 0}
             onClick={() => {
               const prev = mechanical_properties.strength_category ?? [];
               if (prev.length === 0) return;
@@ -548,7 +356,7 @@ export function MechanicalPropertiesTab({
         </div>
         </div>
       
-        <fieldset className="form-section">
+        <fieldset className="form-section" disabled={readOnly}>
           <div className="property-section-fields kp-category-fields">
             <div className="form-row">
               <label htmlFor="name_strength_select" className="form-label--fixed">
@@ -655,7 +463,7 @@ export function MechanicalPropertiesTab({
           );
 
           return (
-            <fieldset key={prop.key} className="form-section">
+            <fieldset key={prop.key} className="form-section" disabled={readOnly}>
               <legend>{prop.legend}</legend>
               {prop.hasAcceptance && (
                 <div className="form-row">
@@ -729,19 +537,17 @@ export function MechanicalPropertiesTab({
                   </div>
                   <div className="form-row">
                     <label htmlFor={commentId}>Комментарий:</label>
-                    <input
+                    <PropertyCommentField
                       id={commentId}
-                      type="text"
                       value={data?.comment ?? ""}
-                      className="input"
-                      onChange={(event) => {
+                      onChange={(text) => {
                         onDraftChange(
                           patchCategoryProperty(
                             material,
                             mechanical_properties,
                             categoryIndex,
                             prop.key,
-                            { comment: event.target.value },
+                            { comment: text },
                           ),
                         );
                       }}
@@ -832,7 +638,7 @@ export function MechanicalPropertiesTab({
           );
         })}
 
-        <fieldset className="form-section">
+        <fieldset className="form-section" disabled={readOnly}>
           <legend>Твёрдость</legend>
           <div className="form-row">
             <label htmlFor="hardness_is_acceptance" className="checkbox-item">
@@ -946,7 +752,7 @@ export function MechanicalPropertiesTab({
           );
 
           return (
-            <fieldset key={prop.key} className="form-section">
+            <fieldset key={prop.key} className="form-section" disabled={readOnly}>
               <legend>{prop.legend}</legend>
               <div className="form-row">
                 <label
@@ -1018,19 +824,17 @@ export function MechanicalPropertiesTab({
                   </div>
                   <div className="form-row">
                     <label htmlFor={commentId}>Комментарий:</label>
-                    <input
+                    <PropertyCommentField
                       id={commentId}
-                      type="text"
                       value={data?.comment ?? ""}
-                      className="input"
-                      onChange={(event) => {
+                      onChange={(text) => {
                         onDraftChange(
                           patchCategoryProperty(
                             material,
                             mechanical_properties,
                             categoryIndex,
                             prop.key,
-                            { comment: event.target.value },
+                            { comment: text },
                           ),
                         );
                       }}
