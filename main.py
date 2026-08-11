@@ -3035,7 +3035,7 @@ class AshbyDiagramTab(ttk.Frame):
             app_areas = meta.get(Schema.APP_AREA, [])
             if selected_area != "Все" and selected_area not in app_areas:
                 continue
-            cls = meta.get("classification", {}).get("classification_class", "")
+            cls = (meta.get("classification", {}).get("classification_class", "") or "").strip()
             if cls:
                 classes.add(cls)
 
@@ -3237,14 +3237,28 @@ class AshbyDiagramTab(ttk.Frame):
 
         self.ax.clear()
 
-        # Цвета ДЛЯ ОБЛАСТЕЙ (классы) оставляем фиксированными, как раньше
-        class_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-                        '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-                        '#bcbd22', '#17becf']
+        # Цвета ДЛЯ ОБЛАСТЕЙ (классы); паритет с _ASHBY_CLASS_COLORS (40 шт.).
+        class_colors = [
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
+            '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
+            '#bcbd22', '#17becf',
+            '#393b79', '#637939', '#8c6d31', '#843c39',
+            '#7b4173', '#3182bd', '#e6550d', '#31a354',
+            '#756bb1', '#636363',
+            '#6b6ecf', '#b5cf6b', '#e7ba52', '#d6616b',
+            '#ce6dbd', '#9c9ede', '#cedb9c', '#e7cb94',
+            '#e7969c', '#de9ed6',
+            '#08519c', '#a63603', '#006d2c', '#54278f',
+            '#252525', '#6baed6', '#fd8d3c', '#74c476',
+            '#9e9ac8', '#969696',
+        ]
 
         # Отдельный счётчик для всех кривых по материалам/КП,
         # чтобы каждая кривая была с уникальным цветом.
         series_index = 0
+        # Одинаковые наборы точек → разный linestyle, иначе кривые сливаются.
+        overlap_counts: dict[tuple, int] = {}
+        overlap_linestyles = ["-", "--", ":", "-.", (0, (10, 3, 2, 3))]
 
         x_is_mech = PROPERTIES.is_mechanical(x_prop_key)
         y_is_mech = PROPERTIES.is_mechanical(y_prop_key)
@@ -3256,14 +3270,40 @@ class AshbyDiagramTab(ttk.Frame):
             for mat in self.app_data.materials:
                 meta = mat.data.get(Schema.METADATA, {})
                 app_areas = meta.get(Schema.APP_AREA, [])
-                cls = meta.get("classification", {}).get("classification_class", "")
+                cls = (
+                    meta.get("classification", {}).get("classification_class", "") or ""
+                ).strip()
 
-                if cls != class_name:
+                if not cls or cls != class_name:
                     continue
                 if selected_area != "Все" and selected_area not in app_areas:
                     continue
 
                 cats = mat.get_strength_categories()
+
+                def _plot_curve(xs, ys, series_label):
+                    nonlocal series_index
+                    sig = tuple(
+                        (round(float(x), 6), round(float(y), 6))
+                        for x, y in zip(xs, ys)
+                    )
+                    overlap_idx = overlap_counts.get(sig, 0)
+                    overlap_counts[sig] = overlap_idx + 1
+                    linestyle = overlap_linestyles[
+                        overlap_idx % len(overlap_linestyles)
+                    ]
+                    curve_color = self._get_series_color(series_index)
+                    series_index += 1
+                    class_points.extend(zip(xs, ys))
+                    self.ax.plot(
+                        xs,
+                        ys,
+                        marker="o",
+                        linestyle=linestyle,
+                        label=series_label,
+                        color=curve_color,
+                        linewidth=1.8 if overlap_idx else 1.5,
+                    )
 
                 # Если хотя бы одна ось механическая — рисуем по категориям
                 if x_is_mech or y_is_mech:
@@ -3272,40 +3312,16 @@ class AshbyDiagramTab(ttk.Frame):
                         series_label = f"{mat.get_display_name()} {cat_name}".strip()
 
                         xs, ys = self._compute_series_points(mat, cat_idx, x_prop_key, y_prop_key)
-                        # Цвет для данной кривой (уникальный по series_index)
-                        curve_color = self._get_series_color(series_index)
-                        series_index += 1
-
-                        if xs and ys:
-                            class_points.extend(zip(xs, ys))
-                            self.ax.plot(xs, ys,
-                                         marker='o', linestyle='-',
-                                         label=series_label,
-                                         color=curve_color)
-                        else:
-                            # Нет данных по выбранным свойствам для этой категории
-                            self.ax.plot([], [],
-                                         marker='o', linestyle='-',
-                                         label=f"{series_label} (нет данных)",
-                                         color=curve_color)
+                        if not (xs and ys):
+                            continue
+                        _plot_curve(xs, ys, series_label)
                 else:
                     # Оси только по физическим свойствам/температуре — одна кривая на материал
                     series_label = mat.get_display_name()
                     xs, ys = self._compute_series_points(mat, None, x_prop_key, y_prop_key)
-                    curve_color = self._get_series_color(series_index)
-                    series_index += 1
-
-                    if xs and ys:
-                        class_points.extend(zip(xs, ys))
-                        self.ax.plot(xs, ys,
-                                     marker='o', linestyle='-',
-                                     label=series_label,
-                                     color=curve_color)
-                    else:
-                        self.ax.plot([], [],
-                                     marker='o', linestyle='-',
-                                     label=f"{series_label} (нет данных)",
-                                     color=curve_color)
+                    if not (xs and ys):
+                        continue
+                    _plot_curve(xs, ys, series_label)
 
             # Заливка выпуклой оболочки по всем точкам данного класса
             if len(class_points) >= 3:
@@ -3326,16 +3342,7 @@ class AshbyDiagramTab(ttk.Frame):
         if selected_classes:
             # Добавляем в легенду отдельные элементы для классов (цвет областей)
             handles, labels = self.ax.get_legend_handles_labels()
-            # class_color_map заполняется в цикле выше
-            # (если ещё нет, то можно завести локальный словарь там:
-            #   class_color_map = {}; class_color_map[class_name] = class_color)
-            # Предполагаем, что он существует в замыкании этого метода:
-            # поэтому нужно добавить его создание в начале _plot_diagram, до цикла:
-            #   class_color_map = {}
-            #   ...
-            #   class_color_map[class_name] = class_color
             for idx_class, class_name in enumerate(selected_classes):
-                # Цвет области берём из той же схемы, что и при заливке
                 class_color = class_colors[idx_class % len(class_colors)]
                 patch = Patch(
                     facecolor=class_color,
@@ -3346,7 +3353,8 @@ class AshbyDiagramTab(ttk.Frame):
                 handles.append(patch)
                 labels.append(f"Класс: {class_name}")
 
-            self.ax.legend(handles, labels, fontsize='small')
+            if handles:
+                self.ax.legend(handles, labels, fontsize='small')
 
         self.ax.grid(True, linestyle='--', alpha=0.7)
         self.canvas.draw()

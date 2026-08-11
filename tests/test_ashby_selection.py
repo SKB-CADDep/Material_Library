@@ -154,3 +154,119 @@ def test_ashby_empty_classes_ok():
     assert result["series"] == []
     assert result["hulls"] == []
     assert result["class_legend"] == []
+
+
+def test_ashby_skips_series_without_points():
+    """Серии без точек (нет данных по осям) не попадают в ответ и легенду."""
+    with_data = Material(
+        data={
+            "material_id": "with",
+            "metadata": {
+                "name_material_standard": "WithData",
+                "name_material_alternative": [],
+                "application_area": [],
+                "classification": {
+                    "classification_category": "",
+                    "classification_class": "Ферритный",
+                    "classification_subclass": "",
+                },
+            },
+            "physical_properties": {
+                "properties": [
+                    {
+                        "property_name": "density",
+                        "temperature_value_pairs": [[20.0, 7800.0]],
+                    }
+                ]
+            },
+            "mechanical_properties": {"strength_category": []},
+            "chemical_properties": {"composition": []},
+        }
+    )
+    without_data = Material(
+        data={
+            "material_id": "without",
+            "metadata": {
+                "name_material_standard": "NoData",
+                "name_material_alternative": [],
+                "application_area": [],
+                "classification": {
+                    "classification_category": "",
+                    "classification_class": "Ферритный",
+                    "classification_subclass": "",
+                },
+            },
+            "physical_properties": {"properties": []},
+            "mechanical_properties": {"strength_category": []},
+            "chemical_properties": {"composition": []},
+        }
+    )
+    service = SelectionService(PropertiesCatalog())
+    result = service.ashby_diagram(
+        _FakeRepo([with_data, without_data]),
+        x_prop="density",
+        y_prop="temperature",
+        class_names=["Ферритный"],
+    )
+    assert len(result["series"]) == 1
+    assert result["series"][0]["label"] == "WithData"
+    assert all(s["points"] for s in result["series"])
+    assert result["class_legend"] == [
+        {"class_name": "Ферритный", "color": result["class_legend"][0]["color"]}
+    ]
+
+
+def test_ashby_empty_classification_class_excluded_until_filled():
+    """Пустой classification_class не в опциях/диаграмме; после заполнения — появляется."""
+    bare = {
+        "material_id": "later",
+        "metadata": {
+            "name_material_standard": "LaterClass",
+            "name_material_alternative": [],
+            "application_area": [],
+            "classification": {
+                "classification_category": "",
+                "classification_class": "",
+                "classification_subclass": "",
+            },
+        },
+        "physical_properties": {
+            "properties": [
+                {
+                    "property_name": "density",
+                    "temperature_value_pairs": [[20.0, 7700.0], [100.0, 7650.0]],
+                }
+            ]
+        },
+        "mechanical_properties": {"strength_category": []},
+        "chemical_properties": {"composition": []},
+    }
+    material = Material(data=bare)
+    service = SelectionService(PropertiesCatalog())
+    repo = _FakeRepo([material])
+
+    options = service.ashby_options(repo)
+    assert options["classes"] == []
+
+    empty_pick = service.ashby_diagram(
+        repo,
+        x_prop="density",
+        y_prop="temperature",
+        class_names=[""],
+    )
+    assert empty_pick["series"] == []
+    assert empty_pick["class_legend"] == []
+
+    material.data["metadata"]["classification"]["classification_class"] = "Мартенситный"
+    options_filled = service.ashby_options(repo)
+    assert "Мартенситный" in options_filled["classes"]
+
+    diagram = service.ashby_diagram(
+        repo,
+        x_prop="density",
+        y_prop="temperature",
+        class_names=["Мартенситный"],
+    )
+    assert len(diagram["series"]) == 1
+    assert diagram["series"][0]["label"] == "LaterClass"
+    assert diagram["class_legend"][0]["class_name"] == "Мартенситный"
