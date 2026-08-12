@@ -66,11 +66,8 @@ function Ensure-Setup {
 
     Write-Step "Installing frontend packages"
     Push-Location -LiteralPath $FrontendDir
-    if (-not (Test-Path "node_modules")) {
-        npm install
-    } else {
-        Write-Host "node_modules exists, skipping npm install"
-    }
+
+    npm install
     Pop-Location
 }
 
