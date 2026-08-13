@@ -1,13 +1,4 @@
-import { useMemo, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useState } from "react";
 import { UnitSelect } from "./UnitSelect.tsx";
 import {
   PropertySourceSelect,
@@ -15,11 +6,11 @@ import {
   resolvePropertySourceName,
 } from "./PropertySourceSelect.tsx";
 import type { SourceItem } from "../types/api";
-import { chartValueLabel, yLabelWithUnit } from "./chartLabels.ts";
+import { yLabelWithUnit } from "./chartLabels.ts";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
-import { computeNiceAxisFromValues, formatTickLabel } from "../utils/chartTicks.ts";
+import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart";
 import {
   findNamedProp,
   patchPhysicalProperty,
@@ -113,66 +104,6 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
     .map(([temperature, value]) => ({ temperature, value }));
 }
 
-type TemperatureGraphProps = {
-  data: ChartPoint[];
-  yLabel?: string;
-};
-
-function TemperatureGraph({ data, yLabel = "Значение" }: TemperatureGraphProps) {
-  const axes = useMemo(() => {
-    if (data.length === 0) {
-      return null;
-    }
-    const x = computeNiceAxisFromValues(data.map((point) => point.temperature));
-    const y = computeNiceAxisFromValues(data.map((point) => point.value));
-    if (!x || !y) {
-      return null;
-    }
-    return { x, y };
-  }, [data]);
-
-  if (!axes) {
-    return <p className="tab-placeholder">Нет данных для графика</p>;
-  }
-
-  const { x, y } = axes;
-
-  return (
-    <ResponsiveContainer width="100%" height={400}>
-      <LineChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 24 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis
-          type="number"
-          domain={x.domain}
-          dataKey="temperature"
-          label={{ value: "T, °C", position: "insideBottom", offset: -5 }}
-          ticks={x.ticks}
-          tickFormatter={formatTickLabel}
-        />
-        <YAxis
-          width={72}
-          domain={y.domain}
-          label={{ value: yLabel, angle: -90, position: "insideLeft" }}
-          ticks={y.ticks}
-          tickFormatter={formatTickLabel}
-        />
-        <Tooltip
-          formatter={(value) => [value, chartValueLabel(yLabel)]}
-          labelFormatter={(label) => `Температура: ${label} °C`}
-        />
-        <Line
-          type="linear"
-          dataKey="value"
-          stroke="#3D5A80"
-          strokeWidth={2}
-          dot={{ fill: "#3D5A80", r: 4 }}
-          activeDot={{ r: 6 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  );
-}
-
 function PhysicalTemperatureGraph({
   unitType,
   yLabel,
@@ -187,7 +118,7 @@ function PhysicalTemperatureGraph({
   const { labels } = useUnitLabels(unitType);
 
   return (
-    <TemperatureGraph
+    <PropertyTemperatureLineChart
       data={toChartData(pairs)}
       yLabel={yLabelWithUnit(yLabel, valueUnit, labels)}
     />
