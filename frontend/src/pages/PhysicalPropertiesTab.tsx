@@ -25,6 +25,7 @@ import {
   patchPhysicalProperty,
   type NamedProperty,
 } from "../lib/namedProperties";
+import { TemperatureValueTable } from "../components/TemperatureValueTable";
 
 const PHYSICAL_Y_LABELS = {
   modulus_elasticity: "E, МПа",
@@ -101,10 +102,6 @@ function parsePairNumber(raw: string): number {
   if (raw === "" || raw === "-") return NaN;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : NaN;
-}
-
-function formatPairNumber(value: number): string {
-  return Number.isFinite(value) ? String(value) : "";
 }
 
 function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
@@ -194,140 +191,6 @@ function PhysicalTemperatureGraph({
       data={toChartData(pairs)}
       yLabel={yLabelWithUnit(yLabel, valueUnit, labels)}
     />
-  );
-}
-
-type TemperatureValueTableProps = {
-  pairs: Array<[number, number]> | undefined;
-  onChangeValue?: (rowIndex: number, raw: string) => void;
-  onChangeTemperature?: (rowIndex: number, raw: string) => void;
-  selectedRowIndex?: number | null;
-  onRowSelect?: (index: number) => void;
-  onAddRow?: () => void;
-  onDeleteRow?: () => void;
-};
-
-function TemperatureValueTable({
-  pairs,
-  onChangeValue,
-  onChangeTemperature,
-  selectedRowIndex,
-  onRowSelect,
-  onAddRow,
-  onDeleteRow,
-}: TemperatureValueTableProps) {
-  const isRowSelectionEnabled = Boolean(onRowSelect);
-
-  return (
-    <div className="table-wrapper">
-      <div className="data-table-container">
-        <table
-          className={
-            isRowSelectionEnabled
-              ? "data-table data-table--selectable-rows"
-              : "data-table"
-          }
-        >
-          <thead>
-            <tr>
-              <th>T, °C</th>
-              <th>Значение</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(pairs ?? []).length === 0 ? (
-              <tr>
-                <td colSpan={2} className="table-empty">
-                  Нет точек — нажмите «+», чтобы добавить пару T–значение
-                </td>
-              </tr>
-            ) : (
-              (pairs ?? []).map(([temperature, value], index) => (
-                <tr
-                  key={index}
-                  className={
-                    selectedRowIndex === index ? "table-row-selected" : ""
-                  }
-                >
-                  <td
-                    className={
-                      isRowSelectionEnabled ? "data-table-select-cell" : undefined
-                    }
-                    onClick={
-                      isRowSelectionEnabled
-                        ? () => onRowSelect?.(index)
-                        : undefined
-                    }
-                  >
-                    <input
-                      type="number"
-                      readOnly={!onChangeTemperature}
-                      value={formatPairNumber(temperature)}
-                      onChange={
-                        onChangeTemperature
-                          ? (e) => onChangeTemperature(index, e.target.value)
-                          : undefined
-                      }
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                      className="table-cell-input"
-                    />
-                  </td>
-                  <td
-                    className={
-                      isRowSelectionEnabled ? "data-table-select-cell" : undefined
-                    }
-                    onClick={
-                      isRowSelectionEnabled
-                        ? () => onRowSelect?.(index)
-                        : undefined
-                    }
-                  >
-                    <input
-                      type="number"
-                      readOnly={!onChangeValue}
-                      onChange={
-                        onChangeValue
-                          ? (e) => onChangeValue(index, e.target.value)
-                          : undefined
-                      }
-                      value={formatPairNumber(value)}
-                      className="table-cell-input"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="table-controls">
-        <button
-          type="button"
-          className="table-control-btn"
-          title="Добавить пару"
-          onClick={() => onAddRow?.()}
-          disabled={!onAddRow}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="table-control-btn"
-          title={
-            selectedRowIndex == null
-              ? "Сначала выберите строку"
-              : "Удалить пару"
-          }
-          disabled={selectedRowIndex == null || !onDeleteRow}
-          onClick={() => onDeleteRow?.()}
-        >
-          −
-        </button>
-      </div>
-    </div>
   );
 }
 

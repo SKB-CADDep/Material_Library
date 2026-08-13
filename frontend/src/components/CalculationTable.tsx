@@ -102,36 +102,29 @@ function CalculationCellValue({
 
   let displayCell = cell;
 
-
-
   if (
-
     cell?.value != null &&
-
     unitConfig &&
-
     baseUnit &&
-
     displayUnit &&
-
     baseUnit !== displayUnit
-
   ) {
+    const numeric =
+      typeof cell.value === "number" ? cell.value : Number(cell.value);
 
-    const converted = convertBetweenUnits(
-
-      cell.value,
-
-      baseUnit,
-
-      displayUnit,
-
-      unitConfig,
-
-    );
-
-    displayCell = { ...cell, value: converted };
-
+    if (Number.isFinite(numeric)) {
+      try {
+        const converted = convertBetweenUnits(
+          numeric,
+          baseUnit,
+          displayUnit,
+          unitConfig,
+        );
+        displayCell = { ...cell, value: converted };
+      } catch {
+        displayCell = cell;
+      }
+    }
   }
 
 

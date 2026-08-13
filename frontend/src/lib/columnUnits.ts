@@ -15,7 +15,7 @@ export function resolveDefaultColumnUnit(
     return baseUnit;
   }
 
-  if (baseUnit && unitConfig.units.includes(baseUnit)) {
+  if (baseUnit && unitConfig.units?.includes(baseUnit)) {
     return baseUnit;
   }
 
@@ -39,7 +39,7 @@ export function mergeColumnUnits(
       continue;
     }
 
-    if (config && !config.units.includes(next[col.key])) {
+    if (config?.units && !config.units.includes(next[col.key])) {
       next[col.key] = resolveDefaultColumnUnit(col, config);
       changed = true;
     }

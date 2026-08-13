@@ -190,8 +190,11 @@ export function TempSelectionTab() {
           </select>
         </div>
 
-        <p className="selection-unit-hint">
-          ПКМ по заголовку свойства — смена единицы измерения
+        <p
+          className="selection-unit-hint"
+          title="Правый клик по заголовку столбца — смена единицы измерения"
+        >
+          ПКМ по заголовку — смена ед.из.
         </p>
       </div>
 

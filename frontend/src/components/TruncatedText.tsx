@@ -38,6 +38,7 @@ export function TruncatedText({
   const tooltipText = (tooltip ?? text).trim();
   const isLink = Boolean(href);
   const resolvedTooltip = tooltipContent ?? tooltipText;
+  const forceTooltip = Boolean(tooltip && tooltip.trim() !== text);
 
   const checkOverflow = () => {
     const el = textRef.current;
@@ -87,7 +88,7 @@ export function TruncatedText({
   }
 
   const handleMouseEnter = () => {
-    if (!isOverflowing) return;
+    if (!forceTooltip && !isOverflowing) return;
     setShowTooltip(true);
   };
 
@@ -97,7 +98,7 @@ export function TruncatedText({
 
   const rootClassName = ["truncated-cell", className].filter(Boolean).join(" ");
   const tooltipNode =
-    showTooltip && isOverflowing
+    showTooltip && (forceTooltip || isOverflowing)
       ? createPortal(
           <div
             className={[

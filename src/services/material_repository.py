@@ -81,5 +81,10 @@ class MaterialRepository:
         self.materials.sort(key=lambda m: m.get_display_name())
         self.load_application_areas()
 
+    def materials_using_source(self, source_id: str) -> list[Material]:
+        if not source_id:
+            return []
+        return [material for material in self.materials if material.uses_source_ref(source_id)]
+
 
 AppData = MaterialRepository

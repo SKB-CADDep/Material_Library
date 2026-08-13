@@ -19,6 +19,7 @@ import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { postSingleCalculation } from "../api/selection";
 import { CalculationColumnMenu } from "../components/CalculationColumnMenu";
 import { CalculationTableLegend } from "../components/CalculationTableLegend";
+import { TabErrorBoundary } from "../components/TabErrorBoundary";
 import { useColumnUnitConfigs } from "../hooks/useColumnUnitConfigs";
 import { buildColumnAcceptance } from "../lib/columnAcceptance";
 import { mergeColumnUnits } from "../lib/columnUnits";
@@ -81,6 +82,15 @@ export function SepCalculationTab() {
     {}) as MechanicalProperties;
   const categories = mechanical_properties.strength_category ?? [];
   const hasCategories = categories.length > 0;
+  const activeCategoryIndex = useMemo(() => {
+    if (!hasCategories || categoryIndex < 0 || categoryIndex >= categories.length) {
+      return null;
+    }
+    return categoryIndex;
+  }, [hasCategories, categoryIndex, categories.length]);
+  const activeCategory = activeCategoryIndex !== null
+    ? (categories[activeCategoryIndex] as Record<string, unknown>)
+    : undefined;
   const categoryNames = useMemo(
     () => uniqueStrengthCategoryNames(categories),
     [categories],
@@ -106,15 +116,27 @@ export function SepCalculationTab() {
     setScrollToCustomRowIndex(null);
   }, [selectedId, categoryIndex]);
 
+  const calcQueryEnabled =
+    selectedId !== null &&
+    Boolean(workspace) &&
+    activeCategoryIndex !== null &&
+    detail.isFetched;
+
   const sepCalculate = useQuery({
-    queryKey: ["selection", "calculate", selectedId, categoryIndex, customTemps],
+    queryKey: [
+      "selection",
+      "calculate",
+      selectedId,
+      activeCategoryIndex,
+      customTemps,
+    ],
     queryFn: () =>
       postSingleCalculation({
         material_id: selectedId!,
-        category_index: categoryIndex,
+        category_index: activeCategoryIndex!,
         custom_temperatures: customTemps,
       }),
-    enabled: selectedId !== null && Boolean(workspace),
+    enabled: calcQueryEnabled,
   });
 
   const columns = sepCalculate.data?.columns ?? [];
@@ -145,18 +167,14 @@ export function SepCalculationTab() {
       buildColumnComments(
         columns,
         detail.data?.physical_properties as Record<string, unknown> | undefined,
-        categories[categoryIndex] as Record<string, unknown> | undefined,
+        activeCategory,
       ),
-    [columns, detail.data, categories, categoryIndex],
+    [columns, detail.data, activeCategory],
   );
 
   const columnAcceptance = useMemo(
-    () =>
-      buildColumnAcceptance(
-        columns,
-        categories[categoryIndex] as Record<string, unknown> | undefined,
-      ),
-    [columns, categories, categoryIndex],
+    () => buildColumnAcceptance(columns, activeCategory),
+    [columns, activeCategory],
   );
 
   const columnSourceRefs = useMemo(
@@ -164,11 +182,11 @@ export function SepCalculationTab() {
       buildColumnSourceRefs(
         columns,
         detail.data?.physical_properties as Record<string, unknown> | undefined,
-        categories[categoryIndex] as Record<string, unknown> | undefined,
+        activeCategory,
         propertySources,
         mechanicalSources,
       ),
-    [columns, detail.data, categories, categoryIndex, propertySources, mechanicalSources],
+    [columns, detail.data, activeCategory, propertySources, mechanicalSources],
   );
 
   const hasColumnComments = Object.keys(columnComments).length > 0;
@@ -178,7 +196,7 @@ export function SepCalculationTab() {
   const filteredMaterials = useMemo(() => {
     if (selectedAreas.length === 0) return material;
     return material.filter((m) =>
-      m.areas.some((a) => selectedAreas.includes(a)),
+      (m.areas ?? []).some((a) => selectedAreas.includes(a)),
     );
   }, [material, selectedAreas]);
 
@@ -288,25 +306,39 @@ export function SepCalculationTab() {
     setSelectedCustomRowIndex(null);
   }
 
+  const calcDataMatches =
+    sepCalculate.data?.material_id === selectedId &&
+    sepCalculate.data?.category_index === activeCategoryIndex;
+
+  const isDetailLoading = Boolean(selectedId && detail.isPending);
+  const isCalcLoading =
+    calcQueryEnabled &&
+    (sepCalculate.isLoading || sepCalculate.isFetching);
+
   const showTable =
     workspace &&
     selectedId &&
+    activeCategoryIndex !== null &&
     sepCalculate.isSuccess &&
+    calcDataMatches &&
     rows.length > 0;
 
   const showBodyPlaceholder =
     workspace &&
     selectedId &&
+    hasCategories &&
+    activeCategoryIndex !== null &&
     !showTable &&
-    !(sepCalculate.isPending || sepCalculate.isFetching) &&
+    !isDetailLoading &&
+    !isCalcLoading &&
     !sepCalculate.isError &&
-    !(sepCalculate.isSuccess && rows.length === 0);
+    !(sepCalculate.isSuccess && calcDataMatches && rows.length === 0);
 
-  const columnMenuDisabled =
-    sepCalculate.isPending || sepCalculate.isFetching;
+  const columnMenuDisabled = isCalcLoading;
 
   return (
-    <div className="temp-selection-tab">
+    <TabErrorBoundary resetKey={`${selectedId ?? ""}:${activeCategoryIndex ?? ""}`}>
+    <div className="temp-selection-tab sep-calculation-tab">
       <div className="selection-controls">
         <div className="selection-control selection-control--area">
           <label htmlFor="area-filter-select">Область применения:</label>
@@ -392,9 +424,25 @@ export function SepCalculationTab() {
           <p className="tab-placeholder">Выберите материал</p>
         )}
 
-        {workspace && selectedId && (sepCalculate.isPending || sepCalculate.isFetching) && (
+        {workspace && selectedId && (isDetailLoading || isCalcLoading) && (
           <p className="tab-placeholder">Загрузка…</p>
         )}
+
+        {workspace && selectedId && detail.isError && (
+          <p className="tab-placeholder tab-placeholder--error">
+            {detail.error.message}
+          </p>
+        )}
+
+        {workspace &&
+          selectedId &&
+          detail.isFetched &&
+          !hasCategories &&
+          !isDetailLoading && (
+            <p className="tab-placeholder">
+              Нет категорий прочности — расчёт недоступен
+            </p>
+          )}
 
         {workspace && selectedId && sepCalculate.isError && (
           <p className="tab-placeholder tab-placeholder--error">
@@ -402,7 +450,11 @@ export function SepCalculationTab() {
           </p>
         )}
 
-        {workspace && selectedId && sepCalculate.isSuccess && rows.length === 0 && (
+        {workspace &&
+          selectedId &&
+          sepCalculate.isSuccess &&
+          calcDataMatches &&
+          rows.length === 0 && (
           <p className="tab-placeholder">
             Нет температурных данных для выбранной категории прочности
           </p>
@@ -530,5 +582,6 @@ export function SepCalculationTab() {
         )}
       </section>
     </div>
+    </TabErrorBoundary>
   );
 }

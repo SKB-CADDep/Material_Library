@@ -160,11 +160,63 @@ def test_update_source(client, source_id):
     assert SOURCE_ITEM_FIELDS <= set(data.keys())
     assert data["name_source"] == "Тест API (обновлён)"
 
+def test_post_source_rejects_empty_name(client):
+    response = client.post(
+        "/api/sources",
+        json={
+            "group": "property_sources",
+            "name": "",
+            "description": "",
+            "hyperlink": "",
+        },
+    )
+    assert response.status_code == 422
+
+def test_post_source_rejects_whitespace_name(client):
+    response = client.post(
+        "/api/sources",
+        json={
+            "group": "property_sources",
+            "name": "   ",
+            "description": "",
+            "hyperlink": "",
+        },
+    )
+    assert response.status_code == 422
+
+def test_update_source_rejects_empty_name(client, source_id):
+    response = client.put(
+        f"/api/sources/{source_id}",
+        json={
+            "name": "",
+            "description": "",
+            "hyperlink": "",
+        },
+    )
+    assert response.status_code == 422
+
 def test_delete_source(client, source_id):
     response = client.delete(f"/api/sources/{source_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True
+
+def test_delete_unused_source_with_open_workspace(client, open_workspace):
+    create_response = client.post(
+        "/api/sources",
+        json={
+            "group": "property_sources",
+            "name": "Источник для удаления",
+            "description": "",
+            "hyperlink": "",
+        },
+    )
+    assert create_response.status_code == 201
+    source_id = create_response.json()["id_source"]
+
+    delete_response = client.delete(f"/api/sources/{source_id}")
+    assert delete_response.status_code == 200
+    assert delete_response.json()["ok"] is True
 
 def test_get_false_workspace(client):
     user_data = {"directory": "/no/such/data"}

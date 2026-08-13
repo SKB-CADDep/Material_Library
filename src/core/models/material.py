@@ -172,6 +172,31 @@ class Material:
     def get_strength_categories(self):
         return self.data.get(Schema.MECHANICAL, {}).get(Schema.STRENGTH_CAT, []) or []
 
+    def uses_source_ref(self, source_id: str) -> bool:
+        """True, если source_ref_id встречается в физ./мех./хим. свойствах материала."""
+        if not source_id:
+            return False
+
+        for prop in self.get_physical_list():
+            if isinstance(prop, dict) and prop.get(Schema.REF_ID) == source_id:
+                return True
+
+        for cat in self.get_strength_categories():
+            if not isinstance(cat, dict):
+                continue
+            if cat.get(Schema.REF_ID) == source_id:
+                return True
+            for prop in cat.get(Schema.PROPERTIES) or []:
+                if isinstance(prop, dict) and prop.get(Schema.REF_ID) == source_id:
+                    return True
+
+        compositions = self.data.get(Schema.CHEMICAL, {}).get(Schema.COMPOSITION, []) or []
+        for comp in compositions:
+            if isinstance(comp, dict) and comp.get(Schema.REF_ID) == source_id:
+                return True
+
+        return False
+
     @staticmethod
     def get_category_prop_data(cat, prop_name):
         if not isinstance(cat, dict) or not prop_name:

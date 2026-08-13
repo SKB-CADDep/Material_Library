@@ -13,10 +13,13 @@ const CATEGORY_RESERVED_KEYS = new Set([
   "source_ref_id",
   "hardness",
   "hardness_unit",
+  "hardness_is_acceptance",
+  "properties",
   "comment",
   "source_strength_category",
   "property_source",
   "property_subsource",
+  "metadata",
 ]);
 
 function firstPropertySourceInCategory(cat: StrengthCategoryFields): string {

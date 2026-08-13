@@ -36,6 +36,11 @@ export type SourcesResponse = {
   chemical_sources: SourceItem[];
 };
 
+export type SourceUsageResponse = {
+  count: number;
+  examples: string[];
+};
+
 export type TabType =
   | "property_sources"
   | "strength_sources"
