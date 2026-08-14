@@ -30,30 +30,35 @@ const FROZEN_COLUMNS: {
   label: string;
   className: string;
   width: number;
+  stickyLeft: number;
 }[] = [
   {
     key: "material_name",
     label: "Материал",
     className: "selection-table-col--material",
     width: 220,
+    stickyLeft: 0,
   },
   {
     key: "strength_category",
     label: "КП",
     className: "selection-table-col--kp",
     width: 64,
+    stickyLeft: 220,
   },
   {
     key: "source",
     label: "НТД",
     className: "selection-table-col--source",
     width: 140,
+    stickyLeft: 284,
   },
   {
     key: "max_temp",
     label: "tприм ДО",
     className: "selection-table-col--temp",
     width: 100,
+    stickyLeft: 424,
   },
 ];
 
@@ -146,6 +151,10 @@ function renderColumnHeader(
   );
 }
 
+function frozenCellStyle(col: (typeof FROZEN_COLUMNS)[number]) {
+  return { left: col.stickyLeft };
+}
+
 export function SelectionTable({
   scrollColumns,
   rows,
@@ -155,9 +164,9 @@ export function SelectionTable({
   sortState,
   onSortColumn,
 }: SelectionTableProps) {
-  const scrollPaneRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const hTrackRef = useRef<HTMLDivElement>(null);
-  const scrollTableRef = useRef<HTMLTableElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const syncingRef = useRef(false);
   const [fillsWidth, setFillsWidth] = useState(false);
   const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
@@ -212,9 +221,9 @@ export function SelectionTable({
   );
 
   useLayoutEffect(() => {
-    const pane = scrollPaneRef.current;
-    const table = scrollTableRef.current;
-    if (!pane || !table) {
+    const viewport = viewportRef.current;
+    const table = tableRef.current;
+    if (!viewport || !table) {
       return;
     }
 
@@ -226,20 +235,25 @@ export function SelectionTable({
         return;
       }
 
-      const paneWidth = pane.clientWidth;
+      const viewportWidth = viewport.clientWidth;
       const previousWidth = table.style.width;
+      const previousLayout = table.style.tableLayout;
+      table.style.tableLayout = "auto";
       table.style.width = "max-content";
       const naturalWidth = table.scrollWidth;
       table.style.width = previousWidth;
+      table.style.tableLayout = previousLayout;
 
-      const needsScroll = naturalWidth > paneWidth + 1;
+      const needsScroll = naturalWidth > viewportWidth + 1;
 
       setFillsWidth(!needsScroll);
       setHasHorizontalScroll(needsScroll);
-      setScrollWidth(needsScroll ? naturalWidth : paneWidth);
+      setScrollWidth(
+        needsScroll ? Math.max(0, naturalWidth - FROZEN_WIDTH) : viewportWidth,
+      );
 
       if (!needsScroll) {
-        pane.scrollLeft = 0;
+        viewport.scrollLeft = 0;
         if (hTrackRef.current) {
           hTrackRef.current.scrollLeft = 0;
         }
@@ -248,28 +262,28 @@ export function SelectionTable({
 
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(pane);
+    observer.observe(viewport);
     observer.observe(table);
     return () => observer.disconnect();
-  }, [scrollColumns, rows]);
+  }, [scrollColumns, rows, columnUnits, sortState, unitConfigs]);
 
-  const syncScrollLeft = useCallback((source: "pane" | "track", left: number) => {
+  const syncScrollLeft = useCallback((source: "viewport" | "track", left: number) => {
     if (syncingRef.current) {
       return;
     }
     syncingRef.current = true;
-    if (source === "pane" && hTrackRef.current) {
+    if (source !== "track" && hTrackRef.current) {
       hTrackRef.current.scrollLeft = left;
     }
-    if (source === "track" && scrollPaneRef.current) {
-      scrollPaneRef.current.scrollLeft = left;
+    if (source !== "viewport" && viewportRef.current) {
+      viewportRef.current.scrollLeft = left;
     }
     syncingRef.current = false;
   }, []);
 
-  const handlePaneScroll = () => {
-    if (scrollPaneRef.current) {
-      syncScrollLeft("pane", scrollPaneRef.current.scrollLeft);
+  const handleViewportScroll = () => {
+    if (viewportRef.current) {
+      syncScrollLeft("viewport", viewportRef.current.scrollLeft);
     }
   };
 
@@ -284,8 +298,8 @@ export function SelectionTable({
       return;
     }
 
-    const pane = scrollPaneRef.current;
-    if (!pane) {
+    const viewport = viewportRef.current;
+    if (!viewport) {
       return;
     }
 
@@ -294,128 +308,180 @@ export function SelectionTable({
 
     if (deltaX !== 0) {
       event.preventDefault();
-      pane.scrollLeft += deltaX;
-      syncScrollLeft("pane", pane.scrollLeft);
+      viewport.scrollLeft += deltaX;
+      syncScrollLeft("viewport", viewport.scrollLeft);
       return;
     }
 
     if (event.shiftKey && deltaY !== 0) {
       event.preventDefault();
-      pane.scrollLeft += deltaY;
-      syncScrollLeft("pane", pane.scrollLeft);
+      viewport.scrollLeft += deltaY;
+      syncScrollLeft("viewport", viewport.scrollLeft);
     }
   };
 
+  const tableClassName = `data-table selection-table selection-table--unified${
+    fillsWidth ? " selection-table--fill-width" : ""
+  }`;
+
   return (
     <>
-    <div className="selection-table-container">
-      <div className="selection-table-viewport" onWheel={handleWheel}>
-        <div className="selection-table-split">
-          <div className="selection-table-frozen">
-            <table className="data-table selection-table selection-table--frozen">
-              <colgroup>
-                {FROZEN_COLUMNS.map((col) => (
-                  <col key={col.key} style={{ width: col.width }} />
-                ))}
-              </colgroup>
-              <thead>
-                <tr>
-                  {FROZEN_COLUMNS.map((col) => {
-                    const header = sortableHeaderProps(
-                      col.key,
-                      onSortColumn,
-                      col.label,
-                    );
+      <div className="selection-table-container">
+        <div
+          ref={viewportRef}
+          className="selection-table-viewport selection-table-viewport--unified"
+          onScroll={handleViewportScroll}
+          onWheel={handleWheel}
+        >
+          <table ref={tableRef} className={tableClassName}>
+            <colgroup>
+              {FROZEN_COLUMNS.map((col) => (
+                <col key={col.key} style={{ width: col.width }} />
+              ))}
+              {scrollColumns.map((col) => (
+                <col key={col.key} />
+              ))}
+            </colgroup>
+            <thead>
+              <tr>
+                {FROZEN_COLUMNS.map((col) => {
+                  const header = sortableHeaderProps(
+                    col.key,
+                    onSortColumn,
+                    col.label,
+                  );
 
-                    if (col.key === "max_temp") {
-                      const title = temperatureUnitLabel
-                        ? `${col.label}, ${temperatureUnitLabel}`
-                        : col.label;
-
-                      return (
-                        <th
-                          key={col.key}
-                          className={[
-                            "selection-table-col",
-                            col.className,
-                            header.className,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          title={onSortColumn ? header.title : title}
-                          onClick={header.onClick}
-                        >
-                          {renderColumnHeader(
-                            col.label,
-                            temperatureUnitLabel || "°C",
-                          )}
-                          {renderSortIndicator(col.key, sortState)}
-                        </th>
-                      );
-                    }
+                  if (col.key === "max_temp") {
+                    const title = temperatureUnitLabel
+                      ? `${col.label}, ${temperatureUnitLabel}`
+                      : col.label;
 
                     return (
                       <th
                         key={col.key}
+                        style={frozenCellStyle(col)}
                         className={[
                           "selection-table-col",
+                          "selection-table-col--frozen",
                           col.className,
                           header.className,
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        title={header.title ?? col.label}
+                        title={onSortColumn ? header.title : title}
                         onClick={header.onClick}
                       >
-                        {col.label}
+                        {renderColumnHeader(
+                          col.label,
+                          temperatureUnitLabel || "°C",
+                        )}
                         {renderSortIndicator(col.key, sortState)}
                       </th>
                     );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={getRowKey(row, index)}>
-                    {FROZEN_COLUMNS.map((col) => (
-                      <td
-                        key={col.key}
-                        className={col.className}
-                        title={
-                          col.key === "material_name"
-                            ? row.material_name
-                            : undefined
+                  }
+
+                  return (
+                    <th
+                      key={col.key}
+                      style={frozenCellStyle(col)}
+                      className={[
+                        "selection-table-col",
+                        "selection-table-col--frozen",
+                        col.className,
+                        header.className,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      title={header.title ?? col.label}
+                      onClick={header.onClick}
+                    >
+                      {col.label}
+                      {renderSortIndicator(col.key, sortState)}
+                    </th>
+                  );
+                })}
+                {scrollColumns.map((col) => {
+                  const symbol = calculationColumnSymbol(col);
+                  const unitConfig = col.unit_type
+                    ? unitConfigs[col.unit_type]
+                    : undefined;
+                  const displayUnit = columnUnits[col.key] ?? col.unit ?? "";
+                  const unitLabel = calculationColumnUnitLabel(
+                    displayUnit,
+                    unitConfig,
+                  );
+                  const title = unitLabel ? `${symbol}, ${unitLabel}` : symbol;
+                  const header = sortableHeaderProps(
+                    col.key,
+                    onSortColumn,
+                    title,
+                  );
+                  const canChangeUnit = Boolean(
+                    col.unit_type && unitConfig && onColumnUnitChange,
+                  );
+
+                  return (
+                    <th
+                      key={col.key}
+                      className={[
+                        "selection-table-col",
+                        "selection-table-col--value",
+                        "calculation-table-col--value",
+                        header.className,
+                        canChangeUnit ? "calculation-table-col--unit-switch" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      title={
+                        canChangeUnit
+                          ? "ПКМ — смена единицы измерения"
+                          : header.title ?? title
+                      }
+                      onClick={header.onClick}
+                      onContextMenu={(event) => {
+                        if (!canChangeUnit || !unitConfig) {
+                          return;
                         }
-                        onContextMenu={(event) =>
-                          handleCellContextMenu(event, index, col.key)
-                        }
-                      >
-                        {col.key === "max_temp" ? (
-                          !hasTemperatureComment(row) ? (
-                            getSelectionCellDisplayText(
-                              row,
-                              col.key,
-                              scrollColumns,
-                              columnUnits,
-                              unitConfigs,
-                            )
-                          ) : (
-                            <span className="temp-comment-cell">
-                              <span className="temp-comment-cell__value">
-                                {getSelectionCellDisplayText(
-                                  row,
-                                  col.key,
-                                  scrollColumns,
-                                  columnUnits,
-                                  unitConfigs,
-                                )}
-                              </span>
-                              <TempCommentIndicator
-                                comment={(row.temperature_comment ?? "").trim()}
-                              />
-                            </span>
-                          )
-                        ) : (
+                        event.preventDefault();
+                        setCellContextMenu(null);
+                        setUnitMenu({
+                          col,
+                          x: event.clientX,
+                          y: event.clientY,
+                        });
+                      }}
+                    >
+                      {renderColumnHeader(symbol, unitLabel, title)}
+                      {renderSortIndicator(col.key, sortState)}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={getRowKey(row, index)}>
+                  {FROZEN_COLUMNS.map((col) => (
+                    <td
+                      key={col.key}
+                      style={frozenCellStyle(col)}
+                      className={[
+                        col.className,
+                        "selection-table-col--frozen",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      title={
+                        col.key === "material_name"
+                          ? row.material_name
+                          : undefined
+                      }
+                      onContextMenu={(event) =>
+                        handleCellContextMenu(event, index, col.key)
+                      }
+                    >
+                      {col.key === "max_temp" ? (
+                        !hasTemperatureComment(row) ? (
                           getSelectionCellDisplayText(
                             row,
                             col.key,
@@ -423,163 +489,101 @@ export function SelectionTable({
                             columnUnits,
                             unitConfigs,
                           )
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div
-            ref={scrollPaneRef}
-            className="selection-table-scroll-pane"
-            onScroll={handlePaneScroll}
-          >
-            <table
-              ref={scrollTableRef}
-              className={`data-table selection-table selection-table--scroll${
-                fillsWidth ? " selection-table--fill-width" : ""
-              }`}
-            >
-              <thead>
-                <tr>
-                  {scrollColumns.map((col) => {
-                    const symbol = calculationColumnSymbol(col);
-                    const unitConfig = col.unit_type
-                      ? unitConfigs[col.unit_type]
-                      : undefined;
-                    const displayUnit = columnUnits[col.key] ?? col.unit ?? "";
-                    const unitLabel = calculationColumnUnitLabel(
-                      displayUnit,
-                      unitConfig,
-                    );
-                    const title = unitLabel
-                      ? `${symbol}, ${unitLabel}`
-                      : symbol;
-                    const header = sortableHeaderProps(
-                      col.key,
-                      onSortColumn,
-                      title,
-                    );
-                    const canChangeUnit = Boolean(
-                      col.unit_type && unitConfig && onColumnUnitChange,
-                    );
-
-                    return (
-                      <th
-                        key={col.key}
-                        className={[
-                          "selection-table-col",
-                          "selection-table-col--value",
-                          "calculation-table-col--value",
-                          header.className,
-                          canChangeUnit ? "calculation-table-col--unit-switch" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        title={
-                          canChangeUnit
-                            ? "ПКМ — смена единицы измерения"
-                            : header.title ?? title
-                        }
-                        onClick={header.onClick}
-                        onContextMenu={(event) => {
-                          if (!canChangeUnit || !unitConfig) {
-                            return;
-                          }
-                          event.preventDefault();
-                          setCellContextMenu(null);
-                          setUnitMenu({
-                            col,
-                            x: event.clientX,
-                            y: event.clientY,
-                          });
-                        }}
-                      >
-                        {renderColumnHeader(symbol, unitLabel, title)}
-                        {renderSortIndicator(col.key, sortState)}
-                      </th>
-                    );
-                  })}
+                        ) : (
+                          <span className="temp-comment-cell">
+                            <span className="temp-comment-cell__value">
+                              {getSelectionCellDisplayText(
+                                row,
+                                col.key,
+                                scrollColumns,
+                                columnUnits,
+                                unitConfigs,
+                              )}
+                            </span>
+                            <TempCommentIndicator
+                              comment={(row.temperature_comment ?? "").trim()}
+                            />
+                          </span>
+                        )
+                      ) : (
+                        getSelectionCellDisplayText(
+                          row,
+                          col.key,
+                          scrollColumns,
+                          columnUnits,
+                          unitConfigs,
+                        )
+                      )}
+                    </td>
+                  ))}
+                  {scrollColumns.map((col) => (
+                    <td
+                      key={col.key}
+                      className="selection-table-col--value"
+                      onContextMenu={(event) =>
+                        handleCellContextMenu(event, index, col.key)
+                      }
+                    >
+                      {getSelectionCellDisplayText(
+                        row,
+                        col.key,
+                        scrollColumns,
+                        columnUnits,
+                        unitConfigs,
+                      )}
+                    </td>
+                  ))}
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={getRowKey(row, index)}>
-                    {scrollColumns.map((col) => (
-                        <td
-                          key={col.key}
-                          className="selection-table-col--value"
-                          onContextMenu={(event) =>
-                            handleCellContextMenu(event, index, col.key)
-                          }
-                        >
-                          {getSelectionCellDisplayText(
-                            row,
-                            col.key,
-                            scrollColumns,
-                            columnUnits,
-                            unitConfigs,
-                          )}
-                        </td>
-                      ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <div
-        className={`selection-table-hscroll-row${
-          hasHorizontalScroll ? "" : " selection-table-hscroll-row--hidden"
-        }`}
-      >
         <div
-          className="selection-table-hscroll-spacer"
-          style={{ width: FROZEN_WIDTH }}
-          aria-hidden="true"
-        />
-        <div
-          ref={hTrackRef}
-          className="selection-table-hscroll-track"
-          onScroll={handleTrackScroll}
+          className={`selection-table-hscroll-row${
+            hasHorizontalScroll ? "" : " selection-table-hscroll-row--hidden"
+          }`}
         >
           <div
-            className="selection-table-hscroll-inner"
-            style={{ width: scrollWidth }}
+            className="selection-table-hscroll-spacer"
+            style={{ width: FROZEN_WIDTH }}
+            aria-hidden="true"
           />
+          <div
+            ref={hTrackRef}
+            className="selection-table-hscroll-track"
+            onScroll={handleTrackScroll}
+          >
+            <div
+              className="selection-table-hscroll-inner"
+              style={{ width: scrollWidth }}
+            />
+          </div>
         </div>
       </div>
-    </div>
 
-    {unitMenu && unitMenu.col.unit_type && onColumnUnitChange && (
-      <ColumnUnitContextMenu
-        x={unitMenu.x}
-        y={unitMenu.y}
-        columnLabel={calculationColumnSymbol(unitMenu.col)}
-        units={unitConfigs[unitMenu.col.unit_type]?.units ?? []}
-        currentUnit={columnUnits[unitMenu.col.key] ?? unitMenu.col.unit}
-        displayLabels={
-          unitConfigs[unitMenu.col.unit_type]?.display_labels
-        }
-        onSelect={(unit) => onColumnUnitChange(unitMenu.col.key, unit)}
-        onClose={() => setUnitMenu(null)}
-      />
-    )}
-    {cellContextMenu && (
-      <SelectionCellContextMenu
-        x={cellContextMenu.x}
-        y={cellContextMenu.y}
-        onCopy={() =>
-          void copyCellAt(cellContextMenu.rowIndex, cellContextMenu.column)
-        }
-        onClose={() => setCellContextMenu(null)}
-      />
-    )}
+      {unitMenu && unitMenu.col.unit_type && onColumnUnitChange && (
+        <ColumnUnitContextMenu
+          x={unitMenu.x}
+          y={unitMenu.y}
+          columnLabel={calculationColumnSymbol(unitMenu.col)}
+          units={unitConfigs[unitMenu.col.unit_type]?.units ?? []}
+          currentUnit={columnUnits[unitMenu.col.key] ?? unitMenu.col.unit}
+          displayLabels={unitConfigs[unitMenu.col.unit_type]?.display_labels}
+          onSelect={(unit) => onColumnUnitChange(unitMenu.col.key, unit)}
+          onClose={() => setUnitMenu(null)}
+        />
+      )}
+      {cellContextMenu && (
+        <SelectionCellContextMenu
+          x={cellContextMenu.x}
+          y={cellContextMenu.y}
+          onCopy={() =>
+            void copyCellAt(cellContextMenu.rowIndex, cellContextMenu.column)
+          }
+          onClose={() => setCellContextMenu(null)}
+        />
+      )}
     </>
   );
 }

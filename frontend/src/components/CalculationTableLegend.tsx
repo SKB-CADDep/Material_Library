@@ -108,7 +108,7 @@ export function CalculationTableLegend({
         className="calculation-table-legend__hint"
         title="Правый клик по заголовку столбца"
       >
-        ПКМ по заголовку — ед. изм.
+        ПКМ по заголовку — смена ед.из.
       </span>
     </div>
   );

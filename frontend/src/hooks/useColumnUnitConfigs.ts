@@ -33,6 +33,14 @@ export function useColumnUnitConfigs(
     })),
   });
 
+  const unitDataKey = queries
+    .map((query, index) =>
+      query.data
+        ? `${unitTypes[index]}:${query.dataUpdatedAt}`
+        : `${unitTypes[index]}:pending`,
+    )
+    .join("|");
+
   const configs = useMemo(() => {
     const map: Record<string, UnitResponse> = {};
     unitTypes.forEach((unitType, index) => {
@@ -42,7 +50,7 @@ export function useColumnUnitConfigs(
       }
     });
     return map;
-  }, [unitTypes, queries]);
+  }, [unitTypes, unitDataKey, queries]);
 
   const isLoading = queries.some((query) => query.isLoading);
 

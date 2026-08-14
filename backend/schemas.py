@@ -1,6 +1,13 @@
 from __future__ import annotations
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Literal
+
+
+def _normalize_source_name(value: str) -> str:
+    stripped = value.strip()
+    if not stripped:
+        raise ValueError("Наименование источника не может быть пустым")
+    return stripped
 
 class WorkspaceOpenRequest(BaseModel):
     directory: str
@@ -48,10 +55,20 @@ class SourceCreateRequest(BaseModel):
     description: str = ""
     hyperlink: str = ""
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return _normalize_source_name(value)
+
 class SourceUpdateRequest(BaseModel):
     name: str
     description: str = ""
     hyperlink: str = ""
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return _normalize_source_name(value)
 
 class SourcesResponse(BaseModel):
     property_sources: list["SourceItem"]
@@ -80,6 +97,11 @@ class SourceItem(BaseModel):
             user_name_found=str(data.get("user_name_found") or ""),
             data_found=str(data.get("data_found") or ""),
         )
+
+
+class SourceUsageResponse(BaseModel):
+    count: int
+    examples: list[str]
 
 class PropertiesResponse(BaseModel):
     physical: dict[str, dict]
