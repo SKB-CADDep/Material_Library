@@ -4574,17 +4574,6 @@ select {
   pointer-events: none;
 }
 
-.compare-props-cursor-coords {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  padding: 2px 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 4px;
-}
-
 .compare-props-chart-empty {
   display: flex;
   flex-direction: column;

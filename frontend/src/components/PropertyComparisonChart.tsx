@@ -65,6 +65,15 @@ const LEGEND_GRID_ROWS = 9;
 const LEGEND_PLACE_DEBOUNCE_MS = 120;
 /** Зазор вокруг плашки при оценке пересечений (линия/маркеры). */
 const LEGEND_COLLISION_PAD = 8;
+/** Отступ плашки у точки (как у Эшби / Recharts Tooltip offset). */
+const TOOLTIP_OFFSET = 10;
+/** Отступ текстовых координат курсора от указателя. */
+const CURSOR_COORDS_OFFSET = 12;
+/**
+ * Радиус захвата точки для плашки (px в системе SVG).
+ * Крупнее маркера — плашка срабатывает стабильнее.
+ */
+const POINT_HIT_PX = 20;
 
 const LEGEND_ITEM_STYLE: CSSProperties = {
   display: "grid",
@@ -540,6 +549,239 @@ function buildCompareLegendGeometry(
 type ScaleLike = ((value: number | string) => number | undefined) & {
   invert?: (value: number) => number;
 };
+
+type AxisReadoutMeta = {
+  symbol?: string;
+  key?: string;
+  unit?: string;
+  label?: string;
+};
+
+type ComparePointTip = {
+  temperature: number;
+  value: number;
+  materials: Array<{ label: string; color: string }>;
+  chartX: number;
+  chartY: number;
+};
+
+type CursorScaleBridge = {
+  plotArea: PlotArea;
+  xScale: ScaleLike | undefined;
+  yScale: ScaleLike | undefined;
+  domain: AxisDomain;
+};
+
+type CursorGeomCache = {
+  svg: SVGSVGElement;
+  canvasLeft: number;
+  canvasTop: number;
+};
+
+type PlottedCompareSeries = {
+  id: string;
+  label: string;
+  color: string;
+  points: Array<{ temperature: number; value: number }>;
+};
+
+/** Строка оси в подсказке: «T = 550 °С» (значение — целое, как на Эшби). */
+function formatAxisReadout(
+  axis: AxisReadoutMeta | null | undefined,
+  value: number,
+): string {
+  const symbol =
+    (axis?.symbol || "").trim() ||
+    (axis?.key || "").trim() ||
+    (axis?.label || "").trim() ||
+    "?";
+  const safeSymbol =
+    symbol.toLowerCase() === "x" || symbol.toLowerCase() === "y" ? "?" : symbol;
+  const valueLabel = Number.isFinite(value) ? String(Math.round(value)) : "";
+  const unit = (axis?.unit || "").trim();
+  return unit
+    ? `${safeSymbol} = ${valueLabel} ${unit}`
+    : `${safeSymbol} = ${valueLabel}`;
+}
+
+function collectMaterialsAtPoint(
+  seriesList: ReadonlyArray<PlottedCompareSeries>,
+  temperature: number,
+  value: number,
+): Array<{ label: string; color: string }> {
+  const found: Array<{ label: string; color: string }> = [];
+  const seen = new Set<string>();
+  for (const series of seriesList) {
+    const hit = series.points.some(
+      (point) => point.temperature === temperature && point.value === value,
+    );
+    if (!hit) {
+      continue;
+    }
+    const label = series.label.trim();
+    if (!label || seen.has(label)) {
+      continue;
+    }
+    seen.add(label);
+    found.push({ label, color: series.color || "#242930" });
+  }
+  return found;
+}
+
+function invertScale(
+  scale: ScaleLike | undefined,
+  pixel: number,
+  fallbackDomain: [number, number],
+  plotStart: number,
+  plotSize: number,
+  inverted = false,
+): number {
+  if (scale && typeof scale.invert === "function") {
+    return scale.invert(pixel);
+  }
+  const t = plotSize === 0 ? 0 : (pixel - plotStart) / plotSize;
+  if (inverted) {
+    return fallbackDomain[1] - t * (fallbackDomain[1] - fallbackDomain[0]);
+  }
+  return fallbackDomain[0] + t * (fallbackDomain[1] - fallbackDomain[0]);
+}
+
+function comparePointTipKey(tip: ComparePointTip): string {
+  const materialsKey = tip.materials
+    .map((item) => `${item.label}:${item.color}`)
+    .join(";");
+  return [
+    materialsKey,
+    tip.temperature,
+    tip.value,
+    Math.round(tip.chartX),
+    Math.round(tip.chartY),
+  ].join("|");
+}
+
+/** Белая плашка у точки (материал + значение / температура). */
+function ComparePointTipPlaque({
+  tip,
+  xAxis,
+  yAxis,
+}: {
+  tip: ComparePointTip;
+  xAxis: AxisReadoutMeta;
+  yAxis: AxisReadoutMeta;
+}) {
+  return (
+    <div
+      className="ashby-point-tooltip compare-props-point-tooltip"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        transform: `translate(${tip.chartX + TOOLTIP_OFFSET}px, ${
+          tip.chartY + TOOLTIP_OFFSET
+        }px)`,
+        margin: 0,
+        padding: 10,
+        backgroundColor: "#fff",
+        border: "1px solid #ccc",
+        borderRadius: 4,
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+        boxShadow: "0 2px 8px rgba(36, 41, 48, 0.18)",
+        zIndex: 30,
+        fontSize: 13,
+        lineHeight: 1.35,
+        color: "#242930",
+        boxSizing: "border-box",
+      }}
+    >
+      {tip.materials.length > 0 ? (
+        <div style={{ marginBottom: 4 }}>
+          {tip.materials.map((material, index) => (
+            <div
+              key={`${material.label}:${material.color}`}
+              style={{
+                fontWeight: 500,
+                color: material.color,
+                marginBottom: index === tip.materials.length - 1 ? 0 : 2,
+              }}
+            >
+              {material.label}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div>{formatAxisReadout(yAxis, tip.value)}</div>
+      <div>{formatAxisReadout(xAxis, tip.temperature)}</div>
+    </div>
+  );
+}
+
+/**
+ * Координаты у курсора без плашки (Y сверху, X снизу).
+ * Обновляется через ref/DOM — без setState на каждый mousemove.
+ */
+function CompareCursorCoordsLabel({
+  labelRef,
+  yLineRef,
+  xLineRef,
+}: {
+  labelRef: RefObject<HTMLDivElement | null>;
+  yLineRef: RefObject<HTMLDivElement | null>;
+  xLineRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div
+      ref={labelRef}
+      className="ashby-cursor-coords compare-props-cursor-coords"
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        visibility: "hidden",
+        margin: 0,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        boxShadow: "none",
+        pointerEvents: "none",
+        zIndex: 25,
+        fontSize: 12,
+        lineHeight: 1.25,
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        color: "#242930",
+        whiteSpace: "nowrap",
+        textShadow:
+          "0 0 3px #fff, 0 0 4px #fff, 1px 0 2px #fff, -1px 0 2px #fff, 0 1px 2px #fff, 0 -1px 2px #fff",
+        willChange: "transform",
+      }}
+    >
+      <div ref={yLineRef} />
+      <div ref={xLineRef} />
+    </div>
+  );
+}
+
+/** Держит актуальные plotArea/scale для перевода экранных координат в данные. */
+function CompareCursorScaleReporter({
+  domain,
+  bridgeRef,
+}: {
+  domain: AxisDomain;
+  bridgeRef: RefObject<CursorScaleBridge | null>;
+}) {
+  const plotArea = usePlotArea();
+  const xScale = useXAxisScale() as ScaleLike | undefined;
+  const yScale = useYAxisScale() as ScaleLike | undefined;
+
+  if (plotArea && plotArea.width > 0 && plotArea.height > 0) {
+    bridgeRef.current = { plotArea, xScale, yScale, domain };
+  } else {
+    bridgeRef.current = null;
+  }
+
+  return null;
+}
 
 /**
  * Обрезает линии, точки и подписи значений по полю осей —
@@ -1416,10 +1658,37 @@ export function PropertyComparisonChart({
 }: PropertyComparisonChartProps) {
   const plotRef = useRef<HTMLDivElement>(null);
   const legendOverlayRef = useRef<HTMLDivElement>(null);
+  const cursorScaleBridgeRef = useRef<CursorScaleBridge | null>(null);
+  const cursorRafRef = useRef<number | null>(null);
+  const cursorLabelRef = useRef<HTMLDivElement | null>(null);
+  const cursorYLineRef = useRef<HTMLDivElement | null>(null);
+  const cursorXLineRef = useRef<HTMLDivElement | null>(null);
+  const cursorGeomCacheRef = useRef<CursorGeomCache | null>(null);
+  const cursorPendingRef = useRef<{ clientX: number; clientY: number } | null>(
+    null,
+  );
+  const cursorLastTextRef = useRef({ y: "", x: "" });
+  const toolModeRef = useRef<ChartToolMode>("none");
+  const pointTipRef = useRef<ComparePointTip | null>(null);
+  const dismissedTipKeyRef = useRef<string | null>(null);
+  const plottedSeriesRef = useRef<PlottedCompareSeries[]>([]);
+  const xAxisRef = useRef<AxisReadoutMeta>({
+    symbol: "T",
+    key: "temperature",
+    unit: "°С",
+    label: "Температура",
+  });
+  const yAxisRef = useRef<AxisReadoutMeta>({
+    symbol: "?",
+    key: "value",
+    unit: "",
+    label: "Значение",
+  });
+
   const [baseDomain, setBaseDomain] = useState<AxisDomain | null>(null);
   const [viewDomain, setViewDomain] = useState<AxisDomain | null>(null);
   const [toolMode, setToolMode] = useState<ChartToolMode>("none");
-  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [pointTip, setPointTip] = useState<ComparePointTip | null>(null);
   const [zoomBox, setZoomBox] = useState<{
     x0: number;
     y0: number;
@@ -1436,7 +1705,12 @@ export function PropertyComparisonChart({
     startX: number;
     startY: number;
     domain: AxisDomain;
+    /** true — жест от зажатого колёсика (не от кнопки «рука»). */
+    fromMiddle: boolean;
   } | null>(null);
+  /** Временная «рука» по зажатию колёсика (не меняет toolMode на панели). */
+  const middlePanHoldRef = useRef(false);
+  const [middlePanHold, setMiddlePanHold] = useState(false);
 
   const series = useMemo(() => data?.series ?? [], [data]);
   const activeSeries = useMemo(
@@ -1457,6 +1731,27 @@ export function PropertyComparisonChart({
   const yAxisWidthRef = useRef(Y_AXIS_WIDTH_MIN);
   const [yAxisWidth, setYAxisWidth] = useState(Y_AXIS_WIDTH_MIN);
 
+  const xAxisMeta = useMemo<AxisReadoutMeta>(
+    () => ({
+      symbol: "T",
+      key: "temperature",
+      unit: "°С",
+      label: "Температура",
+    }),
+    [],
+  );
+  const yAxisMeta = useMemo<AxisReadoutMeta>(() => {
+    if (!data?.property) {
+      return { symbol: "?", key: "value", unit: "", label: "Значение" };
+    }
+    return {
+      symbol: data.property.symbol || data.property.name,
+      key: data.property.key,
+      unit: data.property.unit,
+      label: data.property.name,
+    };
+  }, [data?.property]);
+
   const yLabel = data
     ? `${data.property.name} [${data.property.unit}]`
     : "Значение";
@@ -1469,22 +1764,358 @@ export function PropertyComparisonChart({
       ? "Нет точек для построения графика по выбранным материалам"
       : emptyMessage;
 
+  toolModeRef.current = toolMode;
+  pointTipRef.current = pointTip;
+  xAxisRef.current = xAxisMeta;
+  yAxisRef.current = yAxisMeta;
+  plottedSeriesRef.current = activeSeries.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    color: entry.color,
+    points: entry.points,
+  }));
+
+  const clearPointTip = useCallback((dismissKey: string | null = null) => {
+    if (dismissKey) {
+      dismissedTipKeyRef.current = dismissKey;
+    }
+    pointTipRef.current = null;
+    setPointTip((prev) => (prev === null ? prev : null));
+  }, []);
+
+  const handlePointTipReport = useCallback((tip: ComparePointTip | null) => {
+    if (!tip) {
+      if (pointTipRef.current !== null) {
+        pointTipRef.current = null;
+        setPointTip(null);
+      }
+      return;
+    }
+    const key = comparePointTipKey(tip);
+    if (dismissedTipKeyRef.current === key) {
+      return;
+    }
+    dismissedTipKeyRef.current = null;
+    const prev = pointTipRef.current;
+    if (prev && comparePointTipKey(prev) === key) {
+      return;
+    }
+    pointTipRef.current = tip;
+    setPointTip(tip);
+  }, []);
+
+  const hideCursorReadout = useCallback(() => {
+    cursorPendingRef.current = null;
+    if (cursorRafRef.current !== null) {
+      cancelAnimationFrame(cursorRafRef.current);
+      cursorRafRef.current = null;
+    }
+    const labelEl = cursorLabelRef.current;
+    if (labelEl) {
+      labelEl.style.visibility = "hidden";
+    }
+  }, []);
+
+  const refreshCursorGeomCache = useCallback(() => {
+    const canvas = plotRef.current;
+    if (!canvas) {
+      cursorGeomCacheRef.current = null;
+      return null;
+    }
+    const svg =
+      (canvas.querySelector(
+        "svg.recharts-surface",
+      ) as SVGSVGElement | null) ||
+      (canvas.querySelector("svg") as SVGSVGElement | null);
+    if (!svg) {
+      cursorGeomCacheRef.current = null;
+      return null;
+    }
+    const canvasRect = canvas.getBoundingClientRect();
+    const cache: CursorGeomCache = {
+      svg,
+      canvasLeft: canvasRect.left,
+      canvasTop: canvasRect.top,
+    };
+    cursorGeomCacheRef.current = cache;
+    return cache;
+  }, []);
+
+  const clientToSvgLocal = useCallback(
+    (
+      svg: SVGSVGElement,
+      clientX: number,
+      clientY: number,
+    ): { x: number; y: number } | null => {
+      try {
+        const ctm = svg.getScreenCTM();
+        if (ctm) {
+          const point = svg.createSVGPoint();
+          point.x = clientX;
+          point.y = clientY;
+          const local = point.matrixTransform(ctm.inverse());
+          if (Number.isFinite(local.x) && Number.isFinite(local.y)) {
+            return { x: local.x, y: local.y };
+          }
+        }
+      } catch {
+        // fallback ниже
+      }
+      const rect = svg.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return null;
+      }
+      const vb = svg.viewBox.baseVal;
+      const vbX = vb && Number.isFinite(vb.x) ? vb.x : 0;
+      const vbY = vb && Number.isFinite(vb.y) ? vb.y : 0;
+      const vbW = vb && vb.width > 0 ? vb.width : rect.width;
+      const vbH = vb && vb.height > 0 ? vb.height : rect.height;
+      return {
+        x: vbX + ((clientX - rect.left) / rect.width) * vbW,
+        y: vbY + ((clientY - rect.top) / rect.height) * vbH,
+      };
+    },
+    [],
+  );
+
+  const paintCursorReadout = useCallback(() => {
+    cursorRafRef.current = null;
+    const pending = cursorPendingRef.current;
+    cursorPendingRef.current = null;
+    if (!pending) {
+      return;
+    }
+    if (toolModeRef.current !== "none" || middlePanHoldRef.current) {
+      hideCursorReadout();
+      return;
+    }
+
+    try {
+      // Всегда обновляем geom: left/top холста съезжают при скролле страницы.
+      const geom = refreshCursorGeomCache();
+      const labelEl = cursorLabelRef.current;
+      const yLineEl = cursorYLineRef.current;
+      const xLineEl = cursorXLineRef.current;
+
+      const bridge = cursorScaleBridgeRef.current;
+      if (!bridge || !geom) {
+        if (labelEl) {
+          labelEl.style.visibility = "hidden";
+        }
+        return;
+      }
+
+      const local = clientToSvgLocal(
+        geom.svg,
+        pending.clientX,
+        pending.clientY,
+      );
+      if (!local) {
+        if (labelEl) {
+          labelEl.style.visibility = "hidden";
+        }
+        return;
+      }
+      const { plotArea, xScale, yScale, domain: bridgeDomain } = bridge;
+
+      // Hit-test до проверки границ поля: точки у края ловятся и с небольшим выносом курсора.
+      const hitR2 = POINT_HIT_PX * POINT_HIT_PX;
+      let bestDist2 = hitR2;
+      let best: {
+        temperature: number;
+        value: number;
+        chartX: number;
+        chartY: number;
+      } | null = null;
+      for (const seriesEntry of plottedSeriesRef.current) {
+        for (const point of seriesEntry.points) {
+          const cx = xScale?.(point.temperature);
+          const cy = yScale?.(point.value);
+          if (
+            typeof cx !== "number" ||
+            typeof cy !== "number" ||
+            !Number.isFinite(cx) ||
+            !Number.isFinite(cy)
+          ) {
+            continue;
+          }
+          const dx = local.x - cx;
+          const dy = local.y - cy;
+          const dist2 = dx * dx + dy * dy;
+          if (dist2 <= bestDist2) {
+            bestDist2 = dist2;
+            best = {
+              temperature: point.temperature,
+              value: point.value,
+              chartX: Math.round(cx),
+              chartY: Math.round(cy),
+            };
+          }
+        }
+      }
+
+      if (best) {
+        const materials = collectMaterialsAtPoint(
+          plottedSeriesRef.current,
+          best.temperature,
+          best.value,
+        );
+        handlePointTipReport({
+          temperature: best.temperature,
+          value: best.value,
+          materials:
+            materials.length > 0
+              ? materials
+              : [{ label: "", color: "#242930" }],
+          chartX: best.chartX,
+          chartY: best.chartY,
+        });
+        hideCursorReadout();
+        return;
+      }
+
+      if (pointTipRef.current) {
+        // Без dismiss-ключа: иначе повторное наведение на ту же точку молчит.
+        clearPointTip();
+      }
+
+      const inPlot =
+        local.x >= plotArea.x &&
+        local.x <= plotArea.x + plotArea.width &&
+        local.y >= plotArea.y &&
+        local.y <= plotArea.y + plotArea.height;
+      if (!inPlot) {
+        if (labelEl) {
+          labelEl.style.visibility = "hidden";
+        }
+        return;
+      }
+
+      if (!labelEl || !yLineEl || !xLineEl) {
+        return;
+      }
+
+      const dataX = invertScale(
+        xScale,
+        local.x,
+        bridgeDomain.x.domain,
+        plotArea.x,
+        plotArea.width,
+      );
+      const dataY = invertScale(
+        yScale,
+        local.y,
+        bridgeDomain.y.domain,
+        plotArea.y,
+        plotArea.height,
+        true,
+      );
+      if (!Number.isFinite(dataX) || !Number.isFinite(dataY)) {
+        labelEl.style.visibility = "hidden";
+        return;
+      }
+
+      const left =
+        pending.clientX - geom.canvasLeft + CURSOR_COORDS_OFFSET;
+      const top =
+        pending.clientY - geom.canvasTop + CURSOR_COORDS_OFFSET;
+      labelEl.style.transform = `translate(${left}px, ${top}px)`;
+      labelEl.style.visibility = "visible";
+
+      const yText = formatAxisReadout(yAxisRef.current, dataY);
+      const xText = formatAxisReadout(xAxisRef.current, dataX);
+      if (cursorLastTextRef.current.y !== yText) {
+        cursorLastTextRef.current.y = yText;
+        yLineEl.textContent = yText;
+      }
+      if (cursorLastTextRef.current.x !== xText) {
+        cursorLastTextRef.current.x = xText;
+        xLineEl.textContent = xText;
+      }
+    } catch {
+      hideCursorReadout();
+    }
+  }, [
+    hideCursorReadout,
+    refreshCursorGeomCache,
+    clearPointTip,
+    clientToSvgLocal,
+    handlePointTipReport,
+  ]);
+
+  const scheduleCursorReadout = useCallback(
+    (clientX: number, clientY: number) => {
+      if (toolModeRef.current !== "none" || middlePanHoldRef.current) {
+        hideCursorReadout();
+        return;
+      }
+      cursorPendingRef.current = { clientX, clientY };
+      if (cursorRafRef.current === null) {
+        cursorRafRef.current = requestAnimationFrame(paintCursorReadout);
+      }
+    },
+    [hideCursorReadout, paintCursorReadout],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (cursorRafRef.current !== null) {
+        cancelAnimationFrame(cursorRafRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (toolMode !== "none" || middlePanHold) {
+      hideCursorReadout();
+      clearPointTip();
+      dismissedTipKeyRef.current = null;
+    }
+  }, [toolMode, middlePanHold, hideCursorReadout, clearPointTip]);
+
+  useEffect(() => {
+    if (pointTip) {
+      hideCursorReadout();
+    }
+  }, [pointTip, hideCursorReadout]);
+
   useEffect(() => {
     const next = buildBaseDomain(activeSeries) ?? emptyDomain();
     setBaseDomain(next);
     setViewDomain(next);
     setToolMode("none");
-    setCursor(null);
+    hideCursorReadout();
+    clearPointTip();
+    dismissedTipKeyRef.current = null;
+    middlePanHoldRef.current = false;
+    setMiddlePanHold(false);
+    panRef.current = null;
     setZoomBox(null);
     setLegendPlacement(null);
     setLivePlotArea(null);
     const width = estimateYAxisWidth(next.y.ticks);
     yAxisWidthRef.current = width;
     setYAxisWidth(width);
-  }, [activeSeries]);
+  }, [activeSeries, hideCursorReadout, clearPointTip]);
 
   const domain = viewDomain ?? baseDomain ?? emptyDomain();
   const hasPlotData = activeSeries.length > 0;
+
+  useEffect(() => {
+    cursorGeomCacheRef.current = null;
+  }, [chartSize.width, chartSize.height, domain.x.domain, domain.y.domain]);
+
+  useEffect(() => {
+    const onScrollOrResize = () => {
+      cursorGeomCacheRef.current = null;
+    };
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
+    return () => {
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
+    };
+  }, []);
 
   const estimatedYAxisWidth = useMemo(
     () => (domain ? estimateYAxisWidth(domain.y.ticks) : Y_AXIS_WIDTH_MIN),
@@ -1615,8 +2246,40 @@ export function PropertyComparisonChart({
     });
   };
 
+  const endMiddlePanHold = useCallback(() => {
+    if (!middlePanHoldRef.current) {
+      return;
+    }
+    middlePanHoldRef.current = false;
+    setMiddlePanHold(false);
+  }, []);
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!hasPlotData) return;
+
+    // Средняя кнопка (колёсико): временная «рука» на время зажатия.
+    if (event.button === 1) {
+      event.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      const mapped = clientToData(event.clientX, event.clientY);
+      if (!mapped) return;
+      middlePanHoldRef.current = true;
+      setMiddlePanHold(true);
+      hideCursorReadout();
+      clearPointTip();
+      panRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        domain,
+        fromMiddle: true,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
+
+    // Инструменты панели — только ЛКМ.
+    if (event.button !== 0) return;
 
     if (toolMode === "pan" || toolMode === "zoom") {
       event.preventDefault();
@@ -1632,6 +2295,7 @@ export function PropertyComparisonChart({
         startX: event.clientX,
         startY: event.clientY,
         domain,
+        fromMiddle: false,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
@@ -1649,14 +2313,19 @@ export function PropertyComparisonChart({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const mapped = clientToData(event.clientX, event.clientY);
-    if (mapped) {
-      setCursor({ x: mapped.x, y: mapped.y });
-    } else {
-      setCursor(null);
+    if (
+      hasPlotData &&
+      toolMode === "none" &&
+      !middlePanHoldRef.current &&
+      !panRef.current
+    ) {
+      scheduleCursorReadout(event.clientX, event.clientY);
     }
 
-    if (toolMode === "pan" && panRef.current?.pointerId === event.pointerId) {
+    const mapped = clientToData(event.clientX, event.clientY);
+
+    // Pan: и от кнопки «рука», и от зажатого колёсика.
+    if (panRef.current?.pointerId === event.pointerId) {
       const el = plotRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -1687,8 +2356,12 @@ export function PropertyComparisonChart({
   };
 
   const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (toolMode === "pan" && panRef.current?.pointerId === event.pointerId) {
+    if (panRef.current?.pointerId === event.pointerId) {
+      const fromMiddle = panRef.current.fromMiddle;
       panRef.current = null;
+      if (fromMiddle) {
+        endMiddlePanHold();
+      }
       return;
     }
 
@@ -1726,6 +2399,14 @@ export function PropertyComparisonChart({
     }
   };
 
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (panRef.current?.pointerId === event.pointerId) {
+      panRef.current = null;
+    }
+    endMiddlePanHold();
+    setZoomBox(null);
+  };
+
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     if (!hasPlotData) return;
     event.preventDefault();
@@ -1761,7 +2442,7 @@ export function PropertyComparisonChart({
   const lineChartData = chartRows.length > 0 ? chartRows : axisSeedRows;
 
   const canvasClass =
-    toolMode === "pan"
+    toolMode === "pan" || middlePanHold
       ? "ashby-chart-canvas ashby-chart-canvas--pan"
       : toolMode === "zoom"
         ? "ashby-chart-canvas ashby-chart-canvas--zoom"
@@ -1775,7 +2456,21 @@ export function PropertyComparisonChart({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerLeave={() => setCursor(null)}
+        onPointerCancel={handlePointerCancel}
+        onAuxClick={(event) => {
+          // Блокируем автоскролл/меню браузера по средней кнопке.
+          if (event.button === 1) {
+            event.preventDefault();
+          }
+        }}
+        onPointerLeave={() => {
+          hideCursorReadout();
+          clearPointTip();
+          dismissedTipKeyRef.current = null;
+        }}
+        onPointerEnter={() => {
+          cursorGeomCacheRef.current = null;
+        }}
         onWheel={handleWheel}
       >
         <ResponsiveContainer width="100%" height="100%">
@@ -1821,7 +2516,7 @@ export function PropertyComparisonChart({
                 name={entry.label}
                 stroke={entry.color}
                 strokeWidth={2}
-                connectNulls={false}
+                connectNulls
                 legendType="none"
                 dot={{ r: 4, fill: entry.color, strokeWidth: 0 }}
                 activeDot={{ r: 6 }}
@@ -1837,6 +2532,10 @@ export function PropertyComparisonChart({
               </Line>
             ))}
             <ComparePlotClip domain={domain} seriesCount={activeSeries.length} />
+            <CompareCursorScaleReporter
+              domain={domain}
+              bridgeRef={cursorScaleBridgeRef}
+            />
             <CompareLegendPlacementReporter
               series={activeSeries}
               domain={domain}
@@ -1868,12 +2567,29 @@ export function PropertyComparisonChart({
           />
         )}
 
-        {cursor && hasPlotData && (
-          <div className="ashby-cursor-coords compare-props-cursor-coords">
-            x={formatTickLabel(cursor.x)}&nbsp;&nbsp;y=
-            {formatTickLabel(cursor.y)}
-          </div>
-        )}
+        <div
+          className="ashby-tooltip-portal"
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 30,
+            pointerEvents: "none",
+          }}
+        >
+          {pointTip && hasPlotData ? (
+            <ComparePointTipPlaque
+              tip={pointTip}
+              xAxis={xAxisMeta}
+              yAxis={yAxisMeta}
+            />
+          ) : null}
+          <CompareCursorCoordsLabel
+            labelRef={cursorLabelRef}
+            yLineRef={cursorYLineRef}
+            xLineRef={cursorXLineRef}
+          />
+        </div>
       </div>
 
       <CompareChartToolbar
