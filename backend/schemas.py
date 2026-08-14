@@ -25,6 +25,16 @@ class MaterialSummary(BaseModel):
     name: str
     areas: list[str]
     filename: str
+    has_composition: bool = False
+
+class ChemCompositionEntryItem(BaseModel):
+    material_id: str
+    material_name: str
+    areas: list[str]
+    composition: dict
+
+class ChemCompositionEntriesResponse(BaseModel):
+    entries: list[ChemCompositionEntryItem]
 
 class MaterialSaveResponse(BaseModel):
     ok: bool
