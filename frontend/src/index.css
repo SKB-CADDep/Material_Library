@@ -755,7 +755,6 @@ select {
 
   .selection-page > .ashby-tab,
   .selection-page > .compare-props-tab,
-  .selection-page > .temp-selection-tab {
   .selection-page > .temp-selection-tab,
   .selection-page > .chem-comparison-tab {
     flex: 1;

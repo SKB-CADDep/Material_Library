@@ -400,16 +400,18 @@ function buildLegendCandidateGrid(
   }
 
   const candidates: LegendPlacement[] = [];
-  for (let row = 0; row < LEGEND_GRID_ROWS; row += 1) {
-    for (let col = 0; col < LEGEND_GRID_COLS; col += 1) {
+  const gridCols: number = LEGEND_GRID_COLS;
+  const gridRows: number = LEGEND_GRID_ROWS;
+  for (let row = 0; row < gridRows; row += 1) {
+    for (let col = 0; col < gridCols; col += 1) {
       const left =
-        LEGEND_GRID_COLS === 1
+        gridCols === 1
           ? minLeft
-          : minLeft + ((maxLeft - minLeft) * col) / (LEGEND_GRID_COLS - 1);
+          : minLeft + ((maxLeft - minLeft) * col) / (gridCols - 1);
       const top =
-        LEGEND_GRID_ROWS === 1
+        gridRows === 1
           ? minTop
-          : minTop + ((maxTop - minTop) * row) / (LEGEND_GRID_ROWS - 1);
+          : minTop + ((maxTop - minTop) * row) / (gridRows - 1);
       candidates.push({ left, top });
     }
   }
@@ -430,16 +432,10 @@ function findBestLegendPlacement(
   const preferLeft = plotArea.x + plotArea.width - legendSize.width - pad;
   const preferTop = plotArea.y + pad;
 
-  let bestPlacement = clampLegendRectToPlotArea(
-    {
-      left: preferLeft,
-      top: preferTop,
-      width: legendSize.width,
-      height: legendSize.height,
-    },
-    plotArea,
-    pad,
-  );
+  let bestPlacement: LegendPlacement = {
+    top: preferTop,
+    left: preferLeft,
+  };
   let bestBadness = Infinity;
   let bestTie = Infinity;
 
@@ -805,7 +801,7 @@ function ComparePlotClip({
 
     const applyClip = () => {
       const clipEl = document.getElementById(clipId);
-      const svg = clipEl?.ownerSVGElement;
+      const svg = clipEl?.closest("svg");
       if (!svg) {
         return;
       }
@@ -821,7 +817,7 @@ function ComparePlotClip({
             ".recharts-active-dot",
           ].join(", "),
         )
-        .forEach((layer) => {
+        .forEach((layer: Element) => {
           layer.setAttribute("clip-path", clipUrl);
         });
     };

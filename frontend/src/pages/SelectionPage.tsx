@@ -121,14 +121,7 @@ export function SelectionPage() {
             </Suspense>
           }
         />
-        <Route
-          path="compare-chem"
-          element={
-            <>
-              <h2>Сравнение материалов (хим. состав)</h2>
-            </>
-          }
-        />
+        <Route path="compare-chem" element={<ChemComparisonTab />} />
         <Route
           path="ashby"
           element={
@@ -149,45 +142,3 @@ export function SelectionPage() {
     </div>
   );
 }
-
-        <Routes>
-            <Route index element={<Navigate to="temperature" replace />} />
-            <Route 
-                path="temperature"
-                element={
-                   <TempSelectionTab/>
-                }
-            />
-
-            <Route 
-                path="calc"
-                element={
-                   <SepCalculationTab/>
-                }
-            />
-
-            <Route
-                path="compare-props"
-                element={
-                    <>
-                        <h2>
-                            Сравнение материалов
-                        </h2>
-                    </>
-                   }
-            />
-
-            <Route path="compare-chem" element={<ChemComparisonTab />} />
-
-            <Route
-                path="ashby"
-                element={
-                    <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
-                        <AshbyTab />
-                    </Suspense>
-                }
-            />
-        </Routes>
-      </div>
-    );
-  }
