@@ -3,6 +3,10 @@ import type {
   AshbyOptionsResponse,
   AshbyRequest,
   AshbyResponse,
+  ComparePropsPoolRequest,
+  ComparePropsPoolResponse,
+  ComparePropsRequest,
+  ComparePropsResponse,
   TemperatureSelectionRequest,
   TemperatureSelectionResponse,
   SingleCalculationRequest,
@@ -46,5 +50,25 @@ export async function getAshbyOptions(
 
 export async function postAshby(body: AshbyRequest): Promise<AshbyResponse> {
   const { data } = await api.post<AshbyResponse>("/selection/ashby", body);
+  return data;
+}
+
+export async function postComparePropsPool(
+  body: ComparePropsPoolRequest,
+): Promise<ComparePropsPoolResponse> {
+  const { data } = await api.post<ComparePropsPoolResponse>(
+    "/selection/compare-props/pool",
+    body,
+  );
+  return data;
+}
+
+export async function postCompareProps(
+  body: ComparePropsRequest,
+): Promise<ComparePropsResponse> {
+  const { data } = await api.post<ComparePropsResponse>(
+    "/selection/compare-props",
+    body,
+  );
   return data;
 }

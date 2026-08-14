@@ -1483,6 +1483,86 @@ function AshbyChartTitle({ title }: { title: string }) {
 }
 
 /**
+ * Пунктирные мини-секции посередине между основными тиками
+ * (как на вкладке «Сравнение материалов (свойства)» / desktop _add_minor_gridlines).
+ */
+function AshbyMinorGridlines({
+  xTicks,
+  yTicks,
+}: {
+  xTicks: number[];
+  yTicks: number[];
+}) {
+  const plotArea = usePlotArea();
+  const xScale = useXAxisScale() as ScaleLike | undefined;
+  const yScale = useYAxisScale() as ScaleLike | undefined;
+
+  if (!plotArea || !xScale || !yScale) {
+    return null;
+  }
+
+  const xMids: number[] = [];
+  for (let i = 0; i < xTicks.length - 1; i += 1) {
+    xMids.push((xTicks[i] + xTicks[i + 1]) / 2);
+  }
+  const yMids: number[] = [];
+  for (let i = 0; i < yTicks.length - 1; i += 1) {
+    yMids.push((yTicks[i] + yTicks[i + 1]) / 2);
+  }
+
+  const { x, y, width, height } = plotArea;
+
+  return (
+    <g className="ashby-minor-grid" pointerEvents="none">
+      {xMids.map((value) => {
+        const px = xScale(value);
+        if (typeof px !== "number" || !Number.isFinite(px)) {
+          return null;
+        }
+        if (px < x || px > x + width) {
+          return null;
+        }
+        return (
+          <line
+            key={`ashby-x-mid-${value}`}
+            x1={px}
+            y1={y}
+            x2={px}
+            y2={y + height}
+            stroke="grey"
+            strokeWidth={0.5}
+            strokeOpacity={0.7}
+            strokeDasharray="4 3"
+          />
+        );
+      })}
+      {yMids.map((value) => {
+        const py = yScale(value);
+        if (typeof py !== "number" || !Number.isFinite(py)) {
+          return null;
+        }
+        if (py < y || py > y + height) {
+          return null;
+        }
+        return (
+          <line
+            key={`ashby-y-mid-${value}`}
+            x1={x}
+            y1={py}
+            x2={x + width}
+            y2={py}
+            stroke="grey"
+            strokeWidth={0.5}
+            strokeOpacity={0.7}
+            strokeDasharray="4 3"
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+/**
  * Подписи осей: Y сдвигается вместе с фактической шириной полосы тиков.
  */
 function AshbyAxisLabels({
@@ -3162,7 +3242,13 @@ function AshbyChart({
                   yLabel={yLabel}
                   yAxisWidth={yAxisWidth}
                 />
-                <CartesianGrid strokeDasharray="4 4" strokeOpacity={0.7} />
+                {/* Основные секции — сплошная сетка по тикам. */}
+                <CartesianGrid stroke="#c5cad3" strokeWidth={1} />
+                {/* Мини-секции — пунктир посередине между тиками. */}
+                <AshbyMinorGridlines
+                  xTicks={viewAxisTicks.x.ticks}
+                  yTicks={viewAxisTicks.y.ticks}
+                />
                 <XAxis
                   type="number"
                   dataKey="x"
@@ -3861,6 +3947,7 @@ function AshbyChartToolbar({
   return (
     <div
       className="ashby-toolbar"
+      data-tour="ashby-toolbar"
       role="toolbar"
       aria-label="Инструменты графика"
       style={{
@@ -4247,7 +4334,7 @@ export function AshbyTab() {
             gap: "0.5cm",
           }}
         >
-          <div className="ashby-field">
+          <div className="ashby-field" data-tour="ashby-area">
             <label htmlFor="ashby-area" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
               Область применения:
             </label>
@@ -4269,7 +4356,7 @@ export function AshbyTab() {
             </div>
           </div>
 
-          <div className="ashby-field">
+          <div className="ashby-field" data-tour="ashby-x-axis">
             <label htmlFor="ashby-x-axis" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
               Ось X:
             </label>
@@ -4290,7 +4377,7 @@ export function AshbyTab() {
             </div>
           </div>
 
-          <div className="ashby-field">
+          <div className="ashby-field" data-tour="ashby-y-axis">
             <label htmlFor="ashby-y-axis" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
               Ось Y:
             </label>
@@ -4324,6 +4411,7 @@ export function AshbyTab() {
           >
             <div
               className="ashby-labelframe ashby-class-labelframe"
+              data-tour="ashby-classes"
               style={ASHBY_CLASS_LABELFRAME_STYLE}
             >
               <div
@@ -4390,6 +4478,7 @@ export function AshbyTab() {
 
             <div
               className="ashby-actions"
+              data-tour="ashby-actions"
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -4429,7 +4518,11 @@ export function AshbyTab() {
           </div>
         </aside>
 
-        <section className="ashby-chart-panel" aria-label="Поле диаграммы Эшби">
+        <section
+          className="ashby-chart-panel"
+          data-tour="ashby-chart"
+          aria-label="Поле диаграммы Эшби"
+        >
           <div className="ashby-chart-field">
             {statusMessage && (
               <p
