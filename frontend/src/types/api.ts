@@ -212,6 +212,61 @@ export type AshbyResponse = {
   class_legend?: AshbyClassLegendItem[];
 };
 
+export type ComparePropsPoolItem = {
+  id: string;
+  label: string;
+  material_id: string;
+  category_index: number | null;
+};
+
+export type ComparePropsPoolRequest = {
+  property_key: string;
+  areas?: string[] | null;
+  area?: string | null;
+};
+
+export type ComparePropsPoolResponse = {
+  property_key: string;
+  items: ComparePropsPoolItem[];
+};
+
+export type ComparePropsSeriesItem = {
+  id: string;
+  label: string;
+  material_id: string;
+  category_index: number | null;
+};
+
+export type ComparePropsRequest = {
+  property_key: string;
+  items: ComparePropsSeriesItem[];
+};
+
+export type ComparePropsPoint = {
+  temperature: number;
+  value: number;
+};
+
+export type ComparePropsSeries = {
+  id: string;
+  label: string;
+  color: string;
+  has_data: boolean;
+  points: ComparePropsPoint[];
+};
+
+export type ComparePropsPropertyMeta = {
+  key: string;
+  name: string;
+  symbol: string;
+  unit: string;
+};
+
+export type ComparePropsResponse = {
+  property: ComparePropsPropertyMeta;
+  series: ComparePropsSeries[];
+};
+
 export type PropertyMeta = {
   unit_type: string;
   name: string;

@@ -5,6 +5,10 @@ from backend.schemas import (
     AshbyOptionsResponse,
     AshbyRequest,
     AshbyResponse,
+    ComparePropsPoolRequest,
+    ComparePropsPoolResponse,
+    ComparePropsRequest,
+    ComparePropsResponse,
     ChemCompositionEntriesResponse,
     ChemCompositionEntryItem,
     SingleCalculationRequest,
@@ -103,3 +107,42 @@ def post_single_calculation(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/selection/compare-props/pool",
+    response_model=ComparePropsPoolResponse,
+)
+def post_compare_props_pool(
+    body: ComparePropsPoolRequest,
+    repo=Depends(get_repository),
+    service: SelectionService = Depends(get_selection_service),
+):
+    try:
+        return service.compare_props_pool(
+            repo,
+            body.property_key,
+            area=body.area,
+            areas=body.areas,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/selection/compare-props",
+    response_model=ComparePropsResponse,
+)
+def post_compare_props(
+    body: ComparePropsRequest,
+    repo=Depends(get_repository),
+    service: SelectionService = Depends(get_selection_service),
+):
+    try:
+        return service.compare_props_plot(
+            repo,
+            body.property_key,
+            [item.model_dump() for item in body.items],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

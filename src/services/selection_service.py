@@ -847,3 +847,185 @@ class SelectionService:
             "db_rows": db_rows,
             "custom_rows": custom_rows,
         }
+
+    # --- Сравнение материалов по свойствам (паритет PropertyComparisonTab) ---
+
+    _COMPARE_COLORS = (
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
+    )
+
+    def compare_props_pool(
+        self,
+        repository: MaterialRepository,
+        property_key: str,
+        area: str | None = None,
+        areas: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Пул материалов/КП с непустыми temperature_value_pairs для свойства."""
+        if property_key not in self._properties.all_keys():
+            raise ValueError(f"Неизвестный ключ свойства: {property_key}")
+        if not self._properties.supports_temperature(property_key):
+            raise ValueError(
+                f"Свойство не зависит от температуры: {property_key}"
+            )
+
+        items: list[dict[str, Any]] = []
+        is_mechanical = self._properties.is_mechanical(property_key)
+
+        for material in repository.materials:
+            if not self._matches_area(material, area, areas):
+                continue
+
+            material_id = material.data.get("material_id", "") or material.filename
+            display_name = material.get_display_name()
+
+            if is_mechanical:
+                for cat_idx, cat in enumerate(material.get_strength_categories()):
+                    pairs = self._compare_prop_pairs(
+                        material, property_key, cat_idx
+                    )
+                    if not pairs:
+                        continue
+                    cat_name = Material.category_name(cat)
+                    label = f"{display_name} {cat_name}".strip()
+                    items.append(
+                        {
+                            "id": f"{material_id}:{cat_idx}",
+                            "label": label,
+                            "material_id": material_id,
+                            "category_index": cat_idx,
+                        }
+                    )
+            else:
+                pairs = self._compare_prop_pairs(material, property_key, None)
+                if not pairs:
+                    continue
+                items.append(
+                    {
+                        "id": material_id,
+                        "label": display_name,
+                        "material_id": material_id,
+                        "category_index": None,
+                    }
+                )
+
+        items.sort(key=lambda item: item["label"].lower())
+        return {"property_key": property_key, "items": items}
+
+    def compare_props_plot(
+        self,
+        repository: MaterialRepository,
+        property_key: str,
+        items: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Серии T–значение для выбранных материалов (паритет _plot_graph)."""
+        if property_key not in self._properties.all_keys():
+            raise ValueError(f"Неизвестный ключ свойства: {property_key}")
+        if not self._properties.supports_temperature(property_key):
+            raise ValueError(
+                f"Свойство не зависит от температуры: {property_key}"
+            )
+
+        meta = self._properties.get_meta(property_key)
+        is_mechanical = self._properties.is_mechanical(property_key)
+        series: list[dict[str, Any]] = []
+
+        for index, item in enumerate(items):
+            color = self._COMPARE_COLORS[index % len(self._COMPARE_COLORS)]
+            material_id = str(item.get("material_id") or "")
+            label = str(item.get("label") or material_id)
+            item_id = str(item.get("id") or material_id)
+            raw_cat = item.get("category_index")
+            category_index = (
+                int(raw_cat) if raw_cat is not None and raw_cat != "" else None
+            )
+
+            material = repository.get_by_id(material_id)
+            points: list[dict[str, float]] = []
+            has_data = False
+
+            if material is not None:
+                if is_mechanical:
+                    # Как в desktop: мех. свойство только из КП.
+                    if category_index is not None:
+                        pairs = self._compare_prop_pairs(
+                            material, property_key, category_index
+                        )
+                        points = [
+                            {"temperature": t, "value": v} for t, v in pairs
+                        ]
+                        has_data = bool(points)
+                else:
+                    # Физ. свойство — из общих данных материала (даже если в
+                    # выборе остался ярлык с КП после смены свойства).
+                    pairs = self._compare_prop_pairs(
+                        material, property_key, None
+                    )
+                    points = [
+                        {"temperature": t, "value": v} for t, v in pairs
+                    ]
+                    has_data = bool(points)
+
+            series.append(
+                {
+                    "id": item_id,
+                    "label": label if has_data else f"{label} (нет данных)",
+                    "color": color,
+                    "has_data": has_data,
+                    "points": points,
+                }
+            )
+
+        return {
+            "property": {
+                "key": property_key,
+                "name": meta.get("name", property_key),
+                "symbol": meta.get("symbol", ""),
+                "unit": meta.get("unit", ""),
+            },
+            "series": series,
+        }
+
+    def _compare_prop_pairs(
+        self,
+        material: Material,
+        property_key: str,
+        category_index: int | None,
+    ) -> list[tuple[float, float]]:
+        if self._properties.is_mechanical(property_key):
+            if category_index is None:
+                return []
+            cats = material.get_strength_categories()
+            if category_index < 0 or category_index >= len(cats):
+                return []
+            prop_data = Material.get_category_prop_data(
+                cats[category_index], property_key
+            )
+        else:
+            prop_data = Material.physical_data_from_raw(
+                material.data, property_key
+            )
+
+        if not prop_data:
+            return []
+
+        raw_pairs = prop_data.get(Schema.TEMP_PAIRS, []) or []
+        points: list[tuple[float, float]] = []
+        for pair in raw_pairs:
+            if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+                continue
+            t_val = MathUtils.safe_float(pair[0])
+            v_val = MathUtils.safe_float(pair[1])
+            if t_val is not None and v_val is not None:
+                points.append((t_val, v_val))
+        points.sort(key=lambda p: p[0])
+        return points
