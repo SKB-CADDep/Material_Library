@@ -1,5 +1,4 @@
 import {
-  Fragment,
   memo,
   useCallback,
   useEffect,
@@ -301,7 +300,6 @@ function drawExportLegendMarker(
     ctx.globalAlpha = 1;
     return;
   }
-  const mh = 14;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = 2;
@@ -1939,12 +1937,12 @@ function buildLegendCandidateGrid(
   const cols = ASHBY_LEGEND_GRID_COLS;
   const rows = ASHBY_LEGEND_GRID_ROWS;
 
+  const colSpan = Math.max(cols - 1, 1);
+  const rowSpan = Math.max(rows - 1, 1);
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
-      const left =
-        cols === 1 ? minLeft : minLeft + ((maxLeft - minLeft) * col) / (cols - 1);
-      const top =
-        rows === 1 ? minTop : minTop + ((maxTop - minTop) * row) / (rows - 1);
+      const left = minLeft + ((maxLeft - minLeft) * col) / colSpan;
+      const top = minTop + ((maxTop - minTop) * row) / rowSpan;
       candidates.push({ left, top });
     }
   }
@@ -1969,7 +1967,7 @@ function findBestLegendPlacement(
   const preferLeft = plotArea.x + plotArea.width - legendSize.width - pad;
   const preferTop = plotArea.y + pad;
 
-  let bestPlacement = clampLegendRectToPlotArea(
+  const initialPlacement = clampLegendRectToPlotArea(
     {
       left: preferLeft,
       top: preferTop,
@@ -1979,6 +1977,10 @@ function findBestLegendPlacement(
     plotArea,
     pad,
   );
+  let bestPlacement: AshbyLegendPlacement = {
+    top: initialPlacement.top,
+    left: initialPlacement.left,
+  };
   let bestBadness = Infinity;
   let bestTie = Infinity;
 

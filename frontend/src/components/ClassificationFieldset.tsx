@@ -144,7 +144,7 @@ export function ClassificationFieldset({
   const disabled = isLoading || !catalog || readOnly;
 
   return (
-    <fieldset className="form-section" disabled={readOnly}>
+    <fieldset className="form-section">
       <legend>Классификация</legend>
       {isLoading && (
         <p className="tab-placeholder tab-placeholder--inline">Загрузка справочника…</p>

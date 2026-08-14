@@ -133,7 +133,6 @@ function PhysicalPropertySection({
   selectedRowIndex,
   onRowSelect,
   onDraftChange,
-  readOnly = false,
   unitType,
 }: {
   config: PhysicalPropConfig;
@@ -143,7 +142,6 @@ function PhysicalPropertySection({
   selectedRowIndex: number | null;
   onRowSelect: (index: number | null) => void;
   onDraftChange: (next: Record<string, unknown>) => void;
-  readOnly?: boolean;
   unitType: string;
 }) {
   const currentSource = resolvePropertySourceName(prop, sources);
@@ -156,7 +154,7 @@ function PhysicalPropertySection({
   };
 
   return (
-    <fieldset className="form-section" disabled={readOnly}>
+    <fieldset className="form-section">
       <legend>{config.legend}</legend>
       <div className="property-section-layout">
         <div className="property-section-fields">
@@ -278,6 +276,7 @@ export function PhysicalPropertiesTab({
   return (
     <form
       className="general-form physical-properties-form"
+      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
       <div className="form-stack">
@@ -297,7 +296,6 @@ export function PhysicalPropertiesTab({
               setSelectedRows((prev) => ({ ...prev, [config.key]: index }));
             }}
             onDraftChange={onDraftChange}
-            readOnly={readOnly}
           />
         ))}
       </div>

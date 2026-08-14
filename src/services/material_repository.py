@@ -58,13 +58,37 @@ class MaterialRepository:
         result = []
         for m in self.materials:
             meta = m.data.get(Schema.METADATA, {})
+            chem = m.data.get(Schema.CHEMICAL, {}) or {}
+            composition = chem.get(Schema.COMPOSITION, []) or []
             result.append({
                 "id": m.data.get("material_id"),
                 "name": m.get_display_name(),
                 "areas": meta.get(Schema.APP_AREA, []),
                 "filename": m.filename,
+                "has_composition": len(composition) > 0,
             })
         return result
+
+    def list_chem_composition_entries(self) -> list[dict]:
+        entries: list[dict] = []
+        for material in self.materials:
+            chem = material.data.get(Schema.CHEMICAL, {}) or {}
+            composition = chem.get(Schema.COMPOSITION, []) or []
+            if not composition:
+                continue
+
+            meta = material.data.get(Schema.METADATA, {})
+            material_id = str(material.data.get("material_id", ""))
+            for comp in composition:
+                entries.append(
+                    {
+                        "material_id": material_id,
+                        "material_name": material.get_display_name(),
+                        "areas": meta.get(Schema.APP_AREA, []),
+                        "composition": comp,
+                    }
+                )
+        return entries
 
     def save_material(self, material: Material) -> None:
         if not material.filepath:

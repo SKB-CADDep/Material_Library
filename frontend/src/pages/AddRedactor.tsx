@@ -62,7 +62,11 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
     : (metadata.name_material_alternative ?? "");
 
   return (
-    <form className="general-form" onSubmit={(e) => e.preventDefault()}>
+    <form
+      className="general-form"
+      inert={readOnly ? true : undefined}
+      onSubmit={(e) => e.preventDefault()}
+    >
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="name-standard">Наименование (стандарт):</label>
@@ -71,7 +75,6 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
             type="text"
             value={metadata.name_material_standard ?? ""}
             className="input"
-            disabled={readOnly}
             onChange={(event) => {
                 const text = event.target.value;
                 onDraftChange({
@@ -89,7 +92,6 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
             type="text"
             value={alternative}
             className="input"
-            disabled={readOnly}
             onChange={(event) => {
                 const text = event.target.value;
                 onDraftChange({
@@ -107,7 +109,6 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
             type="text"
             value={metadata.comment ?? ""}
             className="input"
-            disabled={readOnly}
             onChange={(event) => {
               const text = event.target.value;
               onDraftChange({
@@ -130,7 +131,7 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
             })
           }
         />
-        <fieldset className="form-section" disabled={readOnly}>
+        <fieldset className="form-section">
           <legend>Области применения</legend>
           {areas.length === 0 && (
             <p className="tab-placeholder tab-placeholder--inline">
@@ -171,13 +172,11 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
               type="text"
               className="input"
               value={newArea}
-              disabled={readOnly}
               onChange={(e) => setNewArea(e.target.value)}
             />
             <button
               type="button"
               className="button-secondary"
-              disabled={readOnly}
               onClick={() => {
                 const trimmed = newArea.trim();
                 if (!trimmed || areas.includes(trimmed)) return;
@@ -202,7 +201,7 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
           </div>
         </fieldset>
 
-        <fieldset className="form-section" disabled={readOnly}>
+        <fieldset className="form-section">
           <legend>Параметры применения</legend>
           <div className="form-row">
             <label htmlFor="temperature">Температура применения ДО, °C:</label>
@@ -211,7 +210,6 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
               type="number"
               value={metadata.temperature_application?.value ?? ""}
               className="input"
-              disabled={readOnly}
               onChange={(event) => {
                 const raw = event.target.value;
                 const value = raw === "" ? "": Number(raw);
@@ -229,7 +227,6 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
               type="text"
               value={metadata.temperature_application?.comment ?? ""}
               className="input"
-              disabled={readOnly}
               onChange={(event) => {
                 const text = event.target.value;
                 onDraftChange({

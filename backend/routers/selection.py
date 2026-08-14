@@ -5,6 +5,8 @@ from backend.schemas import (
     AshbyOptionsResponse,
     AshbyRequest,
     AshbyResponse,
+    ChemCompositionEntriesResponse,
+    ChemCompositionEntryItem,
     SingleCalculationRequest,
     SingleCalculationResponse,
     TemperatureSelectionRequest,
@@ -13,6 +15,17 @@ from backend.schemas import (
 from src.services.selection_service import SelectionService
 
 router = APIRouter(tags=["Selection"])
+
+
+@router.get(
+    "/selection/chem/composition-entries",
+    response_model=ChemCompositionEntriesResponse,
+)
+def get_chem_composition_entries(repo=Depends(get_repository)):
+    raw_entries = repo.list_chem_composition_entries()
+    return ChemCompositionEntriesResponse(
+        entries=[ChemCompositionEntryItem(**item) for item in raw_entries],
+    )
 
 
 def get_selection_service(state: AppState = Depends(get_state)) -> SelectionService:

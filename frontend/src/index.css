@@ -374,7 +374,7 @@ button:disabled{
     cursor: not-allowed;
 }
 
-button:hover:not(:disabled):not(.input):not(.unit-select-trigger):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary):not(.calculation-source-ref):not(.source-page__tab):not(.source-page__action-btn) {
+button:hover:not(:disabled):not(.input):not(.unit-select-trigger):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary):not(.calculation-source-ref):not(.source-page__tab):not(.source-page__action-btn):not(.chem-comparison-material-btn):not(.chem-comparison-subtab):not(.chem-comparison-tab .btn--icon):not(.chem-target-element-picker button) {
     background-color: var(--accent-hover);
 }
 
@@ -754,9 +754,14 @@ select {
   }
 
   .selection-page > .ashby-tab,
-  .selection-page > .temp-selection-tab {
+  .selection-page > .temp-selection-tab,
+  .selection-page > .chem-comparison-tab {
     flex: 1;
     min-height: 0;
+  }
+
+  .selection-page:has(> .chem-comparison-tab) {
+    overflow: hidden;
   }
 
   .selection-controls {
@@ -2286,7 +2291,7 @@ select {
   font-family: inherit;
   resize: vertical;
   outline: none;
-  min-height: 120px; /* РњРёРЅРёРјР°Р»СЊРЅР°СЏ РІС‹СЃРѕС‚Р° */
+  min-height: 120px; 
 }
 
 .note-textarea:focus {
@@ -2294,7 +2299,13 @@ select {
   box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
 }
 
-/* РљРѕРЅС‚РµРєСЃС‚РЅРѕРµ РјРµРЅСЋ */
+.note-field-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+
 .context-menu {
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -3665,6 +3676,7 @@ select {
   flex: 1;
   min-height: 0;
   max-height: none;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background-color: var(--surface);
@@ -3995,6 +4007,34 @@ select {
   font-size: 13px;
 }
 
+.data-table--resizable-headers .calculation-table-col--value,
+.data-table--resizable-headers .calculation-table-col--temp,
+.data-table--resizable-headers.selection-table--unified .selection-table-col--value {
+  max-width: none;
+}
+
+.data-table--resizable-headers thead th {
+  overflow: hidden;
+}
+
+.data-table--header-height-custom .calculation-table-header {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+}
+
+.data-table--header-height-custom .calculation-table-header__text {
+  overflow: hidden;
+}
+
+.data-table--header-height-custom thead th.sortable {
+  cursor: default;
+}
+
+.data-table--resizable-headers thead th:hover {
+  cursor: inherit;
+}
+
 .ashby-tab {
   display: flex;
   flex-direction: column;
@@ -4003,13 +4043,11 @@ select {
   min-width: 0;
   overflow: hidden;
   background-color: var(--bg);
-  /* одинаковый отступ до контента: сверху/слева/справа 0.5 см */
   padding: 0.5cm 0.5cm 0 0.5cm !important;
   box-sizing: border-box !important;
 }
 
 .ashby-layout {
-  /* 1/5 параметры | 4/5 график (легенда теперь внутри графика). */
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) minmax(0, 4fr) !important;
   grid-template-rows: minmax(0, 1fr);
@@ -4025,7 +4063,7 @@ select {
   height: 100%;
 }
 
-/* 1/5 — параметры */
+
 .ashby-controls {
   grid-column: 1;
   width: auto !important;
@@ -4034,7 +4072,7 @@ select {
   display: flex !important;
   flex-direction: column !important;
   gap: 0.5cm !important;
-  /* сверху запас под заголовки плашек на рамке */
+
   padding: 18px 16px 14px;
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -4057,7 +4095,6 @@ select {
   min-width: 0;
 }
 
-/* Единый размер подписей: Область применения / Ось X / плашки */
 .ashby-controls .ashby-section-label,
 .ashby-legend-panel .ashby-section-label,
 .ashby-section-label {
@@ -4077,7 +4114,7 @@ select {
   white-space: nowrap;
 }
 
-/* Режет intrinsic-ширину <select> по длинным option */
+
 .ashby-control-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -4101,7 +4138,6 @@ select {
   min-width: 0 !important;
   box-sizing: border-box !important;
   field-sizing: fixed;
-  /* Не даём option задавать min-content колонки */
   justify-self: stretch;
 }
 
@@ -4111,10 +4147,7 @@ select {
   white-space: nowrap;
 }
 
-/*
-  Плашка с заголовком на верхней границе.
-  Рамка принудительно как у .input (светло-серая, скругление 6px).
-*/
+
 .ashby-controls .ashby-labelframe,
 .ashby-legend-panel .ashby-labelframe,
 .ashby-labelframe {
@@ -4130,7 +4163,6 @@ select {
   margin: 0.65em 0 0 !important;
   padding: 14px 10px 10px !important;
   background-color: #fff !important;
-  /* как .input: --border #D8DCE3, --radius 6px */
   border: 1px solid #d8dce3 !important;
   border-radius: 6px !important;
   box-sizing: border-box !important;
@@ -4150,7 +4182,7 @@ select {
   pointer-events: none;
 }
 
-/* Внутренний список без второй рамки */
+
 .ashby-listbox {
   list-style: none;
   display: flex;
@@ -4692,4 +4724,686 @@ select {
   font-weight: 500;
   color: var(--text);
   flex: 0 0 auto;
+}
+
+.chem-comparison-tab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-tab > .chem-comparison-layout {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  gap: 12px;
+  padding: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.chem-comparison-sidebar {
+  flex: 0 0 250px;
+  width: 250px;
+  min-width: 200px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-sidebar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chem-comparison-sidebar-field label,
+.chem-comparison-sidebar-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.chem-comparison-sidebar-field--list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-material-list-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chem-comparison-material-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+}
+
+.chem-comparison-material-item .chem-comparison-material-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text) !important;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.chem-comparison-material-item .chem-comparison-material-btn:hover:not(:disabled) {
+  background-color: var(--accent-soft) !important;
+  color: var(--text) !important;
+}
+
+.chem-comparison-material-item.is-selected .chem-comparison-material-btn {
+  background-color: var(--accent-soft) !important;
+  color: var(--text) !important;
+  font-weight: 500;
+}
+
+.chem-comparison-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.chem-comparison-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chem-comparison-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--bg);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.chem-comparison-panel--pivot {
+  flex: 1 1 auto;
+  min-height: 160px;
+  max-height: min(55vh, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.chem-comparison-pivot-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background-color: var(--surface);
+}
+
+.chem-comparison-pivot-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+.chem-comparison-pivot-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.chem-comparison-pivot-table tbody td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background-color: var(--surface);
+}
+
+.chem-comparison-pivot-col--element {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 2px 0 4px rgba(36, 41, 48, 0.06);
+}
+
+.chem-comparison-pivot-col--name {
+  position: sticky;
+  left: 72px;
+  z-index: 1;
+  min-width: 150px;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 2px 0 4px rgba(36, 41, 48, 0.06);
+}
+
+.chem-comparison-pivot-table thead .chem-comparison-pivot-col--element,
+.chem-comparison-pivot-table thead .chem-comparison-pivot-col--name {
+  z-index: 3;
+}
+
+.chem-comparison-pivot-col--source {
+  min-width: 140px;
+  max-width: 240px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chem-comparison-pivot-col--value {
+  min-width: 120px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chem-comparison-pivot-table tbody tr.chem-comparison-pivot-row--diff td {
+  background-color: #fffacd;
+}
+
+.chem-comparison-pivot-table tbody tr.chem-comparison-pivot-row--diff:hover td {
+  background-color: #fffacd;
+}
+
+.chem-comparison-pivot-table tbody tr:not(.chem-comparison-pivot-row--diff):hover td {
+  background-color: var(--bg);
+}
+
+.chem-comparison-panel--sources {
+  flex: 0 0 auto;
+}
+
+.chem-comparison-panel-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chem-comparison-main-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.chem-comparison-main-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.chem-comparison-sources-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.chem-comparison-sources-table {
+  table-layout: auto;
+  min-width: 100%;
+}
+
+.chem-comparison-sources-table th,
+.chem-comparison-sources-table td {
+  vertical-align: middle;
+}
+
+.chem-comparison-sources-col--label {
+  min-width: 200px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chem-comparison-sources-col--comment {
+  min-width: 180px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chem-comparison-sources-col--base,
+.chem-comparison-sources-col--unit,
+.chem-comparison-sources-table th:nth-child(3),
+.chem-comparison-sources-table th:nth-child(4) {
+  width: 88px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chem-comparison-panel--notes {
+  flex: 0 0 auto;
+}
+
+.chem-comparison-notes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chem-comparison-notes-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+}
+
+.chem-comparison-notes-source {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chem-comparison-notes-text {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.chem-comparison-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chem-comparison-subtab {
+  padding: 8px 14px;
+  border: 1px solid transparent !important;
+  border-radius: var(--radius);
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chem-comparison-subtab:hover:not(:disabled):not(.active) {
+  color: var(--text) !important;
+  background-color: var(--accent-soft) !important;
+  border-color: color-mix(in srgb, var(--border) 80%, var(--accent-soft)) !important;
+}
+
+.chem-comparison-subtab.active,
+.chem-comparison-subtab.active:hover:not(:disabled) {
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  font-weight: 600;
+}
+
+.chem-comparison-layout--target {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-sidebar--target {
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-sidebar--target .chem-comparison-sidebar-field {
+  flex-shrink: 0;
+}
+
+.chem-comparison-sidebar--target .chem-target-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-target-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.chem-target-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chem-target-toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+.chem-target-toolbar .btn--icon {
+  min-width: 28px;
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1.2;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius);
+}
+
+.chem-target-toolbar .btn--icon:hover:not(:disabled) {
+  background-color: var(--accent-soft) !important;
+  color: var(--text) !important;
+  border-color: color-mix(in srgb, var(--border) 80%, var(--accent-soft)) !important;
+}
+
+.chem-target-panel-title,
+.chem-target-toolbar,
+.chem-target-hint {
+  flex-shrink: 0;
+}
+
+.chem-target-table-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--bg);
+}
+
+.chem-target-results-scroll,
+.chem-target-details-scroll,
+.chem-target-influence-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--bg);
+}
+
+.chem-target-influence-scroll {
+  padding: 8px 10px;
+}
+
+.chem-target-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.chem-target-results-table,
+.chem-target-details-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.chem-target-table th:nth-child(1),
+.chem-target-table td:nth-child(1) {
+  width: 42%;
+}
+
+.chem-target-table th:nth-child(2),
+.chem-target-table td:nth-child(2) {
+  width: 58%;
+}
+
+.chem-target-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bg);
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
+  padding: 5px 4px;
+  font-size: 12px;
+}
+
+.chem-target-results-table thead th,
+.chem-target-details-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 -2px 0 0 var(--surface);
+}
+
+.chem-target-table th,
+.chem-target-table td {
+  border: 1px solid var(--border);
+  padding: 4px 4px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.chem-target-results-table th,
+.chem-target-results-table td,
+.chem-target-details-table th,
+.chem-target-details-table td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.chem-target-results-table th:first-child,
+.chem-target-results-table td:first-child,
+.chem-target-details-table th:first-child,
+.chem-target-details-table td:first-child {
+  text-align: left;
+}
+
+.chem-target-table tbody tr.is-selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.chem-target-table .input--table {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.chem-target-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.chem-comparison-main--target {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(140px, 1fr) minmax(140px, 1fr) 200px;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.chem-target-panel--results,
+.chem-target-panel--details,
+.chem-target-panel--influence {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-target-influence-item {
+  margin-bottom: 8px;
+}
+
+.chem-target-influence-header,
+.chem-target-influence-line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.chem-target-influence-line {
+  color: var(--text-muted);
+}
+
+.chem-target-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.chem-target-row--full td {
+  background-color: #d0f0c0;
+}
+
+.chem-target-row--partial td {
+  background-color: #fffacd;
+}
+
+.chem-target-row--none td {
+  background-color: #ffe4e1;
+}
+
+.chem-target-detail--in td {
+  background-color: #d0f0c0;
+}
+
+.chem-target-detail--missing td {
+  background-color: #f0f0f0;
+}
+
+.chem-target-detail--out td {
+  background-color: #ffe4e1;
+}
+
+.chem-target-results-table tbody tr.is-selected {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.chem-target-element-picker {
+  position: fixed;
+  z-index: 1200;
+  width: 240px;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+}
+
+.chem-target-element-picker ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.chem-target-element-picker button {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text) !important;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chem-target-element-picker button:hover:not(:disabled) {
+  background-color: var(--accent-soft) !important;
+  color: var(--text) !important;
 }

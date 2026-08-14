@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { NavLink, Routes, Route, Navigate } from "react-router-dom";
 import { TempSelectionTab } from "./TempSelectionTab";
 import { SepCalculationTab } from "./SepCalculationTab";
+import { ChemComparisonTab } from "./ChemComparisonTab";
 
 const AshbyTab = lazy(() =>
   import("./AshbyTab").then((module) => ({ default: module.AshbyTab })),
@@ -60,16 +61,7 @@ export function SelectionPage() {
                    }
             />
 
-            <Route
-                path="compare-chem"
-                element={
-                    <>
-                        <h2>
-                            Сравнение материалов(хим.состав)
-                        </h2>
-                    </>
-                   }
-            />
+            <Route path="compare-chem" element={<ChemComparisonTab />} />
 
             <Route
                 path="ashby"

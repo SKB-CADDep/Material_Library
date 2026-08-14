@@ -1,7 +1,10 @@
+import { useRef } from "react";
+
+import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+
 function formatPairNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
 }
-
 export type TemperatureValueTableProps = {
   pairs: Array<[number, number]> | undefined;
   onChangeValue?: (rowIndex: number, raw: string) => void;
@@ -21,16 +24,17 @@ export function TemperatureValueTable({
   onAddRow,
   onDeleteRow,
 }: TemperatureValueTableProps) {
-  const isRowSelectionEnabled = Boolean(onRowSelect);
-  const tableClassName = isRowSelectionEnabled
+  const tableRef = useRef<HTMLTableElement>(null);
+  useResizableTableHeaders(tableRef);
+
+  const isRowSelectionEnabled = Boolean(onRowSelect);  const tableClassName = isRowSelectionEnabled
     ? "data-table data-table--temperature-pairs data-table--selectable-rows"
     : "data-table data-table--temperature-pairs";
 
   return (
     <div className="table-wrapper table-wrapper--temperature-pairs">
       <div className="data-table-container">
-        <table className={tableClassName}>
-          <colgroup>
+        <table ref={tableRef} className={tableClassName}>          <colgroup>
             <col className="data-table__col-temperature" />
             <col className="data-table__col-value" />
           </colgroup>

@@ -10,6 +10,7 @@ import {
   type ChartMode,
 } from "../components/ChemicalCompositionChart";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
+import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
@@ -105,33 +106,96 @@ export function ChemicalProperties({
   onDraftChange,
   readOnly = false,
 }: ChemicalPropertiesProps) {
-  const propertiesCatalog = usePropertiesCatalog()
+  const propertiesCatalog = usePropertiesCatalog();
   const result = useSourcesCatalog();
   const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
   const [chartMode, setChartMode] = useState<ChartMode>("max");
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    rowIndex: number | null;
+  } | null>(null);
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const elementsTableRef = useRef<HTMLTableElement>(null);
+  useResizableTableHeaders(elementsTableRef);
+
+  const materialId = material?.material_id as string | undefined;
+  const compositionLength =
+    (
+      (material?.chemical_properties as ChemicalPropertiesData | undefined)
+        ?.composition ?? []
+    ).length;
+  const previewCompositionIndex =
+    compositionLength === 0
+      ? 0
+      : Math.min(compositionSourceIndex, compositionLength - 1);
+  const externalNote =
+    (
+      (material?.chemical_properties as ChemicalPropertiesData | undefined)
+        ?.composition?.[previewCompositionIndex]?.note ?? ""
+    );
+  const [noteValue, setNoteValue] = useState(externalNote);
+
+  useEffect(() => {
+    setNoteValue(externalNote);
+  }, [materialId, previewCompositionIndex, externalNote]);
+
+  useEffect(() => {
+    setCompositionSourceIndex(0);
+    setSelectedRowIndex(null);
+    setContextMenu(null);
+  }, [materialId]);
+
+  useEffect(() => {
+    if (compositionLength === 0) {
+      setCompositionSourceIndex(0);
+      return;
+    }
+    setCompositionSourceIndex((prev) =>
+      Math.min(prev, compositionLength - 1),
+    );
+  }, [compositionLength]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setSelectedRowIndex(null);
+  }, [compositionSourceIndex, compositionLength]);
+
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
   }
-  
-  
+
   const chemical_properties = (material.chemical_properties ??
     {}) as ChemicalPropertiesData;
+  const compositionList = chemical_properties.composition ?? [];
+  const safeCompositionIndex =
+    compositionList.length === 0
+      ? 0
+      : Math.min(compositionSourceIndex, compositionList.length - 1);
   const chemicalSources = result.data?.chemical_sources ?? [];
   const chemicalElements = ["Fe", "Ti", "Cu"];
   const currentElement =
-    chemical_properties.composition?.[compositionSourceIndex]?.base_element ??
-    "";
+    compositionList[safeCompositionIndex]?.base_element ?? "";
   const currentSource =
-    chemical_properties.composition?.[compositionSourceIndex]
-      ?.composition_source ?? "";
+    compositionList[safeCompositionIndex]?.composition_source ?? "";
   const sourceNames = chemicalSources.map((src) => src.name_source);
   const showOrphan =
     currentSource !== "" && !sourceNames.includes(currentSource);
   const showOrphanelement =
     currentElement !== "" && !chemicalElements.includes(currentElement);
 
-  const currentComposition =
-    chemical_properties.composition?.[compositionSourceIndex];
+  const currentComposition = compositionList[safeCompositionIndex];
   const toleranceType: ToleranceType =
     currentComposition?.tolerance_type === "relative" ? "relative" : "absolute";
   const otherElements = (currentComposition?.other_elements ?? []).map((row) =>
@@ -141,12 +205,30 @@ export function ChemicalProperties({
   const updateCompositionAt = (
     updater: (entry: CompositionEntry) => CompositionEntry,
   ) => {
+    if (compositionList.length === 0) {
+      onDraftChange({
+        ...material,
+        chemical_properties: {
+          ...chemical_properties,
+          composition: [
+            updater({
+              composition_source: "",
+              other_elements: [],
+              comment: "",
+              base_element: "Fe",
+            }),
+          ],
+        },
+      });
+      return;
+    }
+
     onDraftChange({
       ...material,
       chemical_properties: {
         ...chemical_properties,
-        composition: (chemical_properties.composition ?? []).map((entry, entryIndex) =>
-          entryIndex !== compositionSourceIndex ? entry : updater(entry),
+        composition: compositionList.map((entry, entryIndex) =>
+          entryIndex !== safeCompositionIndex ? entry : updater(entry),
         ),
       },
     });
@@ -169,26 +251,6 @@ export function ChemicalProperties({
     chartMode,
   );
 
-  const [contextMenu, setContextMenu] = useState<{  
-    x: number; 
-    y: number; 
-    rowIndex: number | null;
-  } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  
-  
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-  
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-  
-
 const handleAddRow = () => {
   updateCompositionAt((entry) => ({
     ...entry,
@@ -207,8 +269,8 @@ const handleRemoveRow = () => {
     ...material,
     chemical_properties: {
       ...chemical_properties,
-      composition: (chemical_properties.composition ?? []).map((entry, entryIndex) =>
-        entryIndex !== compositionSourceIndex
+      composition: compositionList.map((entry, entryIndex) =>
+        entryIndex !== safeCompositionIndex
           ? entry
           : {
               ...entry,
@@ -280,18 +342,15 @@ const handleAddButtonContextMenu = (e: React.MouseEvent) => {
   });
 };
 
-const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
 const handleRowClick = (index: number) => {
   setSelectedRowIndex(index);
-  setContextMenu(null); // Закрываем контекстное меню при клике
+  setContextMenu(null);
 };
-useEffect(() => {
-  setSelectedRowIndex(null);
-}, [compositionSourceIndex, otherElements.length]);
 
   return (
     <form
       className="general-form physical-properties-form"
+      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
       <div className="form-stack">
@@ -303,7 +362,7 @@ useEffect(() => {
             className="input"
             value={
               (chemical_properties.composition?.length ?? 0) > 0
-                ? compositionSourceIndex
+                ? safeCompositionIndex
                 : ""
             }
             onChange={(e) => {
@@ -323,7 +382,6 @@ useEffect(() => {
             type="button"
             className="table-control-btn"
             title="Добавить набор состава"
-            disabled={readOnly}
             onClick={() => {
               const prev = chemical_properties.composition ?? [];
               const newIndex = prev.length;
@@ -349,7 +407,7 @@ useEffect(() => {
             type="button"
             className="table-control-btn"
             title="Удалить набор состава"
-            disabled={readOnly || (chemical_properties.composition?.length ?? 0) === 0}
+            disabled={(chemical_properties.composition?.length ?? 0) === 0}
             onClick={() => {
               const prev = chemical_properties.composition ?? [];
               if (prev.length === 0) return;
@@ -360,7 +418,7 @@ useEffect(() => {
               ) {
                 return;
               }
-              const next = prev.filter((_, i) => i !== compositionSourceIndex);
+              const next = prev.filter((_, i) => i !== safeCompositionIndex);
               onDraftChange({
                 ...material,
                 chemical_properties: {
@@ -377,7 +435,7 @@ useEffect(() => {
         </div>
       </div>
       <div className="form-stack">
-        <fieldset className="form-section" disabled={readOnly}>
+        <fieldset className="form-section">
           <legend>Данные источника</legend>
           <div className="property-section-layout">
             <div className="property-section-fields">
@@ -390,7 +448,7 @@ useEffect(() => {
                   id="composition_source"
                   className="input"
                   value={
-                    chemical_properties.composition?.[compositionSourceIndex]
+                    compositionList[safeCompositionIndex]
                       ?.composition_source ?? ""
                   }
                   onChange={(e) => {
@@ -401,7 +459,7 @@ useEffect(() => {
                         composition: (
                           chemical_properties.composition ?? []
                         ).map((entry, i) =>
-                          i === compositionSourceIndex
+                          i === safeCompositionIndex
                             ? { ...entry, composition_source: e.target.value }
                             : entry,
                         ),
@@ -433,7 +491,7 @@ useEffect(() => {
               id="commentId"
               type="text"
               value={
-                chemical_properties.composition?.[compositionSourceIndex]
+                compositionList[safeCompositionIndex]
                   ?.comment ?? ""
               }
               className="input"
@@ -444,7 +502,7 @@ useEffect(() => {
                     ...chemical_properties,
                     composition: (chemical_properties.composition ?? []).map(
                       (entry, i) =>
-                        i === compositionSourceIndex
+                        i === safeCompositionIndex
                           ? { ...entry, comment: e.target.value }
                           : entry,
                     ),
@@ -459,7 +517,7 @@ useEffect(() => {
               id="base_element"
               className="input"
               value={
-                chemical_properties.composition?.[compositionSourceIndex]
+                compositionList[safeCompositionIndex]
                   ?.base_element ?? ""
               }
               onChange={(e) => {
@@ -469,7 +527,7 @@ useEffect(() => {
                     ...chemical_properties,
                     composition: (chemical_properties.composition ?? []).map(
                       (entry, i) =>
-                        i === compositionSourceIndex
+                        i === safeCompositionIndex
                           ? { ...entry, base_element: e.target.value }
                           : entry,
                     ),
@@ -516,7 +574,7 @@ useEffect(() => {
               id="composition_source_value_unit"
               unitType={propertiesCatalog.data?.mechanical["relative_elongation"]?.unit_type ?? ""}
               value={
-                chemical_properties.composition?.[compositionSourceIndex]
+                compositionList[safeCompositionIndex]
                   ?.other_elements?.[0]?.unit_value ?? ""
               }
               onChange={(nextUnit) => {
@@ -526,7 +584,7 @@ useEffect(() => {
                     ...chemical_properties,
                     composition: (chemical_properties.composition ?? []).map(
                       (entry, i) =>
-                        i === compositionSourceIndex
+                        i === safeCompositionIndex
                           ? {
                               ...entry,
                               other_elements: (entry.other_elements ?? []).map(
@@ -545,13 +603,10 @@ useEffect(() => {
           </div>
         </fieldset>
         <div className="property-section-layout">
-          <fieldset
-            className="editor-readonly-scope property-section-fields"
-            disabled={readOnly}
-          >
+          <fieldset className="property-section-fields">
           <legend>Элементы(ПКМ для выбора из списка)</legend>
             <div className="table-wrapper table-wrapper--chemical-elements">
-              <table className="data-table data-table--chemical-elements">
+              <table ref={elementsTableRef} className="data-table data-table--chemical-elements">
                 <thead>
                   <tr>
                     <th>Название элемента</th>
@@ -710,27 +765,20 @@ useEffect(() => {
           />
         </div>
         <div className="note-field">
-      <label className="note-label">Примечание</label>
+      <label className="note-label" htmlFor="composition_note">
+        Примечание
+      </label>
       <textarea
+        id="composition_note"
         className="note-textarea"
-        disabled={readOnly}
-        value={
-          chemical_properties.composition?.[compositionSourceIndex]
-            ?.note ?? ""
-        }
-        onChange={(e) => {
-          onDraftChange({
-            ...material,
-            chemical_properties: {
-              ...chemical_properties,
-              composition: (chemical_properties.composition ?? []).map(
-                (entry, i) =>
-                  i === compositionSourceIndex
-                    ? { ...entry, note: e.target.value }
-                    : entry,
-              ),
-            },
-          });
+        value={noteValue}
+        onChange={(event) => {
+          const value = event.target.value;
+          setNoteValue(value);
+          updateCompositionAt((entry) => ({
+            ...entry,
+            note: value,
+          }));
         }}
         placeholder="Введите примечание..."
         rows={6}

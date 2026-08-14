@@ -30,6 +30,8 @@ import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 
 import { TempCommentIndicator } from "./TempCommentIndicator";
 
+import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+
 
 
 type UnitMenuState = {
@@ -217,6 +219,9 @@ export function CalculationTable({
 
   const [unitMenu, setUnitMenu] = useState<UnitMenuState | null>(null);
 
+  const tableRef = useRef<HTMLTableElement>(null);
+  useResizableTableHeaders(tableRef);
+
   const customRowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
 
   const temperatureUnitConfig = unitConfigs[TEMPERATURE_UNIT_TYPE];
@@ -262,7 +267,17 @@ export function CalculationTable({
 
       <div className="selection-table-scroll selection-table-scroll--header-tooltips calculation-table-scroll">
 
-        <table className="data-table selection-table calculation-table">
+        <table
+          ref={tableRef}
+          className="data-table selection-table calculation-table"
+        >
+
+          <colgroup>
+            <col className="calculation-table-col--temp" />
+            {columns.map((col) => (
+              <col key={col.key} className="calculation-table-col--value" />
+            ))}
+          </colgroup>
 
           <thead>
 

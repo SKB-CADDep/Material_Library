@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UnitSelect } from "./UnitSelect";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import {
@@ -18,6 +18,7 @@ import { PropertyCommentField } from "../components/PropertyCommentField";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
+import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import { HARDNESS_UNIT_TYPE } from "../lib/unitTypes";
 import { ScientificText } from "../lib/scientificNotation";
 import {
@@ -241,6 +242,10 @@ export function MechanicalPropertiesTab({
   const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
     number | null
   >(null);
+  const hardnessTableRef = useRef<HTMLTableElement>(null);
+  const scalarHardnessTableRef = useRef<HTMLTableElement>(null);
+  useResizableTableHeaders(hardnessTableRef);
+  useResizableTableHeaders(scalarHardnessTableRef);
   const propertiesCatalog = usePropertiesCatalog()
   const mechanicalUnitType = (key: string) =>
     propertiesCatalog.data?.mechanical[key]?.unit_type ?? "";
@@ -260,6 +265,7 @@ export function MechanicalPropertiesTab({
   return (
     <form
       className="general-form physical-properties-form"
+      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
       <div className="form-stack">
@@ -295,7 +301,6 @@ export function MechanicalPropertiesTab({
             type="button"
             className="table-control-btn"
             title="Добавить категорию прочности"
-            disabled={readOnly}
             onClick={() => {
               const prev = mechanical_properties.strength_category ?? [];
               const newIndex = prev.length;
@@ -323,7 +328,7 @@ export function MechanicalPropertiesTab({
             type="button"
             className="table-control-btn"
             title="Удалить категорию прочности"
-            disabled={readOnly || (mechanical_properties.strength_category?.length ?? 0) === 0}
+            disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
             onClick={() => {
               const prev = mechanical_properties.strength_category ?? [];
               if (prev.length === 0) return;
@@ -344,7 +349,7 @@ export function MechanicalPropertiesTab({
         </div>
         </div>
       
-        <fieldset className="form-section" disabled={readOnly}>
+        <fieldset className="form-section">
           <div className="property-section-fields kp-category-fields">
             <div className="form-row">
               <label htmlFor="name_strength_select" className="form-label--fixed">
@@ -451,7 +456,7 @@ export function MechanicalPropertiesTab({
           );
 
           return (
-            <fieldset key={prop.key} className="form-section" disabled={readOnly}>
+            <fieldset key={prop.key} className="form-section">
               <legend>
                 <ScientificText>{prop.legend}</ScientificText>
               </legend>
@@ -628,7 +633,7 @@ export function MechanicalPropertiesTab({
           );
         })}
 
-        <fieldset className="form-section" disabled={readOnly}>
+        <fieldset className="form-section">
           <legend>Твёрдость</legend>
           <div className="form-row">
             <label htmlFor="hardness_is_acceptance" className="checkbox-item">
@@ -700,7 +705,7 @@ export function MechanicalPropertiesTab({
             </div>
           </div>
           <div className="table-wrapper">
-            <table className="data-table">
+            <table ref={hardnessTableRef} className="data-table">
               <thead>
                 <tr>
                   <th>Min</th>
@@ -742,7 +747,7 @@ export function MechanicalPropertiesTab({
           );
 
           return (
-            <fieldset key={prop.key} className="form-section" disabled={readOnly}>
+            <fieldset key={prop.key} className="form-section">
               <legend>
                 <ScientificText>{prop.legend}</ScientificText>
               </legend>
@@ -854,7 +859,7 @@ export function MechanicalPropertiesTab({
                     />
                   </div>
                   <div className="table-wrapper">
-                    <table className="data-table">
+                    <table ref={scalarHardnessTableRef} className="data-table">
                       <thead>
                         <tr>
                           <th>Min</th>

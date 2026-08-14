@@ -7,6 +7,10 @@ import { SelectionTable } from "../components/SelectionTable";
 import { useColumnUnitConfigs } from "../hooks/useColumnUnitConfigs";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { mergeColumnUnits } from "../lib/columnUnits";
+import {
+  calculationColumnUnitLabel,
+  TEMPERATURE_UNIT_TYPE,
+} from "../lib/calculationColumnHeader";
 import { syncHardnessColumnUnits } from "../lib/formatSelectionCellValue";
 import {
   ALL_NTD_FILTER,
@@ -70,6 +74,12 @@ export function TempSelectionTab() {
   const { configs: unitConfigs } = useColumnUnitConfigs(columns, {
     includeTemperature: true,
   });
+  const temperatureUnitLabel = useMemo(() => {
+    const config = unitConfigs[TEMPERATURE_UNIT_TYPE];
+    return (
+      calculationColumnUnitLabel(config?.system_unit ?? "C", config) || "°C"
+    );
+  }, [unitConfigs]);
 
   useEffect(() => {
     setSortState(null);
@@ -157,7 +167,9 @@ export function TempSelectionTab() {
         </div>
 
         <div className="selection-control selection-control--temperature">
-          <label htmlFor="temperature-input">Температура, °C:</label>
+          <label htmlFor="temperature-input">
+            Температура, {temperatureUnitLabel}:
+          </label>
           <input
             id="temperature-input"
             type="number"

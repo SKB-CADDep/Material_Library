@@ -13,6 +13,7 @@ import type {
 import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 import { SelectionCellContextMenu } from "./SelectionCellContextMenu";
 import { TempCommentIndicator } from "./TempCommentIndicator";
+import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import type {
   TemperatureSelectionColumn,
   TemperatureSelectionRow,
@@ -174,6 +175,9 @@ export function SelectionTable({
   const [unitMenu, setUnitMenu] = useState<UnitMenuState | null>(null);
   const [cellContextMenu, setCellContextMenu] =
     useState<CellContextMenuState | null>(null);
+  const [frozenWidth, setFrozenWidth] = useState(FROZEN_WIDTH);
+
+  useResizableTableHeaders(tableRef);
 
   const copyCellAt = useCallback(
     async (rowIndex: number, column: SelectionSortColumn) => {
@@ -246,10 +250,21 @@ export function SelectionTable({
 
       const needsScroll = naturalWidth > viewportWidth + 1;
 
+      let measuredFrozenWidth = 0;
+      table.querySelectorAll("thead th.selection-table-col--frozen").forEach((th) => {
+        measuredFrozenWidth += th.getBoundingClientRect().width;
+      });
+      if (measuredFrozenWidth <= 0) {
+        measuredFrozenWidth = FROZEN_WIDTH;
+      }
+      setFrozenWidth(measuredFrozenWidth);
+
       setFillsWidth(!needsScroll);
       setHasHorizontalScroll(needsScroll);
       setScrollWidth(
-        needsScroll ? Math.max(0, naturalWidth - FROZEN_WIDTH) : viewportWidth,
+        needsScroll
+          ? Math.max(0, naturalWidth - measuredFrozenWidth)
+          : viewportWidth,
       );
 
       if (!needsScroll) {
@@ -546,7 +561,7 @@ export function SelectionTable({
         >
           <div
             className="selection-table-hscroll-spacer"
-            style={{ width: FROZEN_WIDTH }}
+            style={{ width: frozenWidth }}
             aria-hidden="true"
           />
           <div

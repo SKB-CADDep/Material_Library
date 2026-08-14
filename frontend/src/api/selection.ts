@@ -3,6 +3,7 @@ import type {
   AshbyOptionsResponse,
   AshbyRequest,
   AshbyResponse,
+  ChemCompositionEntriesResponse,
   TemperatureSelectionRequest,
   TemperatureSelectionResponse,
   SingleCalculationRequest,
@@ -46,5 +47,12 @@ export async function getAshbyOptions(
 
 export async function postAshby(body: AshbyRequest): Promise<AshbyResponse> {
   const { data } = await api.post<AshbyResponse>("/selection/ashby", body);
+  return data;
+}
+
+export async function getChemCompositionEntries(): Promise<ChemCompositionEntriesResponse> {
+  const { data } = await api.get<ChemCompositionEntriesResponse>(
+    "/selection/chem/composition-entries",
+  );
   return data;
 }

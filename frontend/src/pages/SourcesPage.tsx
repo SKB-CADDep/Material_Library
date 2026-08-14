@@ -8,7 +8,8 @@ import {
 } from "../lib/sourceLink";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { TruncatedText } from "../components/TruncatedText";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import { useSearchParams } from "react-router-dom";
 import type { SourceItem, SourceUsageResponse, TabType } from "../types/api";
 
@@ -115,6 +116,8 @@ export function SourcesPage() {
     key: keyof SourceItem;
     direction: 'asc' | 'desc';
   } | null>(null);
+  const sourcesTableRef = useRef<HTMLTableElement>(null);
+  useResizableTableHeaders(sourcesTableRef);
 
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedItem, setSelectedItem] = useState<SourceItem | null>(null);
@@ -600,7 +603,7 @@ export function SourcesPage() {
             {sortedData.length === 0 ? (
               <p className="tab-placeholder">Нет данных для отображения</p>
             ) : (
-              <table className="data-table data-table--sources">
+              <table ref={sourcesTableRef} className="data-table data-table--sources">
                   <thead>
                     <tr>
                       <th className="col-index">#</th>

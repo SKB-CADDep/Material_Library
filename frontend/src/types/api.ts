@@ -17,6 +17,7 @@ id: string;
 name: string;
 areas: string[];
 filename: string;
+has_composition?: boolean;
 };
 
 export interface SourceItem {
@@ -224,3 +225,14 @@ export type PropertiesResponse = {
     physical:  Record<string, PropertyMeta>
     mechanical:  Record<string, PropertyMeta>
 }
+
+export type ChemCompositionEntryItem = {
+  material_id: string;
+  material_name: string;
+  areas: string[];
+  composition: Record<string, unknown>;
+};
+
+export type ChemCompositionEntriesResponse = {
+  entries: ChemCompositionEntryItem[];
+};
