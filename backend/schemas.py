@@ -243,3 +243,58 @@ class AshbyResponse(BaseModel):
     hulls: list[AshbyHull]
     class_legend: list[AshbyClassLegendItem] = []
 
+
+class ComparePropsPoolRequest(BaseModel):
+    property_key: str
+    areas: list[str] | None = None
+    area: str | None = None
+
+
+class ComparePropsPoolItem(BaseModel):
+    id: str
+    label: str
+    material_id: str
+    category_index: int | None = None
+
+
+class ComparePropsPoolResponse(BaseModel):
+    property_key: str
+    items: list[ComparePropsPoolItem]
+
+
+class ComparePropsSeriesItem(BaseModel):
+    id: str
+    label: str
+    material_id: str
+    category_index: int | None = None
+
+
+class ComparePropsRequest(BaseModel):
+    property_key: str
+    items: list[ComparePropsSeriesItem]
+
+
+class ComparePropsPoint(BaseModel):
+    temperature: float
+    value: float
+
+
+class ComparePropsSeries(BaseModel):
+    id: str
+    label: str
+    color: str
+    has_data: bool
+    points: list[ComparePropsPoint]
+
+
+class ComparePropsPropertyMeta(BaseModel):
+    key: str
+    name: str
+    symbol: str = ""
+    unit: str = ""
+
+
+class ComparePropsResponse(BaseModel):
+    property: ComparePropsPropertyMeta
+    series: list[ComparePropsSeries]
+

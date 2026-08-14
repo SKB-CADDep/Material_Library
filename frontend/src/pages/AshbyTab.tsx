@@ -1483,6 +1483,86 @@ function AshbyChartTitle({ title }: { title: string }) {
 }
 
 /**
+ * Пунктирные мини-секции посередине между основными тиками
+ * (как на вкладке «Сравнение материалов (свойства)» / desktop _add_minor_gridlines).
+ */
+function AshbyMinorGridlines({
+  xTicks,
+  yTicks,
+}: {
+  xTicks: number[];
+  yTicks: number[];
+}) {
+  const plotArea = usePlotArea();
+  const xScale = useXAxisScale() as ScaleLike | undefined;
+  const yScale = useYAxisScale() as ScaleLike | undefined;
+
+  if (!plotArea || !xScale || !yScale) {
+    return null;
+  }
+
+  const xMids: number[] = [];
+  for (let i = 0; i < xTicks.length - 1; i += 1) {
+    xMids.push((xTicks[i] + xTicks[i + 1]) / 2);
+  }
+  const yMids: number[] = [];
+  for (let i = 0; i < yTicks.length - 1; i += 1) {
+    yMids.push((yTicks[i] + yTicks[i + 1]) / 2);
+  }
+
+  const { x, y, width, height } = plotArea;
+
+  return (
+    <g className="ashby-minor-grid" pointerEvents="none">
+      {xMids.map((value) => {
+        const px = xScale(value);
+        if (typeof px !== "number" || !Number.isFinite(px)) {
+          return null;
+        }
+        if (px < x || px > x + width) {
+          return null;
+        }
+        return (
+          <line
+            key={`ashby-x-mid-${value}`}
+            x1={px}
+            y1={y}
+            x2={px}
+            y2={y + height}
+            stroke="grey"
+            strokeWidth={0.5}
+            strokeOpacity={0.7}
+            strokeDasharray="4 3"
+          />
+        );
+      })}
+      {yMids.map((value) => {
+        const py = yScale(value);
+        if (typeof py !== "number" || !Number.isFinite(py)) {
+          return null;
+        }
+        if (py < y || py > y + height) {
+          return null;
+        }
+        return (
+          <line
+            key={`ashby-y-mid-${value}`}
+            x1={x}
+            y1={py}
+            x2={x + width}
+            y2={py}
+            stroke="grey"
+            strokeWidth={0.5}
+            strokeOpacity={0.7}
+            strokeDasharray="4 3"
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+/**
  * Подписи осей: Y сдвигается вместе с фактической шириной полосы тиков.
  */
 function AshbyAxisLabels({
@@ -2537,6 +2617,7 @@ function AshbyChart({
   const xAxisRef = useRef(xAxis);
   const yAxisRef = useRef(yAxis);
   const toolModeRef = useRef(toolMode);
+  const middlePanHoldRef = useRef(false);
   const pointTipRef = useRef<AshbyPointTip | null>(null);
   const dismissedTipKeyRef = useRef<string | null>(null);
   const plottedSeriesRef = useRef<
@@ -2550,6 +2631,7 @@ function AshbyChart({
   const domainRafRef = useRef<number | null>(null);
   const pendingDomainRef = useRef<AxisDomain | null>(null);
   const [pointTip, setPointTip] = useState<AshbyPointTip | null>(null);
+  const [middlePanHold, setMiddlePanHold] = useState(false);
   /** Размер поля графика: ширина/высота по доступному месту до края страницы. */
   const [chartSize, setChartSize] = useState({ width: 560, height: 580 });
   const [legendSize, setLegendSize] = useState({ width: 280, height: 120 });
@@ -2560,6 +2642,7 @@ function AshbyChart({
   xAxisRef.current = xAxis;
   yAxisRef.current = yAxis;
   toolModeRef.current = toolMode;
+  middlePanHoldRef.current = middlePanHold;
   pointTipRef.current = pointTip;
 
   const pointTipKey = useCallback((tip: AshbyPointTip) => {
@@ -2689,7 +2772,7 @@ function AshbyChart({
     if (!pending) {
       return;
     }
-    if (toolModeRef.current !== "none") {
+    if (toolModeRef.current !== "none" || middlePanHoldRef.current) {
       hideCursorReadout();
       return;
     }
@@ -2842,7 +2925,7 @@ function AshbyChart({
 
   const handleCursorMove = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
-      if (toolModeRef.current !== "none") {
+      if (toolModeRef.current !== "none" || middlePanHoldRef.current) {
         hideCursorReadout();
         return;
       }
@@ -2866,12 +2949,19 @@ function AshbyChart({
   }, []);
 
   useEffect(() => {
-    if (toolMode !== "none") {
+    if (toolMode !== "none" || middlePanHold) {
       hideCursorReadout();
       clearPointTip();
       dismissedTipKeyRef.current = null;
     }
-  }, [toolMode, hideCursorReadout, clearPointTip]);
+  }, [toolMode, middlePanHold, hideCursorReadout, clearPointTip]);
+
+  useEffect(() => {
+    if (!interactionEnabled && middlePanHold) {
+      setMiddlePanHold(false);
+      middlePanHoldRef.current = false;
+    }
+  }, [interactionEnabled, middlePanHold]);
 
   useEffect(() => {
     if (pointTip) {
@@ -3104,7 +3194,7 @@ function AshbyChart({
         <div
           ref={canvasRef}
           className={
-            toolMode === "pan"
+            toolMode === "pan" || middlePanHold
               ? "ashby-chart-canvas ashby-chart-canvas--pan"
               : toolMode === "zoom"
                 ? "ashby-chart-canvas ashby-chart-canvas--zoom"
@@ -3124,8 +3214,13 @@ function AshbyChart({
           onMouseEnter={() => {
             cursorGeomCacheRef.current = null;
           }}
+          onAuxClick={(event) => {
+            if (event.button === 1) {
+              event.preventDefault();
+            }
+          }}
           onWheel={(event) => {
-            if (!interactionEnabled || toolMode !== "none") {
+            if (!interactionEnabled || toolMode !== "none" || middlePanHold) {
               return;
             }
             const legend = legendOverlayRef.current;
@@ -3162,7 +3257,13 @@ function AshbyChart({
                   yLabel={yLabel}
                   yAxisWidth={yAxisWidth}
                 />
-                <CartesianGrid strokeDasharray="4 4" strokeOpacity={0.7} />
+                {/* Основные секции — сплошная сетка по тикам. */}
+                <CartesianGrid stroke="#c5cad3" strokeWidth={1} />
+                {/* Мини-секции — пунктир посередине между тиками. */}
+                <AshbyMinorGridlines
+                  xTicks={viewAxisTicks.x.ticks}
+                  yTicks={viewAxisTicks.y.ticks}
+                />
                 <XAxis
                   type="number"
                   dataKey="x"
@@ -3229,6 +3330,7 @@ function AshbyChart({
                   domain={domain}
                   onDomainPreview={scheduleDomainUpdate}
                   onDomainCommit={commitDomainUpdate}
+                  onMiddlePanHoldChange={setMiddlePanHold}
                 />
                 <AshbyLegendPlacementReporter
                   data={data}
@@ -3345,6 +3447,7 @@ function domainFromPointerDelta(
 /**
  * Слой pan / box-zoom поверх области данных.
  * Рендерится внутри ScatterChart, чтобы использовать plotArea и scale.
+ * Средняя кнопка (колёсико) — временная «рука» на время зажатия.
  */
 function AshbyChartInteraction({
   mode,
@@ -3352,6 +3455,7 @@ function AshbyChartInteraction({
   domain,
   onDomainPreview,
   onDomainCommit,
+  onMiddlePanHoldChange,
 }: {
   mode: ChartToolMode;
   enabled: boolean;
@@ -3360,6 +3464,7 @@ function AshbyChartInteraction({
     next: AxisDomain | ((prev: AxisDomain) => AxisDomain),
   ) => void;
   onDomainCommit: (next: AxisDomain) => void;
+  onMiddlePanHoldChange?: (active: boolean) => void;
 }) {
   const plotArea = usePlotArea();
   const xScale = useXAxisScale() as ScaleLike | undefined;
@@ -3369,7 +3474,10 @@ function AshbyChartInteraction({
     startX: number;
     startY: number;
     origin: AxisDomain;
+    kind: "pan" | "zoom";
+    fromMiddle: boolean;
   } | null>(null);
+  const [middlePanHold, setMiddlePanHold] = useState(false);
   const [box, setBox] = useState<{
     x: number;
     y: number;
@@ -3377,11 +3485,24 @@ function AshbyChartInteraction({
     height: number;
   } | null>(null);
 
-  if (!enabled || !plotArea || mode === "none") {
+  const setMiddleHold = useCallback(
+    (active: boolean) => {
+      setMiddlePanHold(active);
+      onMiddlePanHoldChange?.(active);
+    },
+    [onMiddlePanHoldChange],
+  );
+
+  if (!enabled || !plotArea) {
     return null;
   }
 
-  const cursor = mode === "pan" ? "grab" : "crosshair";
+  const cursor =
+    mode === "pan" || middlePanHold
+      ? "grab"
+      : mode === "zoom"
+        ? "crosshair"
+        : undefined;
 
   function clientToSvgPoint(
     event: PointerEvent<SVGRectElement>,
@@ -3402,7 +3523,34 @@ function AshbyChartInteraction({
   }
 
   function handlePointerDown(event: PointerEvent<SVGRectElement>) {
-    if (event.button !== 0 || !plotArea) {
+    if (!plotArea) {
+      return;
+    }
+
+    // Средняя кнопка (колёсико): временная «рука».
+    if (event.button === 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      const pt = clientToSvgPoint(event);
+      if (!pt) {
+        return;
+      }
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setMiddleHold(true);
+      dragRef.current = {
+        pointerId: event.pointerId,
+        startX: pt.x,
+        startY: pt.y,
+        origin: domain,
+        kind: "pan",
+        fromMiddle: true,
+      };
+      setBox(null);
+      return;
+    }
+
+    // Инструменты панели — только ЛКМ.
+    if (event.button !== 0 || mode === "none") {
       return;
     }
     const pt = clientToSvgPoint(event);
@@ -3415,6 +3563,8 @@ function AshbyChartInteraction({
       startX: pt.x,
       startY: pt.y,
       origin: domain,
+      kind: mode,
+      fromMiddle: false,
     };
     setBox(null);
   }
@@ -3429,7 +3579,7 @@ function AshbyChartInteraction({
       return;
     }
 
-    if (mode === "pan") {
+    if (drag.kind === "pan") {
       onDomainPreview(
         domainFromPointerDelta(
           drag.origin,
@@ -3443,7 +3593,7 @@ function AshbyChartInteraction({
       return;
     }
 
-    if (mode === "zoom") {
+    if (drag.kind === "zoom") {
       const x = Math.min(drag.startX, pt.x);
       const y = Math.min(drag.startY, pt.y);
       const width = Math.abs(pt.x - drag.startX);
@@ -3459,8 +3609,11 @@ function AshbyChartInteraction({
     }
     const pt = clientToSvgPoint(event);
     dragRef.current = null;
+    if (drag.fromMiddle) {
+      setMiddleHold(false);
+    }
 
-    if (mode === "pan") {
+    if (drag.kind === "pan") {
       if (!pt) {
         return;
       }
@@ -3480,7 +3633,7 @@ function AshbyChartInteraction({
       return;
     }
 
-    if (mode === "zoom" && pt) {
+    if (drag.kind === "zoom" && pt) {
       const xA = invertScale(
         xScale,
         drag.startX,
@@ -3539,21 +3692,30 @@ function AshbyChartInteraction({
   }
 
   return (
-    <g className="ashby-chart-interaction" style={{ cursor }}>
+    <g className="ashby-chart-interaction" style={cursor ? { cursor } : undefined}>
       <rect
         x={plotArea.x}
         y={plotArea.y}
         width={plotArea.width}
         height={plotArea.height}
         fill="transparent"
-        style={{ cursor, touchAction: "none" }}
+        style={{ cursor: cursor ?? "default", touchAction: "none" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishDrag}
         onPointerCancel={() => {
+          const drag = dragRef.current;
           dragRef.current = null;
           setBox(null);
+          if (drag?.fromMiddle) {
+            setMiddleHold(false);
+          }
           onDomainPreview(domain);
+        }}
+        onAuxClick={(event) => {
+          if (event.button === 1) {
+            event.preventDefault();
+          }
         }}
         onWheel={(event) => {
           event.preventDefault();
@@ -3595,17 +3757,16 @@ function AshbyChartInteraction({
           }));
         }}
       />
-      {box && box.width > 2 && box.height > 2 ? (
+      {box && mode === "zoom" ? (
         <rect
           x={box.x}
           y={box.y}
           width={box.width}
           height={box.height}
-          className="ashby-zoom-box"
           fill="rgba(61, 90, 128, 0.12)"
           stroke="#3D5A80"
-          strokeWidth={1}
           strokeDasharray="4 3"
+          strokeWidth={1}
           pointerEvents="none"
         />
       ) : null}
@@ -3861,6 +4022,7 @@ function AshbyChartToolbar({
   return (
     <div
       className="ashby-toolbar"
+      data-tour="ashby-toolbar"
       role="toolbar"
       aria-label="Инструменты графика"
       style={{
@@ -4247,7 +4409,7 @@ export function AshbyTab() {
             gap: "0.5cm",
           }}
         >
-          <div className="ashby-field">
+          <div className="ashby-field" data-tour="ashby-area">
             <label htmlFor="ashby-area" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
               Область применения:
             </label>
@@ -4269,7 +4431,7 @@ export function AshbyTab() {
             </div>
           </div>
 
-          <div className="ashby-field">
+          <div className="ashby-field" data-tour="ashby-x-axis">
             <label htmlFor="ashby-x-axis" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
               Ось X:
             </label>
@@ -4290,7 +4452,7 @@ export function AshbyTab() {
             </div>
           </div>
 
-          <div className="ashby-field">
+          <div className="ashby-field" data-tour="ashby-y-axis">
             <label htmlFor="ashby-y-axis" className="ashby-section-label" style={ASHBY_SECTION_LABEL_STYLE}>
               Ось Y:
             </label>
@@ -4324,6 +4486,7 @@ export function AshbyTab() {
           >
             <div
               className="ashby-labelframe ashby-class-labelframe"
+              data-tour="ashby-classes"
               style={ASHBY_CLASS_LABELFRAME_STYLE}
             >
               <div
@@ -4390,6 +4553,7 @@ export function AshbyTab() {
 
             <div
               className="ashby-actions"
+              data-tour="ashby-actions"
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -4429,7 +4593,11 @@ export function AshbyTab() {
           </div>
         </aside>
 
-        <section className="ashby-chart-panel" aria-label="Поле диаграммы Эшби">
+        <section
+          className="ashby-chart-panel"
+          data-tour="ashby-chart"
+          aria-label="Поле диаграммы Эшби"
+        >
           <div className="ashby-chart-field">
             {statusMessage && (
               <p

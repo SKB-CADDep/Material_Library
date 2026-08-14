@@ -754,6 +754,7 @@ select {
   }
 
   .selection-page > .ashby-tab,
+  .selection-page > .compare-props-tab,
   .selection-page > .temp-selection-tab {
     flex: 1;
     min-height: 0;
@@ -1409,6 +1410,28 @@ select {
     padding: var(--space-sm) var(--space-md) 0;
     background-color: var(--accent-soft);
     border-bottom: 1px solid var(--border);
+  }
+
+  .editor-subtabs--with-help {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    padding-right: var(--space-md);
+  }
+
+  .editor-subtabs-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .editor-subtabs--with-help .tab-tour-help-btn {
+    flex: 0 0 auto;
+    align-self: center;
+    margin-bottom: 6px;
   }
 
   .editor-subtab {
@@ -4543,6 +4566,8 @@ select {
 .ashby-chart-canvas--pan,
 .ashby-chart-canvas--pan svg {
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ashby-chart-canvas--pan:active,
@@ -4553,6 +4578,8 @@ select {
 .ashby-chart-canvas--zoom,
 .ashby-chart-canvas--zoom svg {
   cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ashby-status {
@@ -4603,6 +4630,7 @@ select {
 }
 
 .ashby-chart-svg-title,
+.compare-props-chart-svg-title,
 .ashby-axis-label {
   font-family: inherit;
   pointer-events: none;
@@ -4693,3 +4721,217 @@ select {
   color: var(--text);
   flex: 0 0 auto;
 }
+
+/* --- Сравнение материалов (свойства) --- */
+.compare-props-selection-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Как gap между «Область применения» и «Свойство для сравнения» (0.5cm). */
+.compare-props-selection-stack > .ashby-selection-stack-spacer {
+  height: 0.5cm;
+  min-height: 0.5cm;
+  flex: 0 0 0.5cm;
+}
+
+.compare-props-selection-stack > .compare-props-search-labelframe,
+.compare-props-tab .ashby-controls .ashby-labelframe.compare-props-search-labelframe,
+.compare-props-selection-stack > .compare-props-selected-labelframe,
+.compare-props-tab .ashby-controls .ashby-labelframe.compare-props-selected-labelframe {
+  flex: 0 0 auto !important;
+  min-height: 120px !important;
+  max-height: 160px !important;
+}
+
+.compare-props-search-list,
+.compare-props-selected-list {
+  max-height: 110px !important;
+  min-height: 80px !important;
+  overflow-y: auto !important;
+}
+
+.compare-props-chart {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  padding: 12px 8px 12px 8px;
+  box-sizing: border-box;
+}
+
+.compare-props-chart .ashby-chart-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 360px;
+  height: 100%;
+}
+
+.compare-props-chart .ashby-toolbar {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.compare-props-chart-svg-title {
+  fill: var(--text);
+  pointer-events: none;
+}
+
+.compare-props-y-axis-svg-label {
+  fill: #242930;
+  font-weight: 400;
+  pointer-events: none;
+}
+
+.compare-props-chart-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.compare-props-nodata-list {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ashby-zoom-box {
+  position: absolute;
+  z-index: 20;
+  border: 1px dashed var(--accent, #3d5a80);
+  background: color-mix(in srgb, var(--accent, #3d5a80) 12%, transparent);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+/* ——— Пошаговое обучение вкладок (TabTour) ——— */
+.tab-tour-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border, #d8dce3);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--text, #242930);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.tab-tour-help-btn:hover:not(:disabled) {
+  background: #3d5a80;
+  border-color: #3d5a80;
+  color: #fff;
+}
+
+.tab-tour-help-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tab-tour-card {
+  background: #ffffff;
+  border: 1px solid #c6d8ff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.24);
+  padding: 14px 16px;
+  box-sizing: border-box;
+}
+
+.tab-tour-card-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.35;
+}
+
+.tab-tour-card-text {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.45;
+}
+
+.tab-tour-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-tour-card-counter {
+  flex: 1 1 auto;
+  font-size: 11px;
+  color: #6b7280;
+  min-width: 0;
+}
+
+.tab-tour-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.tab-tour-btn {
+  appearance: none;
+  border: 1px solid #d8dce3;
+  border-radius: 6px;
+  background: #fff;
+  color: #242930;
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.tab-tour-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tab-tour-btn--flat {
+  border-color: transparent;
+  background: transparent;
+  color: #6b7280;
+}
+
+.tab-tour-btn--flat:hover:not(:disabled) {
+  color: #fff;
+  background: #3d5a80;
+  border-color: #3d5a80;
+}
+
+.tab-tour-btn--primary {
+  background: #3d5a80;
+  border-color: #3d5a80;
+  color: #fff;
+}
+
+.tab-tour-btn--primary:hover:not(:disabled) {
+  background: #2f4766;
+  border-color: #2f4766;
+  color: #fff;
+}
+
+.tab-tour-btn:hover:not(:disabled):not(.tab-tour-btn--flat):not(.tab-tour-btn--primary) {
+  background: #f3f4f6;
+  color: #242930;
+}
+
