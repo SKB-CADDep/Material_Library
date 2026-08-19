@@ -11,7 +11,14 @@ import { SepCalculationTab } from "./SepCalculationTab";
 import { TabTour, type TourStep } from "../components/TabTour";
 import { ASHBY_TOUR_STEPS } from "../tours/ashbyTour";
 import { COMPARE_PROPS_TOUR_STEPS } from "../tours/comparePropsTour";
+import { LARSON_MILLER_TOUR_STEPS } from "../tours/larsonMillerTour";
 import { ChemComparisonTab } from "./ChemComparisonTab";
+
+const LarsonMillerTab = lazy(() =>
+  import("./LarsonMillerTab").then((module) => ({
+    default: module.LarsonMillerTab,
+  })),
+);
 
 const AshbyTab = lazy(() =>
   import("./AshbyTab").then((module) => ({ default: module.AshbyTab })),
@@ -34,6 +41,9 @@ function tourStepsForPath(pathname: string): TourStep[] | null {
   if (pathname.includes("/selection/compare-props")) {
     return COMPARE_PROPS_TOUR_STEPS;
   }
+  if (pathname.includes("/selection/larson-miller")) {
+    return LARSON_MILLER_TOUR_STEPS;
+  }
   return null;
 }
 
@@ -52,6 +62,9 @@ function tourLabelForPath(pathname: string): string {
   }
   if (pathname.includes("/selection/temperature")) {
     return "Обучение по вкладке Подбор по температуре";
+  }
+  if (pathname.includes("/selection/larson-miller")) {
+    return "Обучение по вкладке Ларсон–Миллер";
   }
   return "Обучение";
 }
@@ -90,6 +103,9 @@ export function SelectionPage() {
           <NavLink to="/selection/ashby" className={selectionSubtabClass}>
             Диаграмма Эшби
           </NavLink>
+          <NavLink to="/selection/larson-miller" className={selectionSubtabClass}>
+            Ларсон–Миллер
+          </NavLink>
         </div>
         <button
           type="button"
@@ -127,6 +143,14 @@ export function SelectionPage() {
           element={
             <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
               <AshbyTab />
+            </Suspense>
+          }
+        />
+        <Route
+          path="larson-miller"
+          element={
+            <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
+              <LarsonMillerTab />
             </Suspense>
           }
         />

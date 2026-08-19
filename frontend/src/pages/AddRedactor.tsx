@@ -45,6 +45,7 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
     name_material_standard?: string;
     name_material_alternative?: string | string[];
     comment?: string;
+    larson_miller_constant_c?: number | string;
     classification?: {
       classification_category?: string;
       classification_class?: string;
@@ -114,6 +115,32 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
               onDraftChange({
                 ...material,
                 metadata: { ...metadata, comment: text },
+              });
+            }}
+          />
+        </div>
+
+        <div className="form-row">
+          <label htmlFor="larson-miller-constant-c">
+            Константа Ларсона-Миллера C:
+          </label>
+          <input
+            id="larson-miller-constant-c"
+            type="text"
+            value={
+              metadata.larson_miller_constant_c != null
+                ? String(metadata.larson_miller_constant_c)
+                : ""
+            }
+            className="input"
+            onChange={(event) => {
+              const text = event.target.value.trim();
+              onDraftChange({
+                ...material,
+                metadata: {
+                  ...metadata,
+                  larson_miller_constant_c: text === "" ? undefined : text,
+                },
               });
             }}
           />
