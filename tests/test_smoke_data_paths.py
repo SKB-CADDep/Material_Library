@@ -1,62 +1,73 @@
 from __future__ import annotations
 
-import json
-import shutil
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-
-from backend.dependencies import get_app_state
-from backend.main import app
-from backend.settings import MATERIALS_DIR_ENV
 from src.infrastructure.storage_backend import SOURCE_JSON_NAME
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = PROJECT_ROOT / "data"
-
-
-@pytest.fixture
-def clear_app_state_cache():
-    get_app_state.cache_clear()
-    yield
-    get_app_state.cache_clear()
+from tests.fixtures.workspace_factory import prepare_smoke_workspace
+from tests.fixtures.workspace_paths import WORKSPACE_MIN_DIR
 
 
-def _prepare_smoke_workspace(target: Path) -> None:
-    target.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(DATA_DIR / "20К.json", target / "20К.json")
-    root_source = PROJECT_ROOT / "source.json"
-    if root_source.is_file():
-        shutil.copy2(root_source, target / SOURCE_JSON_NAME)
-    else:
-        (target / SOURCE_JSON_NAME).write_text(
-            json.dumps(
-                {
-                    "property_sources": [],
-                    "strength_sources": [],
-                    "chemical_sources": [],
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
+def test_workspace_min_fixture_covers_smoke_cases() -> None:
+    assert WORKSPACE_MIN_DIR.is_dir(), WORKSPACE_MIN_DIR
+
+    material_files = sorted(
+        path
+        for path in WORKSPACE_MIN_DIR.iterdir()
+        if path.is_file() and path.suffix.lower() == ".json" and path.name != SOURCE_JSON_NAME
+    )
+    assert len(material_files) >= 2, "workspace_min must contain at least 2 material JSON files"
+    assert (WORKSPACE_MIN_DIR / SOURCE_JSON_NAME).is_file()
+
+    from src.core.models.material import Material
+
+    has_kp = False
+    has_composition = False
+    has_without_composition = False
+
+    for path in material_files:
+        material = Material(filepath=str(path))
+        categories = material.get_strength_categories()
+        compositions = material.data.get("chemical_properties", {}).get("composition") or []
+
+        if categories:
+            has_kp = True
+        if compositions:
+            has_composition = True
+        if not compositions:
+            has_without_composition = True
+
+    assert has_kp, "workspace_min must include material with strength category"
+    assert has_composition, "workspace_min must include material with composition"
+    assert has_without_composition, "workspace_min must include material without composition"
 
 
-def test_fs5_smoke_flow_with_materials_dir(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    clear_app_state_cache,
-) -> None:
-    workspace = tmp_path / "materials"
-    _prepare_smoke_workspace(workspace)
-    monkeypatch.setenv(MATERIALS_DIR_ENV, str(workspace))
+def test_prepare_smoke_workspace_copies_fixture_json(tmp_path: Path) -> None:
+    workspace = prepare_smoke_workspace(tmp_path / "materials")
+    assert workspace != WORKSPACE_MIN_DIR.resolve()
+    assert (workspace / "FixtureFull.json").is_file()
+    assert (workspace / SOURCE_JSON_NAME).is_file()
+
+
+def test_open_workspace_uses_isolated_copy(client, workspace_dir, open_workspace) -> None:
+    assert workspace_dir.resolve() != WORKSPACE_MIN_DIR.resolve()
+    assert Path(open_workspace["directory"]).resolve() == workspace_dir
+    materials = client.get("/api/materials").json()
+    assert materials
+    assert all(item["filename"] != SOURCE_JSON_NAME for item in materials)
+
+
+def test_smoke_flow_with_materials_dir(isolated_smoke_env, clear_app_state_cache) -> None:
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+    from src.infrastructure.storage_backend import SOURCE_JSON_NAME
+
+    workspace = isolated_smoke_env
 
     with TestClient(app) as client:
         health = client.get("/api/health")
         assert health.status_code == 200
-        assert health.json()["workspace"] == str(workspace.resolve())
+        assert health.json()["workspace"] == str(workspace)
 
         ws = client.get("/api/workspace")
         assert ws.status_code == 200
@@ -117,3 +128,5 @@ def test_fs5_smoke_flow_with_materials_dir(
         deleted = client.delete(f"/api/sources/{source_id}")
         assert deleted.status_code == 200
         assert deleted.json()["ok"] is True
+
+    assert "[smoke]" not in (WORKSPACE_MIN_DIR / "FixtureFull.json").read_text(encoding="utf-8")

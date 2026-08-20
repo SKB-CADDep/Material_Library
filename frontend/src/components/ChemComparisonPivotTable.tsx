@@ -1,6 +1,9 @@
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
-import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import {
+  syncChemPivotStickyColumns,
+  useResizableTableHeaders,
+} from "../hooks/useResizableTableHeaders";
 import type {
   ChemComparisonView,
   ChemPivotRow,
@@ -16,8 +19,25 @@ export function ChemComparisonPivotTable({
   columns,
   rows,
 }: ChemComparisonPivotTableProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(tableRef);
+
+  useResizableTableHeaders(tableRef, {
+    disabled: columns.length === 0 || rows.length === 0,
+    eventRootRef: scrollRef,
+    headerStructureKey: columns.map((column) => column.key).join("|"),
+    onLayoutChange: () => {
+      if (tableRef.current) {
+        syncChemPivotStickyColumns(tableRef.current);
+      }
+    },
+  });
+
+  useLayoutEffect(() => {
+    if (tableRef.current) {
+      syncChemPivotStickyColumns(tableRef.current);
+    }
+  }, [columns, rows]);
 
   if (columns.length === 0) {
     return (
@@ -36,8 +56,18 @@ export function ChemComparisonPivotTable({
   }
 
   return (
-    <div className="chem-comparison-pivot-scroll">
+    <div
+      ref={scrollRef}
+      className="chem-comparison-pivot-scroll"
+    >
       <table ref={tableRef} className="data-table chem-comparison-pivot-table">
+        <colgroup>
+          <col className="chem-comparison-pivot-col--element" />
+          <col className="chem-comparison-pivot-col--name" />
+          {columns.map((column) => (
+            <col key={column.key} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             <th

@@ -3,14 +3,6 @@ from fastapi.testclient import TestClient
 from backend.main import app
 from backend.dependencies import get_app_state
 from backend.settings import MATERIALS_DIR_ENV
-from tests.conftest import DATA_DIR
-
-@pytest.fixture
-def material_id(client, open_workspace):
-    materials = client.get("/api/materials").json()
-    assert len(materials) > 0
-    id = materials[0]["id"]
-    return id
 
 @pytest.fixture
 def source_id(client):
@@ -243,6 +235,7 @@ def test_put_material_updates_list_summary_name(client, material_id):
     original_name = detail["metadata"]["name_material_standard"]
     test_name = "B6bListSummaryTest"
     detail["metadata"]["name_material_standard"] = test_name
+    detail["metadata"]["name_material_alternative"] = []
 
     put = client.put(f"/api/materials/{material_id}", json=detail)
     assert put.status_code == 200

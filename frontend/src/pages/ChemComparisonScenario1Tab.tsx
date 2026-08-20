@@ -11,8 +11,13 @@ import {
 } from "../lib/chemComparisonPivot";
 import { ChemComparisonSourcesTable } from "../components/ChemComparisonSourcesTable";
 import { ChemComparisonPivotPanel } from "../components/ChemComparisonPivotTable";
-import { ChemComparisonNotesSection } from "../components/ChemComparisonNotesSection";
+import {
+  ChemComparisonNotesSection,
+  collectChemComparisonNotes,
+} from "../components/ChemComparisonNotesSection";
 import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
+import { PanelResizeHandle } from "../components/PanelResizeHandle";
+import { useDragResize } from "../hooks/useDragResize";
 import { materialMatchesApplicationAreas } from "../lib/applicationAreaFilter";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -96,14 +101,43 @@ export function ChemComparisonScenario1Tab() {
     detailQuery.isSuccess &&
     composition.length > 0;
 
+  const sidebarResize = useDragResize({
+    axis: "x",
+    initial: 250,
+    min: 200,
+    max: 420,
+    storageKey: "chem-s1-sidebar-width",
+  });
+  const pivotResize = useDragResize({
+    axis: "y",
+    initial: 280,
+    min: 120,
+    max: 720,
+    storageKey: "chem-s1-pivot-height",
+  });
+  const sourcesResize = useDragResize({
+    axis: "y",
+    initial: 140,
+    min: 80,
+    max: 400,
+    storageKey: "chem-s1-sources-height",
+  });
+  const hasNotes = useMemo(
+    () => collectChemComparisonNotes(comparisonView.columns).length > 0,
+    [comparisonView.columns],
+  );
+
   if (!workspace) {
     return <p className="tab-placeholder">Откройте workspace с материалами</p>;
   }
 
   return (
     <TabErrorBoundary resetKey={selectedId}>
-      <div className="chem-comparison-layout">
-        <aside className="chem-comparison-sidebar">
+      <div className="chem-comparison-layout chem-comparison-layout--resizable">
+        <aside
+          className="chem-comparison-sidebar chem-comparison-sidebar--resizable"
+          style={sidebarResize.style}
+        >
           <div className="chem-comparison-sidebar-field">
             <label htmlFor="chem-s1-area-filter">Область применения:</label>
             <ApplicationAreaFilter
@@ -180,6 +214,11 @@ export function ChemComparisonScenario1Tab() {
           </div>
         </aside>
 
+        <PanelResizeHandle
+          direction="vertical"
+          onMouseDown={sidebarResize.onHandleMouseDown}
+        />
+
         <main className="chem-comparison-main">
           {!selectedId && (
             <p className="tab-placeholder">
@@ -207,12 +246,36 @@ export function ChemComparisonScenario1Tab() {
             )}
 
           {compositionReady && (
-            <div className="chem-comparison-content">
-              <ChemComparisonPivotPanel view={comparisonView} />
+            <div className="chem-comparison-content chem-comparison-content--resizable">
+              <div
+                className="chem-comparison-panel-slot"
+                style={pivotResize.style}
+              >
+                <ChemComparisonPivotPanel view={comparisonView} />
+              </div>
 
-              <ChemComparisonSourcesTable columns={comparisonView.columns} />
+              <PanelResizeHandle
+                direction="horizontal"
+                onMouseDown={pivotResize.onHandleMouseDown}
+              />
 
-              <ChemComparisonNotesSection columns={comparisonView.columns} />
+              <div
+                className="chem-comparison-panel-slot"
+                style={sourcesResize.style}
+              >
+                <ChemComparisonSourcesTable columns={comparisonView.columns} />
+              </div>
+
+              {hasNotes && (
+                <>
+                  <PanelResizeHandle
+                    direction="horizontal"
+                    onMouseDown={sourcesResize.onHandleMouseDown}
+                  />
+
+                  <ChemComparisonNotesSection columns={comparisonView.columns} />
+                </>
+              )}
             </div>
           )}
         </main>

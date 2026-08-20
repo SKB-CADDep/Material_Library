@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
 
@@ -31,6 +31,13 @@ import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 import { TempCommentIndicator } from "./TempCommentIndicator";
 
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import {
+  sortCalculationRows,
+  type CalculationSortColumn,
+  type CalculationSortState,
+} from "../lib/sortCalculationRows";
+import { toggleSortDirection } from "../lib/sortSelectionRows";
+import { renderSortIndicator, sortableHeaderProps } from "../lib/tableSortHeader";
 
 
 
@@ -218,9 +225,38 @@ export function CalculationTable({
 }: CalculationTableProps) {
 
   const [unitMenu, setUnitMenu] = useState<UnitMenuState | null>(null);
+  const [sortState, setSortState] = useState<CalculationSortState>(null);
 
   const tableRef = useRef<HTMLTableElement>(null);
   useResizableTableHeaders(tableRef);
+
+  const handleSortColumn = (column: CalculationSortColumn) => {
+    setSortState((prev) => {
+      if (prev?.column === column) {
+        return { column, direction: toggleSortDirection(prev.direction) };
+      }
+      return { column, direction: "asc" };
+    });
+  };
+
+  const sortedDbRows = useMemo(
+    () =>
+      sortState
+        ? sortCalculationRows(dbRows, sortState.column, sortState.direction)
+        : dbRows,
+    [dbRows, sortState],
+  );
+
+  const sortedCustomRows = useMemo(
+    () =>
+      sortState
+        ? sortCalculationRows(customRows, sortState.column, sortState.direction)
+        : customRows,
+    [customRows, sortState],
+  );
+
+  const findCustomRowSourceIndex = (row: SingleCalculationRow) =>
+    customRows.findIndex((item) => item.temperature === row.temperature);
 
   const customRowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
 
@@ -228,6 +264,13 @@ export function CalculationTable({
   const temperatureUnitLabel = calculationColumnUnitLabel(
     temperatureUnitConfig?.system_unit ?? "C",
     temperatureUnitConfig,
+  );
+  const temperatureHeaderTitle = temperatureUnitLabel
+    ? `T, ${temperatureUnitLabel}`
+    : "T";
+  const temperatureHeader = sortableHeaderProps(
+    () => handleSortColumn("temperature"),
+    temperatureHeaderTitle,
   );
 
   useEffect(() => {
@@ -283,7 +326,18 @@ export function CalculationTable({
 
             <tr>
 
-              <th className="selection-table-col selection-table-col--temp calculation-table-col--temp">
+              <th
+                className={[
+                  "selection-table-col",
+                  "selection-table-col--temp",
+                  "calculation-table-col--temp",
+                  temperatureHeader.className,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                title={temperatureHeader.title}
+                onClick={temperatureHeader.onClick}
+              >
 
                 <span className="calculation-table-header">
 
@@ -308,6 +362,8 @@ export function CalculationTable({
                   />
 
                 </span>
+
+                {renderSortIndicator("temperature", sortState)}
 
               </th>
 
@@ -337,6 +393,12 @@ export function CalculationTable({
 
                 );
 
+                const headerTitle = unitLabel ? `${symbol}, ${unitLabel}` : symbol;
+                const header = sortableHeaderProps(
+                  () => handleSortColumn(col.key),
+                  headerTitle,
+                );
+
                 const canChangeUnit = Boolean(
 
                   col.unit_type && unitConfig && onColumnUnitChange,
@@ -358,6 +420,8 @@ export function CalculationTable({
                       "selection-table-col--value",
 
                       "calculation-table-col--value",
+
+                      header.className,
 
                       canChangeUnit ? "calculation-table-col--unit-switch" : "",
 
@@ -389,17 +453,19 @@ export function CalculationTable({
 
                     }}
 
+                    title={
+                      canChangeUnit
+                        ? `${header.title ?? headerTitle}. ПКМ — смена единицы измерения`
+                        : header.title ?? headerTitle
+                    }
+                    onClick={header.onClick}
                   >
 
                     <span className="calculation-table-header">
 
                       <span
                         className="calculation-table-header__text"
-                        title={
-                          canChangeUnit
-                            ? "ПКМ — смена единицы измерения"
-                            : undefined
-                        }
+                        title={headerTitle}
                       >
 
                         <span className="calculation-table-header__symbol">
@@ -484,6 +550,8 @@ export function CalculationTable({
 
                       </span>
 
+                      {renderSortIndicator(col.key, sortState)}
+
                     </span>
 
                   </th>
@@ -498,7 +566,7 @@ export function CalculationTable({
 
           <tbody>
 
-            {dbRows.map((row, rowIndex) => (
+            {sortedDbRows.map((row, rowIndex) => (
 
               <tr key={`db-${row.temperature}-${rowIndex}`}>
 
@@ -564,21 +632,25 @@ export function CalculationTable({
 
 
 
-            {customRows.map((row, rowIndex) => (
+            {sortedCustomRows.map((row, rowIndex) => {
+              const sourceIndex = findCustomRowSourceIndex(row);
 
+              return (
               <tr
 
                 key={`custom-${row.temperature}-${rowIndex}`}
 
                 ref={(element) => {
-                  customRowRefs.current[rowIndex] = element;
+                  if (sourceIndex >= 0) {
+                    customRowRefs.current[sourceIndex] = element;
+                  }
                 }}
 
                 className={[
 
                   "calculation-table-row--custom",
 
-                  selectedCustomRowIndex === rowIndex
+                  selectedCustomRowIndex === sourceIndex
 
                     ? "calculation-table-row--custom-selected"
 
@@ -590,7 +662,11 @@ export function CalculationTable({
 
                   .join(" ")}
 
-                onClick={() => onCustomRowClick?.(rowIndex)}
+                onClick={() => {
+                  if (sourceIndex >= 0) {
+                    onCustomRowClick?.(sourceIndex);
+                  }
+                }}
 
               >
 
@@ -639,8 +715,8 @@ export function CalculationTable({
                 })}
 
               </tr>
-
-            ))}
+              );
+            })}
 
           </tbody>
 

@@ -1,54 +1,21 @@
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
-from backend.dependencies import get_app_state
 from backend.main import app
-from backend.settings import MATERIALS_DIR_ENV
-from tests.test_smoke_data_paths import _prepare_smoke_workspace
+from tests.fixtures.workspace_paths import FIXTURE_FULL_ID
 
 
-@pytest.fixture
-def clear_app_state_cache():
-    get_app_state.cache_clear()
-    yield
-    get_app_state.cache_clear()
-
-
-def _find_material_with_calc_rows(client: TestClient) -> str:
-    for item in client.get("/api/materials").json():
-        material_id = item["id"]
-        detail = client.get(f"/api/materials/{material_id}").json()
-        categories = (detail.get("mechanical_properties") or {}).get("strength_category") or []
-        if not categories:
-            continue
-        response = client.post(
-            "/api/selection/calculate",
-            json={
-                "material_id": material_id,
-                "category_index": 0,
-                "custom_temperatures": [],
-            },
-        )
-        if response.status_code == 200 and response.json().get("db_rows"):
-            return material_id
-    pytest.skip("No material with calculation rows in smoke workspace")
-
-
-def test_d7_gate_smoke_workspace_temperature_save_calc(
-    tmp_path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_smoke_workspace_temperature_save_calc(
+    isolated_smoke_env,
     clear_app_state_cache,
 ) -> None:
-    workspace = tmp_path / "materials"
-    _prepare_smoke_workspace(workspace)
-    monkeypatch.setenv(MATERIALS_DIR_ENV, str(workspace))
+    workspace = isolated_smoke_env
 
     with TestClient(app) as client:
         health = client.get("/api/health")
         assert health.status_code == 200
-        assert health.json()["workspace"] == str(workspace.resolve())
+        assert health.json()["workspace"] == str(workspace)
 
         ws = client.get("/api/workspace")
         assert ws.status_code == 200
@@ -58,7 +25,7 @@ def test_d7_gate_smoke_workspace_temperature_save_calc(
         assert materials.status_code == 200
         mat_list = materials.json()
         assert mat_list
-        mat_id = mat_list[0]["id"]
+        mat_id = FIXTURE_FULL_ID
 
         temp = client.post(
             "/api/selection/temperature",
@@ -82,11 +49,10 @@ def test_d7_gate_smoke_workspace_temperature_save_calc(
         material["metadata"][meta_key] = original_name
         assert client.put(f"/api/materials/{mat_id}", json=material).status_code == 200
 
-        calc_material_id = _find_material_with_calc_rows(client)
         calc = client.post(
             "/api/selection/calculate",
             json={
-                "material_id": calc_material_id,
+                "material_id": FIXTURE_FULL_ID,
                 "category_index": 0,
                 "custom_temperatures": [150.0],
             },

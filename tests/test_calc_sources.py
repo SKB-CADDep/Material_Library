@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import re
 
-import pytest
 from fastapi.testclient import TestClient
 
-from backend.dependencies import get_app_state
 from backend.main import app
-from backend.settings import MATERIALS_DIR_ENV
-from tests.test_smoke_data_paths import _prepare_smoke_workspace
+from tests.fixtures.workspace_paths import FIXTURE_FULL_ID
 
 BRACKET_SOURCE_ID = re.compile(r"^\[(\d+)\]$")
 
@@ -40,31 +37,27 @@ def _resolve_strength_name(cat: dict, strength_sources: list[dict]) -> str:
     return str(cat.get("source_strength_category") or "").strip()
 
 
-@pytest.fixture
-def clear_app_state_cache():
-    get_app_state.cache_clear()
-    yield
-    get_app_state.cache_clear()
+def _find_physical_property(material: dict, property_name: str) -> dict:
+    for item in material.get("physical_properties", {}).get("properties", []):
+        if item.get("property_name") == property_name:
+            return item
+    raise KeyError(property_name)
 
 
 def test_calc_source_refs_and_ntd_after_crud(
-    tmp_path,
-    monkeypatch: pytest.MonkeyPatch,
+    isolated_smoke_env,
     clear_app_state_cache,
 ) -> None:
-    workspace = tmp_path / "materials"
-    _prepare_smoke_workspace(workspace)
-    monkeypatch.setenv(MATERIALS_DIR_ENV, str(workspace))
-
     property_name = "28f Calc Property Source"
     strength_name = "28f Calc Strength Source"
+    mat_id = FIXTURE_FULL_ID
 
     with TestClient(app) as client:
         assert client.get("/api/health").status_code == 200
 
         materials = client.get("/api/materials").json()
         assert materials
-        mat_id = materials[0]["id"]
+        assert any(item["id"] == mat_id for item in materials)
 
         prop_created = client.post(
             "/api/sources",
@@ -101,8 +94,9 @@ def test_calc_source_refs_and_ntd_after_crud(
         assert resolved_id == property_id
 
         material = client.get(f"/api/materials/{mat_id}").json()
-        material["physical_properties"]["modulus_elasticity"]["source_ref_id"] = property_id
-        material["physical_properties"]["modulus_elasticity"]["property_subsource"] = bracket_label
+        modulus = _find_physical_property(material, "modulus_elasticity")
+        modulus["source_ref_id"] = property_id
+        modulus["property_subsource"] = bracket_label
 
         categories = material["mechanical_properties"].get("strength_category") or []
         assert categories, "smoke material must have strength categories"
@@ -142,6 +136,16 @@ def test_calc_source_refs_and_ntd_after_crud(
             _resolve_bracket_ref(bracket_label, listed_after_edit["property_sources"])
             == property_id
         )
+
+        material_before_delete = client.get(f"/api/materials/{mat_id}").json()
+        modulus = _find_physical_property(material_before_delete, "modulus_elasticity")
+        modulus["source_ref_id"] = ""
+        modulus["property_subsource"] = ""
+        categories = material_before_delete["mechanical_properties"].get("strength_category") or []
+        if categories:
+            categories[0]["source_ref_id"] = ""
+            categories[0]["source_strength_category"] = ""
+        assert client.put(f"/api/materials/{mat_id}", json=material_before_delete).status_code == 200
 
         assert client.delete(f"/api/sources/{property_id}").status_code == 200
         assert client.delete(f"/api/sources/{strength_id}").status_code == 200

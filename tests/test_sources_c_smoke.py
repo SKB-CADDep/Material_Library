@@ -1,14 +1,17 @@
 
-
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
-from backend.dependencies import get_app_state
 from backend.main import app
-from backend.settings import MATERIALS_DIR_ENV
-from tests.test_smoke_data_paths import _prepare_smoke_workspace
+from tests.fixtures.workspace_paths import FIXTURE_FULL_ID
+
+
+def _find_physical_property(material: dict, property_name: str) -> dict:
+    for item in material.get("physical_properties", {}).get("properties", []):
+        if item.get("property_name") == property_name:
+            return item
+    raise KeyError(property_name)
 
 
 def _property_source_names(client: TestClient) -> list[str]:
@@ -28,24 +31,13 @@ def _resolve_property_source_name(prop: dict, sources: list[dict]) -> str:
     return str(prop.get("property_subsource") or "").strip()
 
 
-@pytest.fixture
-def clear_app_state_cache():
-    get_app_state.cache_clear()
-    yield
-    get_app_state.cache_clear()
-
-
 def test_c_smoke_sources_create_editor_edit_delete(
-    tmp_path,
-    monkeypatch: pytest.MonkeyPatch,
+    isolated_smoke_env,
     clear_app_state_cache,
 ) -> None:
-    workspace = tmp_path / "materials"
-    _prepare_smoke_workspace(workspace)
-    monkeypatch.setenv(MATERIALS_DIR_ENV, str(workspace))
-
     source_name = "C-SMOKE Source"
     edited_name = "C-SMOKE Source (edited)"
+    mat_id = FIXTURE_FULL_ID
 
     with TestClient(app) as client:
         assert client.get("/api/health").status_code == 200
@@ -54,7 +46,7 @@ def test_c_smoke_sources_create_editor_edit_delete(
         assert materials.status_code == 200
         mat_list = materials.json()
         assert mat_list
-        mat_id = mat_list[0]["id"]
+        assert any(item["id"] == mat_id for item in mat_list)
 
         created = client.post(
             "/api/sources",
@@ -73,7 +65,7 @@ def test_c_smoke_sources_create_editor_edit_delete(
         assert source_name in _property_source_names(client)
 
         material = client.get(f"/api/materials/{mat_id}").json()
-        modulus = material["physical_properties"]["modulus_elasticity"]
+        modulus = _find_physical_property(material, "modulus_elasticity")
         modulus["source_ref_id"] = source_id
         modulus["property_subsource"] = source_name
         saved = client.put(f"/api/materials/{mat_id}", json=material)
@@ -82,7 +74,7 @@ def test_c_smoke_sources_create_editor_edit_delete(
         listed = client.get("/api/sources").json()["property_sources"]
         reloaded = client.get(f"/api/materials/{mat_id}").json()
         resolved = _resolve_property_source_name(
-            reloaded["physical_properties"]["modulus_elasticity"],
+            _find_physical_property(reloaded, "modulus_elasticity"),
             listed,
         )
         assert resolved == source_name
@@ -102,12 +94,19 @@ def test_c_smoke_sources_create_editor_edit_delete(
 
         listed_after_edit = client.get("/api/sources").json()["property_sources"]
         resolved_after_edit = _resolve_property_source_name(
-            client.get(f"/api/materials/{mat_id}").json()["physical_properties"][
-                "modulus_elasticity"
-            ],
+            _find_physical_property(
+                client.get(f"/api/materials/{mat_id}").json(),
+                "modulus_elasticity",
+            ),
             listed_after_edit,
         )
         assert resolved_after_edit == edited_name
+
+        material_before_delete = client.get(f"/api/materials/{mat_id}").json()
+        modulus = _find_physical_property(material_before_delete, "modulus_elasticity")
+        modulus["source_ref_id"] = ""
+        modulus["property_subsource"] = ""
+        assert client.put(f"/api/materials/{mat_id}", json=material_before_delete).status_code == 200
 
         deleted = client.delete(f"/api/sources/{source_id}")
         assert deleted.status_code == 200

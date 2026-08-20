@@ -1,0 +1,57 @@
+{
+  "property_sources": [
+    {
+      "id_source": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+      "name_source": "Fixture property source",
+      "description": "test workspace_min",
+      "hyperlink": "",
+      "user_name_found": "test",
+      "data_found": "2026-01-01 00:00:00",
+      "user_name_change": "test",
+      "data_change": "2026-01-01 00:00:00"
+    },
+    {
+      "id_source": "2b2b0867-478c-4950-a74d-be59092500ab",
+      "name_source": "Тест API",
+      "description": "smoke",
+      "hyperlink": "https://example.com",
+      "user_name_found": "Liza",
+      "data_found": "2026-08-18 11:39:21",
+      "user_name_change": "",
+      "data_change": ""
+    },
+    {
+      "id_source": "cee71a76-a735-4b4b-8abf-ee2d63003c23",
+      "name_source": "Тест API",
+      "description": "smoke",
+      "hyperlink": "https://example.com",
+      "user_name_found": "Liza",
+      "data_found": "2026-08-18 11:39:59",
+      "user_name_change": "",
+      "data_change": ""
+    },
+    {
+      "id_source": "6503509f-4460-419f-ad85-bb16d5784f3c",
+      "name_source": "Тест API",
+      "description": "smoke",
+      "hyperlink": "https://example.com",
+      "user_name_found": "Liza",
+      "data_found": "2026-08-18 12:01:28",
+      "user_name_change": "",
+      "data_change": ""
+    }
+  ],
+  "strength_sources": [],
+  "chemical_sources": [
+    {
+      "id_source": "c1000001-0000-4000-8000-000000000002",
+      "name_source": "Fixture chemical source",
+      "description": "test workspace_min",
+      "hyperlink": "",
+      "user_name_found": "test",
+      "data_found": "2026-01-01 00:00:00",
+      "user_name_change": "test",
+      "data_change": "2026-01-01 00:00:00"
+    }
+  ]
+}

@@ -6,6 +6,10 @@ import { postTemperatureSelection } from "../api/selection";
 import { SelectionTable } from "../components/SelectionTable";
 import { useColumnUnitConfigs } from "../hooks/useColumnUnitConfigs";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import {
+  TABLE_SORT_HINT,
+  TableSortHint,
+} from "../lib/tableSortHeader";
 import { mergeColumnUnits } from "../lib/columnUnits";
 import {
   calculationColumnUnitLabel,
@@ -202,11 +206,8 @@ export function TempSelectionTab() {
           </select>
         </div>
 
-        <p
-          className="selection-unit-hint"
-          title="Правый клик по заголовку столбца — смена единицы измерения"
-        >
-          ПКМ по заголовку — смена ед.из.
+        <p className="selection-unit-hint" title={TABLE_SORT_HINT}>
+          <TableSortHint />
         </p>
       </div>
 
