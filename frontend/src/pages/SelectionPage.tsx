@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   NavLink,
   Routes,
@@ -12,7 +12,10 @@ import { TabTour, type TourStep } from "../components/TabTour";
 import { ASHBY_TOUR_STEPS } from "../tours/ashbyTour";
 import { COMPARE_PROPS_TOUR_STEPS } from "../tours/comparePropsTour";
 import { LARSON_MILLER_TOUR_STEPS } from "../tours/larsonMillerTour";
+import { TEMP_SELECTION_TOUR_STEPS } from "../tours/tempSelectionTour";
+import { SEP_CALCULATION_TOUR_STEPS } from "../tours/sepCalculationTour";
 import { ChemComparisonTab } from "./ChemComparisonTab";
+import { CHEM_COMPARISON_TOUR_STEPS } from "../tours/chemComparisonTour";
 
 const LarsonMillerTab = lazy(() =>
   import("./LarsonMillerTab").then((module) => ({
@@ -35,11 +38,20 @@ function selectionSubtabClass({ isActive }: { isActive: boolean }) {
 
 /** Тур для текущей субвкладки подбора. */
 function tourStepsForPath(pathname: string): TourStep[] | null {
+  if (pathname.includes("/selection/temperature")) {
+    return TEMP_SELECTION_TOUR_STEPS;
+  }
+  if (pathname.includes("/selection/calc")) {
+    return SEP_CALCULATION_TOUR_STEPS;
+  }
   if (pathname.includes("/selection/ashby")) {
     return ASHBY_TOUR_STEPS;
   }
   if (pathname.includes("/selection/compare-props")) {
     return COMPARE_PROPS_TOUR_STEPS;
+  }
+  if (pathname.includes("/selection/compare-chem")) {
+    return CHEM_COMPARISON_TOUR_STEPS;
   }
   if (pathname.includes("/selection/larson-miller")) {
     return LARSON_MILLER_TOUR_STEPS;
@@ -72,6 +84,7 @@ function tourLabelForPath(pathname: string): string {
 export function SelectionPage() {
   const location = useLocation();
   const [tourOpen, setTourOpen] = useState(false);
+  const prevTourOpenRef = useRef(false);
 
   const tourSteps = useMemo(
     () => tourStepsForPath(location.pathname),
@@ -83,6 +96,33 @@ export function SelectionPage() {
   useEffect(() => {
     setTourOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const isLarsonPage = location.pathname.includes("/selection/larson-miller");
+    const isChemPage = location.pathname.includes("/selection/compare-chem");
+
+    if (!isLarsonPage && !isChemPage) {
+      prevTourOpenRef.current = tourOpen;
+      return;
+    }
+
+    const prev = prevTourOpenRef.current;
+    if (!prev && tourOpen) {
+      if (isLarsonPage) {
+        window.dispatchEvent(new CustomEvent("larsonMillerTourStart"));
+      } else if (isChemPage) {
+        window.dispatchEvent(new CustomEvent("chemComparisonTourStart"));
+      }
+    }
+    if (prev && !tourOpen) {
+      if (isLarsonPage) {
+        window.dispatchEvent(new CustomEvent("larsonMillerTourEnd"));
+      } else if (isChemPage) {
+        window.dispatchEvent(new CustomEvent("chemComparisonTourEnd"));
+      }
+    }
+    prevTourOpenRef.current = tourOpen;
+  }, [location.pathname, tourOpen]);
 
   return (
     <div className="selection-page">

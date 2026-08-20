@@ -339,8 +339,11 @@ export function SepCalculationTab() {
   return (
     <TabErrorBoundary resetKey={`${selectedId ?? ""}:${activeCategoryIndex ?? ""}`}>
     <div className="temp-selection-tab sep-calculation-tab">
-      <div className="selection-controls">
-        <div className="selection-control selection-control--area">
+        <div className="selection-controls">
+        <div
+          className="selection-control selection-control--area"
+          data-tour="sep-calc-area"
+        >
           <label htmlFor="area-filter-select">Область применения:</label>
           <ApplicationAreaFilter
             id="area-filter-select"
@@ -349,7 +352,10 @@ export function SepCalculationTab() {
             onChange={setSelectedAreas}
           />
         </div>
-        <div className="selection-control selection-control--material">
+        <div
+          className="selection-control selection-control--material"
+          data-tour="sep-calc-material"
+        >
           <label htmlFor="material-select">Материал:</label>
           <select
             id="material-select"
@@ -367,7 +373,10 @@ export function SepCalculationTab() {
             ))}
           </select>
         </div>
-        <div className="selection-control selection-control--category">
+        <div
+          className="selection-control selection-control--category"
+          data-tour="sep-calc-category"
+        >
           <label htmlFor="strength_category_select">Категория прочности:</label>
           <select
             id="strength_category_select"
@@ -391,7 +400,10 @@ export function SepCalculationTab() {
             ))}
           </select>
         </div>
-        <div className="selection-control selection-control--ntd">
+        <div
+          className="selection-control selection-control--ntd"
+          data-tour="sep-calc-ntd"
+        >
           <label htmlFor="strength_category_ntd_select">НТД:</label>
           <select
             id="strength_category_ntd_select"
@@ -483,7 +495,10 @@ export function SepCalculationTab() {
         )}
 
         {showTable && visibleColumns.length > 0 && (
-          <div className="selection-table-panel calculation-table-panel">
+          <div
+            className="selection-table-panel calculation-table-panel"
+            data-tour="sep-calc-table"
+          >
             <div className="calculation-table-toolbar">
               <CalculationColumnMenu
                 columns={columns}
@@ -524,7 +539,10 @@ export function SepCalculationTab() {
         )}
 
         {workspace && selectedId && (
-          <fieldset className="sep-calculation-calc-panel">
+          <fieldset
+            className="sep-calculation-calc-panel"
+            data-tour="sep-calc-custom-panel"
+          >
             <legend>Расчёт произвольной точки</legend>
             <div className="sep-calculation-calc-toolbar">
               <label htmlFor="calc-temp-input">Температура, °C:</label>
@@ -533,6 +551,7 @@ export function SepCalculationTab() {
                 type="text"
                 className="input sep-calculation-calc-input"
                 value={calcTempInput}
+                data-tour="sep-calc-custom-temp"
                 onChange={(event) => {
                   setCalcTempInput(event.target.value);
                   if (calcTempError) setCalcTempError(null);
@@ -547,6 +566,7 @@ export function SepCalculationTab() {
               <button
                 type="button"
                 onClick={addCustomCalculation}
+                data-tour="sep-calc-add-custom"
               >
                 + Добавить расчёт
               </button>

@@ -5330,6 +5330,12 @@ select {
   color: #242930;
 }
 
+.tab-tour-btn.tab-tour-btn--back:hover:not(:disabled):not(.tab-tour-btn--flat):not(.tab-tour-btn--primary) {
+  background: #3d5a80;
+  border-color: #3d5a80;
+  color: #fff;
+}
+
 
 .chem-comparison-tab {
   display: flex;

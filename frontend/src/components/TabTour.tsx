@@ -145,7 +145,7 @@ function placeCard(
  */
 export function TabTour({ open, steps, onClose }: TabTourProps) {
   const [stepIndex, setStepIndex] = useState(0);
-  const [highlight, setHighlight] = useState<Rect>(emptyRect);
+  const [highlight, setHighlight] = useState<Rect>(emptyRect());
   const [cardPos, setCardPos] = useState({ left: 0, top: 0 });
 
   const step = steps[stepIndex];
@@ -167,11 +167,19 @@ export function TabTour({ open, steps, onClose }: TabTourProps) {
     setCardPos(placeCard(rect, cardW, cardH, step.placement ?? "auto"));
   }, [open, step]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
       setStepIndex(0);
+      setHighlight(emptyRect());
+      setCardPos({ left: 0, top: 0 });
       return;
     }
+
+    // Чтобы при открытии тур всегда начинался с первого шага,
+    // а геометрия не успевала “мелькнуть” от предыдущего запуска.
+    setStepIndex(0);
+    setHighlight(emptyRect());
+    setCardPos({ left: 0, top: 0 });
     if (steps.length === 0) {
       onClose();
     }
@@ -182,7 +190,11 @@ export function TabTour({ open, steps, onClose }: TabTourProps) {
       return;
     }
     step.onEnter?.();
-    const delay = step.geometryDelay ?? 50;
+    const delay = step.geometryDelay ?? 0;
+    if (delay <= 0) {
+      measure();
+      return;
+    }
     const timer = window.setTimeout(measure, delay);
     return () => window.clearTimeout(timer);
   }, [open, step, stepIndex, measure]);
@@ -338,7 +350,7 @@ export function TabTour({ open, steps, onClose }: TabTourProps) {
             </button>
             <button
               type="button"
-              className="tab-tour-btn"
+              className="tab-tour-btn tab-tour-btn--back"
               onClick={goBack}
               disabled={stepIndex === 0}
             >

@@ -138,7 +138,10 @@ export function TempSelectionTab() {
   return (
     <div className="temp-selection-tab">
       <div className="selection-controls">
-        <div className="selection-control selection-control--prop-type">
+        <div
+          className="selection-control selection-control--prop-type"
+          data-tour="temp-prop-type"
+        >
           <label htmlFor="prop-type-select">Тип свойств:</label>
           <select
             id="prop-type-select"
@@ -156,7 +159,10 @@ export function TempSelectionTab() {
           </select>
         </div>
 
-        <div className="selection-control selection-control--area">
+        <div
+          className="selection-control selection-control--area"
+          data-tour="temp-area"
+        >
           <label htmlFor="area-filter-select">Область применения:</label>
           <ApplicationAreaFilter
             id="area-filter-select"
@@ -166,7 +172,10 @@ export function TempSelectionTab() {
           />
         </div>
 
-        <div className="selection-control selection-control--temperature">
+        <div
+          className="selection-control selection-control--temperature"
+          data-tour="temp-temperature"
+        >
           <label htmlFor="temperature-input">
             Температура, {temperatureUnitLabel}:
           </label>
@@ -179,7 +188,7 @@ export function TempSelectionTab() {
           />
         </div>
 
-        <div className="selection-control selection-control--ntd">
+        <div className="selection-control selection-control--ntd" data-tour="temp-ntd">
           <label htmlFor="ntd-filter-select">НТД:</label>
           <select
             id="ntd-filter-select"
@@ -205,6 +214,7 @@ export function TempSelectionTab() {
         <p
           className="selection-unit-hint"
           title="Правый клик по заголовку столбца — смена единицы измерения"
+          data-tour="temp-unit-hint"
         >
           ПКМ по заголовку — смена ед.из.
         </p>
@@ -239,7 +249,7 @@ export function TempSelectionTab() {
           )}
 
         {workspace && result.isSuccess && filteredRows.length > 0 && (
-          <div className="selection-table-panel">
+          <div className="selection-table-panel" data-tour="temp-table">
               <SelectionTable
                 scrollColumns={columns}
                 rows={displayRows}

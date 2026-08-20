@@ -165,6 +165,14 @@ export function LarsonMillerTab() {
   const { workspace } = useWorkspace();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  const materialListRef = useRef<Array<{ id: string; name: string }>>([]);
+  const pendingAutoSelectRef = useRef(false);
+  const shouldResetAfterTourRef = useRef(false);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
   const [hoursChoice, setHoursChoice] = useState<string>("100000");
   const [baseServiceHours, setBaseServiceHours] = useState<number>(100_000);
   const [customHoursInput, setCustomHoursInput] = useState("");
@@ -185,6 +193,55 @@ export function LarsonMillerTab() {
   });
 
   const materialList = materialsQuery.data ?? [];
+  useEffect(() => {
+    materialListRef.current = materialList.map((m) => ({
+      id: m.id,
+      name: m.name,
+    }));
+  }, [materialList]);
+
+  useEffect(() => {
+    function handleTourStart() {
+      const currentSelected = selectedIdRef.current;
+      if (currentSelected == null) {
+        pendingAutoSelectRef.current = true;
+        shouldResetAfterTourRef.current = true;
+        const list = materialListRef.current;
+        if (list.length > 0) {
+          setSelectedId(list[0].id);
+          pendingAutoSelectRef.current = false;
+        }
+      } else {
+        pendingAutoSelectRef.current = false;
+        shouldResetAfterTourRef.current = false;
+      }
+    }
+
+    function handleTourEnd() {
+      if (shouldResetAfterTourRef.current) {
+        // Сценарий: при старте тура не было выбранного материала → после окончания сбрасываем выбор.
+        setSelectedId(null);
+      }
+      pendingAutoSelectRef.current = false;
+      shouldResetAfterTourRef.current = false;
+    }
+
+    window.addEventListener("larsonMillerTourStart", handleTourStart);
+    window.addEventListener("larsonMillerTourEnd", handleTourEnd);
+    return () => {
+      window.removeEventListener("larsonMillerTourStart", handleTourStart);
+      window.removeEventListener("larsonMillerTourEnd", handleTourEnd);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pendingAutoSelectRef.current) return;
+    if (selectedIdRef.current != null) return;
+    const list = materialListRef.current;
+    if (list.length === 0) return;
+    setSelectedId(list[0].id);
+    pendingAutoSelectRef.current = false;
+  }, [materialList]);
 
   const materialSelectWidth = useMemo(
     () =>
@@ -778,7 +835,7 @@ export function LarsonMillerTab() {
                 </div>
               )}
 
-              {workspace && (
+              {workspace && selectedId && hasCategories && !isInitialLoading && (
                 <div className="larson-miller-chart-panel" data-tour="lm-chart">
                   <h2 className="larson-miller-chart-title larson-miller-panel-title">
                     Предел длительной прочности через параметрическую зависимость
