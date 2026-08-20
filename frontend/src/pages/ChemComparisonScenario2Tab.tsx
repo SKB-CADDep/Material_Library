@@ -217,7 +217,10 @@ export function ChemComparisonScenario2Tab() {
           className="chem-comparison-sidebar chem-comparison-sidebar--target chem-comparison-sidebar--resizable"
           style={sidebarResize.style}
         >
-          <div className="chem-comparison-sidebar-field">
+          <div
+            className="chem-comparison-sidebar-field"
+            data-tour="chem-s2-area"
+          >
             <label htmlFor="chem-s2-area-filter">Область применения:</label>
             <ApplicationAreaFilter
               id="chem-s2-area-filter"
@@ -244,7 +247,11 @@ export function ChemComparisonScenario2Tab() {
               </button>
             </div>
 
-            <div ref={targetScrollRef} className="chem-target-table-wrap">
+            <div
+              ref={targetScrollRef}
+              className="chem-target-table-wrap"
+              data-tour="chem-s2-target-table"
+            >
               <table ref={targetTableRef} className="data-table chem-target-table">
                 <thead>
                   <tr>
@@ -324,7 +331,11 @@ export function ChemComparisonScenario2Tab() {
                   Результаты подбора материалов
                 </h3>
                 <div ref={resultsScrollRef} className="chem-target-results-scroll">
-                  <table ref={resultsTableRef} className="data-table chem-target-results-table">
+                  <table
+                    ref={resultsTableRef}
+                    className="data-table chem-target-results-table"
+                    data-tour="chem-s2-results-table"
+                  >
                     <thead>
                       <tr>
                         <th>Материал</th>

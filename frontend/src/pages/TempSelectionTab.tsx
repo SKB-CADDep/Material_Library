@@ -206,7 +206,11 @@ export function TempSelectionTab() {
           </select>
         </div>
 
-        <p className="selection-unit-hint" title={TABLE_SORT_HINT}>
+        <p
+          className="selection-unit-hint"
+          title={TABLE_SORT_HINT}
+          data-tour="temp-unit-hint"
+        >
           <TableSortHint />
         </p>
       </div>

@@ -138,7 +138,10 @@ export function ChemComparisonScenario1Tab() {
           className="chem-comparison-sidebar chem-comparison-sidebar--resizable"
           style={sidebarResize.style}
         >
-          <div className="chem-comparison-sidebar-field">
+          <div
+            className="chem-comparison-sidebar-field"
+            data-tour="chem-s1-area"
+          >
             <label htmlFor="chem-s1-area-filter">Область применения:</label>
             <ApplicationAreaFilter
               id="chem-s1-area-filter"
@@ -250,6 +253,7 @@ export function ChemComparisonScenario1Tab() {
               <div
                 className="chem-comparison-panel-slot"
                 style={pivotResize.style}
+                data-tour="chem-s1-pivot"
               >
                 <ChemComparisonPivotPanel view={comparisonView} />
               </div>
@@ -262,6 +266,7 @@ export function ChemComparisonScenario1Tab() {
               <div
                 className="chem-comparison-panel-slot"
                 style={sourcesResize.style}
+                data-tour="chem-s1-sources"
               >
                 <ChemComparisonSourcesTable columns={comparisonView.columns} />
               </div>
