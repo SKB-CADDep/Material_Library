@@ -12,6 +12,8 @@ import type {
   TemperatureSelectionResponse,
   SingleCalculationRequest,
   SingleCalculationResponse,
+  LarsonMillerRequest,
+  LarsonMillerResponse,
 } from "../types/api";
 
 export async function postTemperatureSelection(
@@ -77,6 +79,16 @@ export async function postCompareProps(
 export async function getChemCompositionEntries(): Promise<ChemCompositionEntriesResponse> {
   const { data } = await api.get<ChemCompositionEntriesResponse>(
     "/selection/chem/composition-entries",
+  );
+  return data;
+}
+
+export async function postLarsonMiller(
+  body: LarsonMillerRequest,
+): Promise<LarsonMillerResponse> {
+  const { data } = await api.post<LarsonMillerResponse>(
+    "/selection/larson-miller",
+    body,
   );
   return data;
 }

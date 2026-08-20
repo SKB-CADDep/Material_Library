@@ -133,12 +133,16 @@ export function ChemComparisonScenario1Tab() {
 
   return (
     <TabErrorBoundary resetKey={selectedId}>
-      <div className="chem-comparison-layout chem-comparison-layout--resizable">
-        <aside
-          className="chem-comparison-sidebar chem-comparison-sidebar--resizable"
-          style={sidebarResize.style}
-        >
-          <div className="chem-comparison-sidebar-field">
+<div className="chem-comparison-layout chem-comparison-layout--resizable">
+  <aside
+    className="chem-comparison-sidebar chem-comparison-sidebar--resizable"
+    style={sidebarResize.style}
+  >
+    <div
+      className="chem-comparison-sidebar-field"
+      data-tour="chem-s1-area"
+    >
+      <label htmlFor="chem-s1-area-filter">Область применения:</label>
             <label htmlFor="chem-s1-area-filter">Область применения:</label>
             <ApplicationAreaFilter
               id="chem-s1-area-filter"
@@ -148,7 +152,7 @@ export function ChemComparisonScenario1Tab() {
             />
           </div>
 
-          <div className="chem-comparison-sidebar-field">
+          <div className="chem-comparison-sidebar-field" data-tour="chem-s1-search">
             <label htmlFor="chem-s1-search">Поиск материала:</label>
             <input
               id="chem-s1-search"
@@ -161,7 +165,10 @@ export function ChemComparisonScenario1Tab() {
             />
           </div>
 
-          <div className="chem-comparison-sidebar-field chem-comparison-sidebar-field--list">
+          <div
+            className="chem-comparison-sidebar-field chem-comparison-sidebar-field--list"
+            data-tour="chem-s1-materials"
+          >
             <span className="chem-comparison-sidebar-label">Материалы:</span>
             {materialsQuery.isPending && (
               <p className="tab-placeholder tab-placeholder--inline">
@@ -246,32 +253,40 @@ export function ChemComparisonScenario1Tab() {
             )}
 
           {compositionReady && (
-            <div className="chem-comparison-content chem-comparison-content--resizable">
-              <div
-                className="chem-comparison-panel-slot"
-                style={pivotResize.style}
-              >
-                <ChemComparisonPivotPanel view={comparisonView} />
-              </div>
+{compositionReady && (
+  <div className="chem-comparison-content chem-comparison-content--resizable">
+    <div
+      className="chem-comparison-panel-slot"
+      style={pivotResize.style}
+      data-tour="chem-s1-pivot"
+    >
+      <ChemComparisonPivotPanel view={comparisonView} />
+    </div>
 
-              <PanelResizeHandle
-                direction="horizontal"
-                onMouseDown={pivotResize.onHandleMouseDown}
-              />
+    <PanelResizeHandle
+      direction="horizontal"
+      onMouseDown={pivotResize.onHandleMouseDown}
+    />
 
-              <div
-                className="chem-comparison-panel-slot"
-                style={sourcesResize.style}
-              >
-                <ChemComparisonSourcesTable columns={comparisonView.columns} />
-              </div>
+    <div
+      className="chem-comparison-panel-slot"
+      style={sourcesResize.style}
+      data-tour="chem-s1-sources"
+    >
+      <ChemComparisonSourcesTable columns={comparisonView.columns} />
+    </div>
 
-              {hasNotes && (
-                <>
-                  <PanelResizeHandle
-                    direction="horizontal"
-                    onMouseDown={sourcesResize.onHandleMouseDown}
-                  />
+    {hasNotes && (
+      <>
+        <PanelResizeHandle
+          direction="horizontal"
+          onMouseDown={sourcesResize.onHandleMouseDown}
+        />
+        <ChemComparisonNotesSection columns={comparisonView.columns} />
+      </>
+    )}
+  </div>
+)}
 
                   <ChemComparisonNotesSection columns={comparisonView.columns} />
                 </>

@@ -212,12 +212,16 @@ export function ChemComparisonScenario2Tab() {
 
   return (
     <TabErrorBoundary resetKey={`${selectedAreas.join(",")}-${targetRows.length}`}>
-      <div className="chem-comparison-layout chem-comparison-layout--target chem-comparison-layout--resizable">
-        <aside
-          className="chem-comparison-sidebar chem-comparison-sidebar--target chem-comparison-sidebar--resizable"
-          style={sidebarResize.style}
-        >
-          <div className="chem-comparison-sidebar-field">
+<div className="chem-comparison-layout chem-comparison-layout--target chem-comparison-layout--resizable">
+  <aside
+    className="chem-comparison-sidebar chem-comparison-sidebar--target chem-comparison-sidebar--resizable"
+    style={sidebarResize.style}
+  >
+    <div
+      className="chem-comparison-sidebar-field"
+      data-tour="chem-s2-area"
+    >
+      <label htmlFor="chem-s2-area-filter">Область применения:</label>
             <label htmlFor="chem-s2-area-filter">Область применения:</label>
             <ApplicationAreaFilter
               id="chem-s2-area-filter"
@@ -231,7 +235,13 @@ export function ChemComparisonScenario2Tab() {
             <h3 className="chem-target-panel-title">Целевой химический состав</h3>
 
             <div className="chem-target-toolbar">
-              <button type="button" className="btn btn--icon" onClick={addTargetRow} title="Добавить строку">
+              <button
+                type="button"
+                className="btn btn--icon"
+                onClick={addTargetRow}
+                title="Добавить строку"
+                data-tour="chem-s2-add-row"
+              >
                 +
               </button>
               <button
@@ -244,8 +254,12 @@ export function ChemComparisonScenario2Tab() {
               </button>
             </div>
 
-            <div ref={targetScrollRef} className="chem-target-table-wrap">
-              <table ref={targetTableRef} className="data-table chem-target-table">
+<div
+  ref={targetScrollRef}
+  className="chem-target-table-wrap"
+  data-tour="chem-s2-target-table"
+>
+  <table ref={targetTableRef} className="data-table chem-target-table">
                 <thead>
                   <tr>
                     <th>Элемент</th>
@@ -323,8 +337,12 @@ export function ChemComparisonScenario2Tab() {
                 <h3 className="chem-target-panel-title">
                   Результаты подбора материалов
                 </h3>
-                <div ref={resultsScrollRef} className="chem-target-results-scroll">
-                  <table ref={resultsTableRef} className="data-table chem-target-results-table">
+<div
+  ref={targetScrollRef}
+  className="chem-target-table-wrap"
+  data-tour="chem-s2-target-table"
+>
+  <table ref={targetTableRef} className="data-table chem-target-table">
                     <thead>
                       <tr>
                         <th>Материал</th>
@@ -386,8 +404,12 @@ export function ChemComparisonScenario2Tab() {
                 <h3 className="chem-target-panel-title">
                   Детализированное сравнение по выбранному источнику
                 </h3>
-                <div ref={detailsScrollRef} className="chem-target-details-scroll">
-                  <table ref={detailsTableRef} className="data-table chem-target-details-table">
+<div ref={resultsScrollRef} className="chem-target-results-scroll">
+  <table
+    ref={resultsTableRef}
+    className="data-table chem-target-results-table"
+    data-tour="chem-s2-results-table"
+  >
                     <thead>
                       <tr>
                         <th>Элемент</th>

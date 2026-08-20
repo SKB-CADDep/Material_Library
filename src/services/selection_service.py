@@ -4,6 +4,12 @@ import colorsys
 from typing import Any, Literal
 
 from src.core.math.interpolation import MathUtils
+from src.core.math.larson_miller import (
+    PREDEFINED_SERVICE_HOURS,
+    interpolate_stress_at_p,
+    larson_miller_parameter,
+    property_key_for_service_hours,
+)
 from src.core.models.material import Material
 from src.core.schema_keys import Schema
 from src.services.material_repository import MaterialRepository
@@ -1029,3 +1035,136 @@ class SelectionService:
                 points.append((t_val, v_val))
         points.sort(key=lambda p: p[0])
         return points
+
+    # --- Ларсон–Миллер ---
+
+    @staticmethod
+    def larson_miller_predefined_hours() -> tuple[int, ...]:
+        return PREDEFINED_SERVICE_HOURS
+
+    @staticmethod
+    def _metadata_larson_constant(material: Material) -> float | None:
+        raw = material.data.get(Schema.METADATA, {}).get("larson_miller_constant_c")
+        return MathUtils.safe_float(raw)
+
+    def _larson_table_pairs(
+        self,
+        material: Material,
+        property_key: str,
+        category_index: int,
+    ) -> list[tuple[float, float]]:
+        return self._compare_prop_pairs(material, property_key, category_index)
+
+    def larson_miller(
+        self,
+        repository: MaterialRepository,
+        material_id: str,
+        category_index: int,
+        base_service_hours: float,
+        *,
+        constant_c: float | None = None,
+        custom_table_points: list[dict[str, float]] | None = None,
+        calc_temperature: float | None = None,
+        calc_service_hours: float | None = None,
+    ) -> dict[str, Any]:
+        material = repository.get_by_id(material_id)
+        if material is None:
+            raise ValueError(f"Материал не найден: {material_id}")
+
+        cats = material.get_strength_categories()
+        if not cats:
+            raise ValueError("У материала нет категорий прочности")
+        if category_index < 0 or category_index >= len(cats):
+            raise ValueError(f"Некорректный category_index: {category_index}")
+
+        stored_constant_c = self._metadata_larson_constant(material)
+        effective_c = constant_c if constant_c is not None else stored_constant_c
+
+        property_key = property_key_for_service_hours(base_service_hours)
+        from_db = custom_table_points is None
+
+        if custom_table_points is not None:
+            table_pairs = [
+                (MathUtils.safe_float(p["temperature"]), MathUtils.safe_float(p["stress"]))
+                for p in custom_table_points
+            ]
+            table_pairs = [
+                (t, s)
+                for t, s in table_pairs
+                if t is not None and s is not None
+            ]
+        elif property_key:
+            table_pairs = self._larson_table_pairs(
+                material, property_key, category_index
+            )
+        else:
+            table_pairs = []
+
+        table_points: list[dict[str, Any]] = []
+        p_stress_pairs: list[tuple[float, float]] = []
+        table_p_values: list[float | None] = []
+
+        for temperature, stress in sorted(table_pairs, key=lambda item: item[0]):
+            p_value: float | None = None
+            if effective_c is not None:
+                p_value = larson_miller_parameter(
+                    temperature, base_service_hours, effective_c
+                )
+                p_stress_pairs.append((p_value, stress))
+            table_points.append(
+                {
+                    "temperature": temperature,
+                    "stress": stress,
+                    "service_hours": base_service_hours,
+                    "p": p_value,
+                }
+            )
+            table_p_values.append(p_value)
+
+        calc_p: float | None = None
+        calc_stress: float | None = None
+        is_extrapolated = False
+
+        if (
+            effective_c is not None
+            and calc_temperature is not None
+            and calc_service_hours is not None
+            and calc_service_hours > 0
+        ):
+            calc_p = larson_miller_parameter(
+                calc_temperature, calc_service_hours, effective_c
+            )
+            if p_stress_pairs:
+                calc_stress, is_extrapolated = interpolate_stress_at_p(
+                    calc_p, p_stress_pairs
+                )
+
+        chart_curve = [
+            {"p": p_value, "stress": stress}
+            for p_value, stress in sorted(p_stress_pairs, key=lambda item: item[0])
+        ]
+        chart_calc_point = (
+            {"p": calc_p, "stress": calc_stress}
+            if calc_p is not None and calc_stress is not None
+            else None
+        )
+
+        return {
+            "material_id": material_id,
+            "category_index": category_index,
+            "material_name": material.get_display_name(),
+            "base_service_hours": base_service_hours,
+            "property_key": property_key or "",
+            "from_database": from_db and bool(table_pairs),
+            "stored_constant_c": stored_constant_c,
+            "constant_c": effective_c,
+            "table_points": table_points,
+            "calc_temperature": calc_temperature,
+            "calc_service_hours": calc_service_hours,
+            "calc_stress": calc_stress,
+            "calc_p": calc_p,
+            "is_extrapolated": is_extrapolated,
+            "chart_curve": chart_curve,
+            "chart_calc_point": chart_calc_point,
+        }
+

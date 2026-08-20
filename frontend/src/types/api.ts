@@ -267,6 +267,52 @@ export type ComparePropsResponse = {
   series: ComparePropsSeries[];
 };
 
+export type LarsonMillerTablePoint = {
+  temperature: number;
+  stress: number;
+  service_hours: number;
+  p?: number | null;
+};
+
+export type LarsonMillerCustomPoint = {
+  temperature: number;
+  stress: number;
+};
+
+export type LarsonMillerRequest = {
+  material_id: string;
+  category_index: number;
+  base_service_hours: number;
+  constant_c?: number | null;
+  custom_table_points?: LarsonMillerCustomPoint[] | null;
+  calc_temperature?: number | null;
+  calc_service_hours?: number | null;
+};
+
+export type LarsonMillerChartPoint = {
+  p: number;
+  stress: number;
+};
+
+export type LarsonMillerResponse = {
+  material_id: string;
+  category_index: number;
+  material_name: string;
+  base_service_hours: number;
+  property_key: string;
+  from_database: boolean;
+  stored_constant_c?: number | null;
+  constant_c?: number | null;
+  table_points: LarsonMillerTablePoint[];
+  calc_temperature?: number | null;
+  calc_service_hours?: number | null;
+  calc_stress?: number | null;
+  calc_p?: number | null;
+  is_extrapolated: boolean;
+  chart_curve: LarsonMillerChartPoint[];
+  chart_calc_point?: LarsonMillerChartPoint | null;
+};
+
 export type PropertyMeta = {
   unit_type: string;
   name: string;
