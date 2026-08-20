@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from fastapi.testclient import TestClient
 from backend.main import app
 from backend.dependencies import get_app_state
@@ -26,13 +27,13 @@ def test_get_health(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "workspace": None, "materials_dir": None}
 
-def test_workspace_open(client):
-    user_data = {"directory": "C:\\Users\\Лиза\\Desktop\\jbsidian\\data"}
+def test_workspace_open(client, workspace_dir):
+    user_data = {"directory": str(workspace_dir)}
     response = client.post("/api/workspace/open", json=user_data)
     assert response.status_code == 200
     data = response.json()
     assert data["count"] > 0
-    assert data["directory"] == user_data["directory"]
+    assert Path(data["directory"]).resolve() == workspace_dir.resolve()
 
 def test_get_workspace(client, open_workspace):
     response = client.get("/api/workspace")
