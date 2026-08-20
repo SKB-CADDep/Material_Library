@@ -73,7 +73,7 @@ jobs:
         run: npm run test:coverage
 
   playwright-e2e:
-    name: playwright E2E P0 (partial)
+    name: playwright E2E
     runs-on: ubuntu-latest
 
     steps:
