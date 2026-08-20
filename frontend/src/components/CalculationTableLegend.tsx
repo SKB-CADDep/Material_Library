@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import {
+  TABLE_SORT_HINT,
+  TableSortHint,
+} from "../lib/tableSortHeader";
 import { AcceptanceIndicator } from "./AcceptanceIndicator";
 import { TempCommentIndicator } from "./TempCommentIndicator";
 
@@ -104,11 +108,8 @@ export function CalculationTableLegend({
 
       <span className="calculation-table-legend__sep" aria-hidden="true" />
 
-      <span
-        className="calculation-table-legend__hint"
-        title="Правый клик по заголовку столбца"
-      >
-        ПКМ по заголовку — смена ед.из.
+      <span className="calculation-table-legend__hint" title={TABLE_SORT_HINT}>
+        <TableSortHint />
       </span>
     </div>
   );

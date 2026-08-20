@@ -25,6 +25,101 @@
     --editor-label-width: 180px;
     --font-size-tab: 13px;
     --font-weight-semibold: 600;
+    --scrollbar-size: 8px;
+    --scrollbar-thumb: rgba(36, 41, 48, 0.28);
+    --scrollbar-track: rgba(36, 41, 48, 0.06);
+}
+
+
+.selection-page,
+.help-dialog__body,
+.selection-table-viewport--unified,
+.calculation-table-scroll,
+.chem-comparison-pivot-scroll,
+.chem-comparison-sources-scroll,
+.chem-comparison-notes-list,
+.chem-comparison-material-list,
+.chem-target-table-wrap,
+.chem-target-results-scroll,
+.chem-target-details-scroll,
+.chem-target-influence-scroll,
+.ashby-legend-panel,
+.ashby-listbox,
+.compare-props-search-list,
+.compare-props-selected-list,
+.source-page__table-viewport,
+.property-section-fields .table-wrapper,
+.editor-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.selection-page::-webkit-scrollbar,
+.help-dialog__body::-webkit-scrollbar,
+.selection-table-viewport--unified::-webkit-scrollbar,
+.calculation-table-scroll::-webkit-scrollbar,
+.chem-comparison-pivot-scroll::-webkit-scrollbar,
+.chem-comparison-sources-scroll::-webkit-scrollbar,
+.chem-comparison-notes-list::-webkit-scrollbar,
+.chem-comparison-material-list::-webkit-scrollbar,
+.chem-target-table-wrap::-webkit-scrollbar,
+.chem-target-results-scroll::-webkit-scrollbar,
+.chem-target-details-scroll::-webkit-scrollbar,
+.chem-target-influence-scroll::-webkit-scrollbar,
+.ashby-legend-panel::-webkit-scrollbar,
+.ashby-listbox::-webkit-scrollbar,
+.compare-props-search-list::-webkit-scrollbar,
+.compare-props-selected-list::-webkit-scrollbar,
+.source-page__table-viewport::-webkit-scrollbar,
+.property-section-fields .table-wrapper::-webkit-scrollbar,
+.editor-body::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.selection-page::-webkit-scrollbar-thumb,
+.help-dialog__body::-webkit-scrollbar-thumb,
+.selection-table-viewport--unified::-webkit-scrollbar-thumb,
+.calculation-table-scroll::-webkit-scrollbar-thumb,
+.chem-comparison-pivot-scroll::-webkit-scrollbar-thumb,
+.chem-comparison-sources-scroll::-webkit-scrollbar-thumb,
+.chem-comparison-notes-list::-webkit-scrollbar-thumb,
+.chem-comparison-material-list::-webkit-scrollbar-thumb,
+.chem-target-table-wrap::-webkit-scrollbar-thumb,
+.chem-target-results-scroll::-webkit-scrollbar-thumb,
+.chem-target-details-scroll::-webkit-scrollbar-thumb,
+.chem-target-influence-scroll::-webkit-scrollbar-thumb,
+.ashby-legend-panel::-webkit-scrollbar-thumb,
+.ashby-listbox::-webkit-scrollbar-thumb,
+.compare-props-search-list::-webkit-scrollbar-thumb,
+.compare-props-selected-list::-webkit-scrollbar-thumb,
+.source-page__table-viewport::-webkit-scrollbar-thumb,
+.property-section-fields .table-wrapper::-webkit-scrollbar-thumb,
+.editor-body::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+.selection-page::-webkit-scrollbar-track,
+.help-dialog__body::-webkit-scrollbar-track,
+.selection-table-viewport--unified::-webkit-scrollbar-track,
+.calculation-table-scroll::-webkit-scrollbar-track,
+.chem-comparison-pivot-scroll::-webkit-scrollbar-track,
+.chem-comparison-sources-scroll::-webkit-scrollbar-track,
+.chem-comparison-notes-list::-webkit-scrollbar-track,
+.chem-comparison-material-list::-webkit-scrollbar-track,
+.chem-target-table-wrap::-webkit-scrollbar-track,
+.chem-target-results-scroll::-webkit-scrollbar-track,
+.chem-target-details-scroll::-webkit-scrollbar-track,
+.chem-target-influence-scroll::-webkit-scrollbar-track,
+.ashby-legend-panel::-webkit-scrollbar-track,
+.ashby-listbox::-webkit-scrollbar-track,
+.compare-props-search-list::-webkit-scrollbar-track,
+.compare-props-selected-list::-webkit-scrollbar-track,
+.source-page__table-viewport::-webkit-scrollbar-track,
+.property-section-fields .table-wrapper::-webkit-scrollbar-track,
+.editor-body::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track);
 }
 
 body{
@@ -842,12 +937,27 @@ select {
   .temp-selection-tab .selection-unit-hint {
     margin: 0;
     align-self: end;
-    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
     font-weight: 500;
-    line-height: 1.25;
+    line-height: 1.3;
     color: var(--text-muted);
     white-space: nowrap;
     cursor: help;
+  }
+
+  .table-header-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .table-header-hint__sep {
+    width: 1px;
+    height: 16px;
+    background-color: var(--border);
+    flex-shrink: 0;
   }
 
   .selection-controls--secondary {
@@ -1086,13 +1196,13 @@ select {
     padding: 12px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .selection-table-panel {
     flex: 1;
     min-height: 0;
     min-width: 0;
-    max-height: min(70vh, calc(100vh - 220px));
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--surface);
@@ -1102,8 +1212,8 @@ select {
   }
 
   .selection-table-scroll {
-    width: 100%;
-    max-height: min(70vh, calc(100vh - 220px));
+    flex: 1;
+    min-height: 0;
     overflow: auto;
   }
 
@@ -1407,6 +1517,8 @@ select {
     flex-direction: column;
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .editor-subtabs {
@@ -3400,6 +3512,14 @@ select {
   background-color: var(--bg);
 }
 
+.selection-table--unified thead .selection-table-col--frozen .table-col-resize-handle {
+  z-index: 34;
+}
+
+.selection-table--unified thead .selection-table-col--value .table-col-resize-handle {
+  z-index: 22;
+}
+
 .selection-table--unified .selection-table-col--temp.selection-table-col--frozen {
   border-right: 2px solid var(--border);
   box-shadow: 4px 0 8px -4px rgba(36, 41, 48, 0.14);
@@ -3996,11 +4116,21 @@ select {
 }
 
 .sep-calculation-calc-panel {
+  flex-shrink: 0;
   margin-top: 12px;
   padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background-color: var(--surface);
+}
+
+.sep-calculation-tab .selection-body {
+  overflow: hidden;
+}
+
+.sep-calculation-tab .selection-table-panel {
+  flex: 1 1 0;
+  min-height: 120px;
 }
 
 .sep-calculation-calc-panel legend {
@@ -4395,12 +4525,125 @@ select {
 
 .data-table--resizable-headers .calculation-table-col--value,
 .data-table--resizable-headers .calculation-table-col--temp,
-.data-table--resizable-headers.selection-table--unified .selection-table-col--value {
+.data-table--resizable-headers.selection-table--unified .selection-table-col--value,
+.data-table--resizable-headers.selection-table--unified .selection-table-col--material,
+.data-table--resizable-headers.selection-table--unified .selection-table-col--kp,
+.data-table--resizable-headers.selection-table--unified .selection-table-col--source,
+.data-table--resizable-headers.selection-table--unified .selection-table-col--temp {
   max-width: none;
 }
 
 .data-table--resizable-headers thead th {
+  overflow: visible;
+}
+
+.data-table--resizable-headers thead {
+  position: relative;
+}
+
+.data-table--resizable-headers thead th .calculation-table-header,
+.data-table--resizable-headers thead th .calculation-table-header__text {
   overflow: hidden;
+}
+
+.table-col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 30;
+  touch-action: none;
+  user-select: none;
+}
+
+.table-row-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  height: 20px;
+  cursor: row-resize;
+  z-index: 28;
+  touch-action: none;
+  user-select: none;
+}
+
+.data-table--header-row-resize-rail .table-header-resize-rail {
+  position: absolute;
+  inset: 0;
+  cursor: row-resize;
+  z-index: 1;
+  touch-action: none;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.data-table--header-row-resize-rail .table-header-resize-rail-row th.table-header-resize-rail-cell {
+  position: sticky;
+  top: calc(var(--table-header-height, 48px) - 14px);
+  height: 28px;
+  padding: 0;
+  line-height: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  z-index: 51;
+  overflow: visible;
+  vertical-align: top;
+}
+
+.data-table--header-row-resize-rail .table-header-resize-rail-cell {
+  position: relative;
+}
+
+.data-table--header-row-resize-rail .table-header-resize-rail::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 35%, var(--border));
+  opacity: 0.85;
+  transition: background 0.15s ease, height 0.15s ease, opacity 0.15s ease;
+}
+
+.data-table--header-row-resize-rail .table-header-resize-rail:hover::before,
+.data-table--header-row-resize-rail .table-header-resize-rail:active::before {
+  height: 5px;
+  margin-top: -2.5px;
+  opacity: 1;
+  background: color-mix(in srgb, var(--accent) 70%, var(--border));
+}
+
+.data-table--resizable-headers thead th .calculation-table-header,
+.data-table--resizable-headers thead th .sort-indicator {
+  pointer-events: none;
+}
+
+.data-table--resizable-headers tbody {
+  position: relative;
+  z-index: 0;
+}
+
+.selection-table--unified.data-table--header-row-resize-rail
+  thead
+  .table-header-resize-rail-row
+  th.table-header-resize-rail-cell {
+  z-index: 56;
+  background: transparent;
+}
+
+.data-table--header-height-custom thead th.sortable {
+  cursor: default;
+}
+
+.data-table--resizable-headers thead th.sortable:not(:has(.table-col-resize-handle:hover)) {
+  cursor: pointer;
 }
 
 .data-table--header-height-custom .calculation-table-header {
@@ -4417,8 +4660,18 @@ select {
   cursor: default;
 }
 
-.data-table--resizable-headers thead th:hover {
-  cursor: inherit;
+.selection-table--unified.data-table--columns-resized {
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+}
+
+.data-table--columns-resized.selection-table--unified .selection-table-col--material,
+.data-table--columns-resized.selection-table--unified .selection-table-col--kp,
+.data-table--columns-resized.selection-table--unified .selection-table-col--source,
+.data-table--columns-resized.selection-table--unified .selection-table-col--temp,
+.data-table--columns-resized.selection-table--unified .selection-table-col--value {
+  min-width: 0;
 }
 
 .ashby-tab {
@@ -5363,6 +5616,59 @@ select {
   overflow: hidden;
 }
 
+.chem-comparison-layout--resizable {
+  gap: 0;
+}
+
+.panel-resize-handle {
+  flex: none;
+  position: relative;
+  z-index: 3;
+  touch-action: none;
+}
+
+.panel-resize-handle--horizontal {
+  height: 6px;
+  margin: -3px 0;
+  cursor: row-resize;
+}
+
+.panel-resize-handle--horizontal::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  margin-top: -0.5px;
+  background: var(--border);
+  pointer-events: none;
+}
+
+.panel-resize-handle--vertical {
+  width: 6px;
+  margin: 0 -3px;
+  align-self: stretch;
+  cursor: col-resize;
+}
+
+.panel-resize-handle--vertical::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--border);
+  pointer-events: none;
+}
+
+.panel-resize-handle:hover::after,
+.panel-resize-handle:active::after {
+  background: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
 .chem-comparison-sidebar {
   flex: 0 0 250px;
   width: 250px;
@@ -5373,6 +5679,12 @@ select {
   gap: 10px;
   min-height: 0;
   overflow: hidden;
+}
+
+.chem-comparison-sidebar--resizable {
+  flex: none;
+  min-width: 0;
+  max-width: none;
 }
 
 .chem-comparison-sidebar-field {
@@ -5463,6 +5775,44 @@ select {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chem-comparison-content--resizable {
+  gap: 0;
+  overflow: hidden;
+}
+
+.chem-comparison-panel-slot {
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chem-comparison-panel-slot > .chem-comparison-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.chem-comparison-panel-slot .chem-comparison-panel--pivot {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+}
+
+.chem-comparison-content--resizable > .chem-comparison-panel--notes {
+  flex: 1 1 0;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chem-comparison-content--resizable > .chem-comparison-panel--notes .chem-comparison-notes-list {
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -5563,6 +5913,55 @@ select {
   white-space: nowrap;
 }
 
+.data-table--resizable-headers.chem-comparison-pivot-table thead th,
+.data-table--resizable-headers.chem-comparison-sources-table thead th,
+.data-table--resizable-headers.chem-target-table thead th,
+.data-table--resizable-headers.chem-target-results-table thead th,
+.data-table--resizable-headers.chem-target-details-table thead th {
+  overflow: visible;
+}
+
+.chem-comparison-pivot-table.data-table--columns-resized,
+.chem-comparison-sources-table.data-table--columns-resized,
+.chem-target-results-table.data-table--columns-resized,
+.chem-target-details-table.data-table--columns-resized {
+  table-layout: fixed;
+}
+
+.chem-comparison-pivot-table.data-table--columns-resized .chem-comparison-pivot-col--element,
+.chem-comparison-pivot-table.data-table--columns-resized .chem-comparison-pivot-col--name,
+.chem-comparison-pivot-table.data-table--columns-resized .chem-comparison-pivot-col--source,
+.chem-comparison-pivot-table.data-table--columns-resized .chem-comparison-pivot-col--value {
+  max-width: none;
+}
+
+.chem-comparison-sources-table.data-table--columns-resized .chem-comparison-sources-col--label,
+.chem-comparison-sources-table.data-table--columns-resized .chem-comparison-sources-col--comment {
+  max-width: none;
+}
+
+.chem-comparison-sources-table.data-table--columns-resized .chem-comparison-sources-col--base,
+.chem-comparison-sources-table.data-table--columns-resized .chem-comparison-sources-col--unit,
+.chem-comparison-sources-table.data-table--columns-resized th:nth-child(3),
+.chem-comparison-sources-table.data-table--columns-resized th:nth-child(4) {
+  width: auto;
+  max-width: none;
+}
+
+.chem-comparison-pivot-table thead .chem-comparison-pivot-col--element .table-col-resize-handle,
+.chem-comparison-pivot-table thead .chem-comparison-pivot-col--name .table-col-resize-handle {
+  z-index: 34;
+}
+
+.data-table--header-height-custom.chem-comparison-pivot-table thead th,
+.data-table--header-height-custom.chem-comparison-sources-table thead th,
+.data-table--header-height-custom.chem-target-table thead th,
+.data-table--header-height-custom.chem-target-results-table thead th,
+.data-table--header-height-custom.chem-target-details-table thead th {
+  white-space: normal;
+  word-break: break-word;
+}
+
 .chem-comparison-pivot-table tbody tr.chem-comparison-pivot-row--diff td {
   background-color: #fffacd;
 }
@@ -5601,8 +6000,22 @@ select {
   flex-shrink: 0;
 }
 
+.chem-comparison-panel-slot > .chem-comparison-panel--sources {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chem-comparison-panel-slot > .chem-comparison-panel--sources .chem-comparison-panel-title {
+  flex-shrink: 0;
+}
+
 .chem-comparison-sources-scroll {
-  overflow-x: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   max-width: 100%;
 }
 
@@ -5734,6 +6147,11 @@ select {
   max-width: 320px;
   min-height: 0;
   overflow: hidden;
+}
+
+.chem-comparison-sidebar--target.chem-comparison-sidebar--resizable {
+  flex: none;
+  max-width: none;
 }
 
 .chem-comparison-sidebar--target .chem-comparison-sidebar-field {
@@ -5923,6 +6341,24 @@ select {
   border: none;
   background: transparent;
 }
+
+.chem-comparison-main--target.chem-comparison-main--resizable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chem-target-panel-slot {
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chem-target-panel-slot--flex {
+  flex: 1 1 0;
+  min-height: 100px;
+}
+
 
 .chem-target-panel--results,
 .chem-target-panel--details,

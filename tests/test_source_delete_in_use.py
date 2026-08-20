@@ -5,8 +5,9 @@ from src.services.source_usage import (
     find_material_display_names_using_source,
     resolve_materials_directories,
 )
+from tests.fixtures.workspace_paths import FIXTURE_PROPERTY_SOURCE_ID
 
-SOURCE_ID = "015011a5-ab25-4aab-9bce-b69d10e7f54b"
+SOURCE_ID = FIXTURE_PROPERTY_SOURCE_ID
 OTHER_SOURCE_ID = "00000000-0000-0000-0000-000000000001"
 
 

@@ -11,6 +11,8 @@ import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { TabErrorBoundary } from "../components/TabErrorBoundary";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { PanelResizeHandle } from "../components/PanelResizeHandle";
+import { useDragResize } from "../hooks/useDragResize";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import { getChemCompositionEntries } from "../api/selection";
 import type { CompositionEntry } from "../lib/chemComparisonPivot";
@@ -56,9 +58,12 @@ export function ChemComparisonScenario2Tab() {
   const targetTableRef = useRef<HTMLTableElement>(null);
   const resultsTableRef = useRef<HTMLTableElement>(null);
   const detailsTableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(targetTableRef);
-  useResizableTableHeaders(resultsTableRef);
-  useResizableTableHeaders(detailsTableRef);
+  const targetScrollRef = useRef<HTMLDivElement>(null);
+  const resultsScrollRef = useRef<HTMLDivElement>(null);
+  const detailsScrollRef = useRef<HTMLDivElement>(null);
+  useResizableTableHeaders(targetTableRef, { eventRootRef: targetScrollRef });
+  useResizableTableHeaders(resultsTableRef, { eventRootRef: resultsScrollRef });
+  useResizableTableHeaders(detailsTableRef, { eventRootRef: detailsScrollRef });
   const [pickerState, setPickerState] = useState<{
     rowId: string;
     x: number;
@@ -111,6 +116,28 @@ export function ChemComparisonScenario2Tab() {
     candidates[selectedCandidateIndex] ?? null;
 
   const closePicker = useCallback(() => setPickerState(null), []);
+
+  const sidebarResize = useDragResize({
+    axis: "x",
+    initial: 320,
+    min: 260,
+    max: 480,
+    storageKey: "chem-s2-sidebar-width",
+  });
+  const resultsResize = useDragResize({
+    axis: "y",
+    initial: 220,
+    min: 120,
+    max: 600,
+    storageKey: "chem-s2-results-height",
+  });
+  const detailsResize = useDragResize({
+    axis: "y",
+    initial: 220,
+    min: 120,
+    max: 600,
+    storageKey: "chem-s2-details-height",
+  });
 
   useEffect(() => {
     if (!pickerState) {
@@ -185,12 +212,16 @@ export function ChemComparisonScenario2Tab() {
 
   return (
     <TabErrorBoundary resetKey={`${selectedAreas.join(",")}-${targetRows.length}`}>
-      <div className="chem-comparison-layout chem-comparison-layout--target">
-        <aside className="chem-comparison-sidebar chem-comparison-sidebar--target">
-          <div
-            className="chem-comparison-sidebar-field"
-            data-tour="chem-s2-area"
-          >
+<div className="chem-comparison-layout chem-comparison-layout--target chem-comparison-layout--resizable">
+  <aside
+    className="chem-comparison-sidebar chem-comparison-sidebar--target chem-comparison-sidebar--resizable"
+    style={sidebarResize.style}
+  >
+    <div
+      className="chem-comparison-sidebar-field"
+      data-tour="chem-s2-area"
+    >
+      <label htmlFor="chem-s2-area-filter">Область применения:</label>
             <label htmlFor="chem-s2-area-filter">Область применения:</label>
             <ApplicationAreaFilter
               id="chem-s2-area-filter"
@@ -223,11 +254,12 @@ export function ChemComparisonScenario2Tab() {
               </button>
             </div>
 
-            <div
-              className="chem-target-table-wrap"
-              data-tour="chem-s2-target-table"
-            >
-              <table ref={targetTableRef} className="chem-target-table">
+<div
+  ref={targetScrollRef}
+  className="chem-target-table-wrap"
+  data-tour="chem-s2-target-table"
+>
+  <table ref={targetTableRef} className="data-table chem-target-table">
                 <thead>
                   <tr>
                     <th>Элемент</th>
@@ -281,7 +313,12 @@ export function ChemComparisonScenario2Tab() {
           </section>
         </aside>
 
-        <main className="chem-comparison-main chem-comparison-main--target">
+        <PanelResizeHandle
+          direction="vertical"
+          onMouseDown={sidebarResize.onHandleMouseDown}
+        />
+
+        <main className="chem-comparison-main chem-comparison-main--target chem-comparison-main--resizable">
           {entriesQuery.isPending && (
             <p className="tab-placeholder">Загрузка данных составов…</p>
           )}
@@ -293,16 +330,19 @@ export function ChemComparisonScenario2Tab() {
 
           {entriesQuery.isSuccess && (
             <>
-              <section className="chem-target-panel chem-target-panel--results">
+              <section
+                className="chem-target-panel chem-target-panel--results chem-target-panel-slot"
+                style={resultsResize.style}
+              >
                 <h3 className="chem-target-panel-title">
                   Результаты подбора материалов
                 </h3>
-                <div className="chem-target-results-scroll">
-                  <table
-                    ref={resultsTableRef}
-                    className="chem-target-results-table"
-                    data-tour="chem-s2-results-table"
-                  >
+<div
+  ref={targetScrollRef}
+  className="chem-target-table-wrap"
+  data-tour="chem-s2-target-table"
+>
+  <table ref={targetTableRef} className="data-table chem-target-table">
                     <thead>
                       <tr>
                         <th>Материал</th>
@@ -352,16 +392,24 @@ export function ChemComparisonScenario2Tab() {
                 </div>
               </section>
 
-              <section className="chem-target-panel chem-target-panel--details">
+              <PanelResizeHandle
+                direction="horizontal"
+                onMouseDown={resultsResize.onHandleMouseDown}
+              />
+
+              <section
+                className="chem-target-panel chem-target-panel--details chem-target-panel-slot"
+                style={detailsResize.style}
+              >
                 <h3 className="chem-target-panel-title">
                   Детализированное сравнение по выбранному источнику
                 </h3>
-                <div className="chem-target-details-scroll">
-                  <table
-                    ref={detailsTableRef}
-                    className="chem-target-details-table"
-                    data-tour="chem-s2-details-table"
-                  >
+<div ref={resultsScrollRef} className="chem-target-results-scroll">
+  <table
+    ref={resultsTableRef}
+    className="data-table chem-target-results-table"
+    data-tour="chem-s2-results-table"
+  >
                     <thead>
                       <tr>
                         <th>Элемент</th>
@@ -417,7 +465,12 @@ export function ChemComparisonScenario2Tab() {
                 </div>
               </section>
 
-              <section className="chem-target-panel chem-target-panel--influence">
+              <PanelResizeHandle
+                direction="horizontal"
+                onMouseDown={detailsResize.onHandleMouseDown}
+              />
+
+              <section className="chem-target-panel chem-target-panel--influence chem-target-panel-slot chem-target-panel-slot--flex">
                 <h3 className="chem-target-panel-title">
                   Влияние элементов на свойства стали
                 </h3>

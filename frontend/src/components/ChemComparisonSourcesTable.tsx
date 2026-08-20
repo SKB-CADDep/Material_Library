@@ -10,8 +10,14 @@ type ChemComparisonSourcesTableProps = {
 export function ChemComparisonSourcesTable({
   columns,
 }: ChemComparisonSourcesTableProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(tableRef);
+
+  useResizableTableHeaders(tableRef, {
+    disabled: columns.length === 0,
+    eventRootRef: scrollRef,
+    headerStructureKey: columns.map((column) => column.key).join("|"),
+  });
 
   return (
     <section
@@ -30,8 +36,14 @@ export function ChemComparisonSourcesTable({
           Нет источников состава
         </p>
       ) : (
-        <div className="chem-comparison-sources-scroll">
+        <div ref={scrollRef} className="chem-comparison-sources-scroll">
           <table ref={tableRef} className="data-table chem-comparison-sources-table">
+            <colgroup>
+              <col className="chem-comparison-sources-col--label" />
+              <col className="chem-comparison-sources-col--comment" />
+              <col className="chem-comparison-sources-col--base" />
+              <col className="chem-comparison-sources-col--unit" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Источник</th>

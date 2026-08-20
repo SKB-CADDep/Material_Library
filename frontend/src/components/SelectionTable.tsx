@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   calculationColumnSymbol,
   calculationColumnUnitLabel,
@@ -10,10 +10,14 @@ import type {
   SelectionSortColumn,
   SelectionSortState,
 } from "../lib/sortSelectionRows";
+import {
+  renderSortIndicator,
+  sortableHeaderProps,
+} from "../lib/tableSortHeader";
 import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 import { SelectionCellContextMenu } from "./SelectionCellContextMenu";
 import { TempCommentIndicator } from "./TempCommentIndicator";
-import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import { useResizableTableHeaders, syncFrozenStickyColumns } from "../hooks/useResizableTableHeaders";
 import type {
   TemperatureSelectionColumn,
   TemperatureSelectionRow,
@@ -88,41 +92,6 @@ type SelectionTableProps = {
   onSortColumn?: (column: SelectionSortColumn) => void;
 };
 
-function sortableHeaderProps(
-  column: SelectionSortColumn,
-  onSortColumn: SelectionTableProps["onSortColumn"],
-  defaultTitle?: string,
-) {
-  if (!onSortColumn) {
-    return {
-      className: "",
-      title: defaultTitle,
-      onClick: undefined,
-    };
-  }
-
-  return {
-    className: "sortable",
-    title: "Сортировать",
-    onClick: () => onSortColumn(column),
-  };
-}
-
-function renderSortIndicator(
-  column: SelectionSortColumn,
-  sortState: SelectionSortState | undefined,
-) {
-  if (!sortState || sortState.column !== column) {
-    return null;
-  }
-
-  return (
-    <span className="sort-indicator active" aria-hidden="true">
-      {sortState.direction === "asc" ? "▲" : "▼"}
-    </span>
-  );
-}
-
 function hasTemperatureComment(row: TemperatureSelectionRow): boolean {
   return Boolean((row.temperature_comment ?? "").trim());
 }
@@ -152,10 +121,6 @@ function renderColumnHeader(
   );
 }
 
-function frozenCellStyle(col: (typeof FROZEN_COLUMNS)[number]) {
-  return { left: col.stickyLeft };
-}
-
 export function SelectionTable({
   scrollColumns,
   rows,
@@ -176,8 +141,17 @@ export function SelectionTable({
   const [cellContextMenu, setCellContextMenu] =
     useState<CellContextMenuState | null>(null);
   const [frozenWidth, setFrozenWidth] = useState(FROZEN_WIDTH);
+  const [layoutTick, setLayoutTick] = useState(0);
+  const [columnsResized, setColumnsResized] = useState(false);
 
-  useResizableTableHeaders(tableRef);
+  useResizableTableHeaders(tableRef, {
+    eventRootRef: viewportRef,
+    headerStructureKey: scrollColumns.map((col) => col.key).join("|"),
+    onLayoutChange: () => {
+      setColumnsResized(true);
+      setLayoutTick((value) => value + 1);
+    },
+  });
 
   const copyCellAt = useCallback(
     async (rowIndex: number, column: SelectionSortColumn) => {
@@ -224,6 +198,27 @@ export function SelectionTable({
     temperatureUnitConfig,
   );
 
+  useEffect(() => {
+    setColumnsResized(false);
+    const table = tableRef.current;
+    if (!table) {
+      return;
+    }
+    table.classList.remove("data-table--columns-resized");
+    table.style.removeProperty("table-layout");
+    table.style.removeProperty("width");
+    table.querySelectorAll("colgroup col").forEach((col) => {
+      (col as HTMLElement).style.removeProperty("width");
+    });
+    table.querySelectorAll("th, td").forEach((cell) => {
+      const el = cell as HTMLElement;
+      el.style.removeProperty("width");
+      el.style.removeProperty("min-width");
+      el.style.removeProperty("max-width");
+      el.style.removeProperty("left");
+    });
+  }, [scrollColumns]);
+
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     const table = tableRef.current;
@@ -240,6 +235,29 @@ export function SelectionTable({
       }
 
       const viewportWidth = viewport.clientWidth;
+      const isResized = table.classList.contains("data-table--columns-resized");
+
+      if (isResized) {
+        table.style.tableLayout = "fixed";
+        table.style.width = "max-content";
+
+        const measuredFrozenWidth = syncFrozenStickyColumns(table);
+        const frozenPart =
+          measuredFrozenWidth > 0 ? measuredFrozenWidth : FROZEN_WIDTH;
+        const totalWidth = table.scrollWidth;
+        const needsScroll = totalWidth > viewportWidth + 1;
+
+        setFrozenWidth(frozenPart);
+        setFillsWidth(false);
+        setHasHorizontalScroll(needsScroll);
+        setScrollWidth(
+          needsScroll
+            ? Math.max(0, totalWidth - frozenPart)
+            : viewportWidth,
+        );
+        return;
+      }
+
       const previousWidth = table.style.width;
       const previousLayout = table.style.tableLayout;
       table.style.tableLayout = "auto";
@@ -250,10 +268,7 @@ export function SelectionTable({
 
       const needsScroll = naturalWidth > viewportWidth + 1;
 
-      let measuredFrozenWidth = 0;
-      table.querySelectorAll("thead th.selection-table-col--frozen").forEach((th) => {
-        measuredFrozenWidth += th.getBoundingClientRect().width;
-      });
+      let measuredFrozenWidth = syncFrozenStickyColumns(table);
       if (measuredFrozenWidth <= 0) {
         measuredFrozenWidth = FROZEN_WIDTH;
       }
@@ -278,9 +293,8 @@ export function SelectionTable({
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
-    observer.observe(table);
     return () => observer.disconnect();
-  }, [scrollColumns, rows, columnUnits, sortState, unitConfigs]);
+  }, [scrollColumns, rows, columnUnits, sortState, unitConfigs, layoutTick]);
 
   const syncScrollLeft = useCallback((source: "viewport" | "track", left: number) => {
     if (syncingRef.current) {
@@ -336,7 +350,7 @@ export function SelectionTable({
   };
 
   const tableClassName = `data-table selection-table selection-table--unified${
-    fillsWidth ? " selection-table--fill-width" : ""
+    fillsWidth && !columnsResized ? " selection-table--fill-width" : ""
   }`;
 
   return (
@@ -361,8 +375,7 @@ export function SelectionTable({
               <tr>
                 {FROZEN_COLUMNS.map((col) => {
                   const header = sortableHeaderProps(
-                    col.key,
-                    onSortColumn,
+                    onSortColumn ? () => onSortColumn(col.key) : undefined,
                     col.label,
                   );
 
@@ -374,7 +387,6 @@ export function SelectionTable({
                     return (
                       <th
                         key={col.key}
-                        style={frozenCellStyle(col)}
                         className={[
                           "selection-table-col",
                           "selection-table-col--frozen",
@@ -398,7 +410,6 @@ export function SelectionTable({
                   return (
                     <th
                       key={col.key}
-                      style={frozenCellStyle(col)}
                       className={[
                         "selection-table-col",
                         "selection-table-col--frozen",
@@ -427,8 +438,7 @@ export function SelectionTable({
                   );
                   const title = unitLabel ? `${symbol}, ${unitLabel}` : symbol;
                   const header = sortableHeaderProps(
-                    col.key,
-                    onSortColumn,
+                    onSortColumn ? () => onSortColumn(col.key) : undefined,
                     title,
                   );
                   const canChangeUnit = Boolean(
@@ -449,7 +459,7 @@ export function SelectionTable({
                         .join(" ")}
                       title={
                         canChangeUnit
-                          ? "ПКМ — смена единицы измерения"
+                          ? `${header.title ?? title}. ПКМ — смена единицы измерения`
                           : header.title ?? title
                       }
                       onClick={header.onClick}
@@ -479,7 +489,6 @@ export function SelectionTable({
                   {FROZEN_COLUMNS.map((col) => (
                     <td
                       key={col.key}
-                      style={frozenCellStyle(col)}
                       className={[
                         col.className,
                         "selection-table-col--frozen",
