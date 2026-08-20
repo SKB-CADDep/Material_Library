@@ -234,7 +234,13 @@ export function ChemComparisonScenario2Tab() {
             <h3 className="chem-target-panel-title">Целевой химический состав</h3>
 
             <div className="chem-target-toolbar">
-              <button type="button" className="btn btn--icon" onClick={addTargetRow} title="Добавить строку">
+              <button
+                type="button"
+                className="btn btn--icon"
+                onClick={addTargetRow}
+                title="Добавить строку"
+                data-tour="chem-s2-add-row"
+              >
                 +
               </button>
               <button
@@ -398,7 +404,11 @@ export function ChemComparisonScenario2Tab() {
                   Детализированное сравнение по выбранному источнику
                 </h3>
                 <div ref={detailsScrollRef} className="chem-target-details-scroll">
-                  <table ref={detailsTableRef} className="data-table chem-target-details-table">
+                  <table
+                    ref={detailsTableRef}
+                    className="data-table chem-target-details-table"
+                    data-tour="chem-s2-details-table"
+                  >
                     <thead>
                       <tr>
                         <th>Элемент</th>

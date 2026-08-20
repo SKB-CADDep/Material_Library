@@ -308,3 +308,49 @@ class ComparePropsResponse(BaseModel):
     property: ComparePropsPropertyMeta
     series: list[ComparePropsSeries]
 
+
+class LarsonMillerTablePoint(BaseModel):
+    temperature: float
+    stress: float
+    service_hours: float
+    p: float | None = None
+
+
+class LarsonMillerCustomPoint(BaseModel):
+    temperature: float
+    stress: float
+
+
+class LarsonMillerRequest(BaseModel):
+    material_id: str
+    category_index: int
+    base_service_hours: float
+    constant_c: float | None = None
+    custom_table_points: list[LarsonMillerCustomPoint] | None = None
+    calc_temperature: float | None = None
+    calc_service_hours: float | None = None
+
+
+class LarsonMillerChartPoint(BaseModel):
+    p: float
+    stress: float
+
+
+class LarsonMillerResponse(BaseModel):
+    material_id: str
+    category_index: int
+    material_name: str
+    base_service_hours: float
+    property_key: str = ""
+    from_database: bool = False
+    stored_constant_c: float | None = None
+    constant_c: float | None = None
+    table_points: list[LarsonMillerTablePoint]
+    calc_temperature: float | None = None
+    calc_service_hours: float | None = None
+    calc_stress: float | None = None
+    calc_p: float | None = None
+    is_extrapolated: bool = False
+    chart_curve: list[LarsonMillerChartPoint] = []
+    chart_calc_point: LarsonMillerChartPoint | None = None
+

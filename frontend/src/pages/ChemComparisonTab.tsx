@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChemComparisonScenario1Tab } from "./ChemComparisonScenario1Tab";
 import { ChemComparisonScenario2Tab } from "./ChemComparisonScenario2Tab";
 
@@ -13,6 +13,33 @@ function scenarioTabClass(isActive: boolean): string {
 export function ChemComparisonTab() {
   const [scenario, setScenario] = useState<ChemScenario>("standards");
 
+  useEffect(() => {
+    function handleTourStart() {
+      // Чтобы шаги тура попадали в корректный DOM.
+      setScenario("standards");
+    }
+
+    function handleSetScenario(event: Event) {
+      const custom = event as CustomEvent<{ scenario?: ChemScenario }>;
+      const next = custom.detail?.scenario;
+      if (next === "standards" || next === "target") {
+        setScenario(next);
+      }
+    }
+    window.addEventListener("chemComparisonTourStart", handleTourStart);
+    window.addEventListener("chemComparisonSetScenario", handleSetScenario);
+    return () => {
+      window.removeEventListener(
+        "chemComparisonTourStart",
+        handleTourStart,
+      );
+      window.removeEventListener(
+        "chemComparisonSetScenario",
+        handleSetScenario,
+      );
+    };
+  }, []);
+
   return (
     <div className="chem-comparison-tab">
       <nav className="chem-comparison-subtabs" aria-label="Сценарии сравнения состава">
@@ -20,6 +47,7 @@ export function ChemComparisonTab() {
           type="button"
           className={scenarioTabClass(scenario === "standards")}
           onClick={() => setScenario("standards")}
+          data-tour="chem-scenario-standards"
         >
           По стандартам для материала
         </button>
@@ -27,6 +55,7 @@ export function ChemComparisonTab() {
           type="button"
           className={scenarioTabClass(scenario === "target")}
           onClick={() => setScenario("target")}
+          data-tour="chem-scenario-target"
         >
           Подбор по целевому составу
         </button>

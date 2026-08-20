@@ -851,7 +851,8 @@ select {
   .selection-page > .ashby-tab,
   .selection-page > .compare-props-tab,
   .selection-page > .temp-selection-tab,
-  .selection-page > .chem-comparison-tab {
+  .selection-page > .chem-comparison-tab,
+  .selection-page > .larson-miller-tab {
     flex: 1;
     min-height: 0;
   }
@@ -4160,6 +4161,368 @@ select {
   font-size: 13px;
 }
 
+.larson-miller-tab > .selection-controls.larson-miller-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: end;
+  justify-content: start;
+  gap: 12px 16px;
+}
+
+@media (min-width: 640px) {
+  .larson-miller-tab > .selection-controls.larson-miller-controls {
+    grid-template-columns: max-content max-content;
+  }
+}
+
+.larson-miller-tab .selection-control--material,
+.larson-miller-tab .selection-control--service-hours {
+  grid-column: auto;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.larson-miller-tab .selection-control--material select,
+.larson-miller-tab .selection-control--service-hours select {
+  width: auto;
+  max-width: 100%;
+}
+
+.larson-miller-tab .larson-miller-fit-select {
+  max-width: 100%;
+  box-sizing: border-box;
+  flex: none;
+}
+
+.larson-miller-tab .larson-miller-hours-select {
+  min-width: 14ch;
+}
+
+.larson-miller-hours-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.larson-miller-hours-control select {
+  flex: none;
+}
+
+.larson-miller-hours-custom-input {
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.larson-miller-hours-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.selection-control--service-hours .sep-calculation-calc-error {
+  margin-top: 6px;
+}
+
+.larson-miller-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.larson-miller-results-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.95fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.larson-miller-manual-panel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.larson-miller-manual-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.larson-miller-manual-title {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.larson-miller-manual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.larson-miller-manual-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.larson-miller-table-panel,
+.larson-miller-chart-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 12px;
+  min-width: 0;
+  height: 100%;
+}
+
+.larson-miller-table-title,
+.larson-miller-chart-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.larson-miller-refresh-hint {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted, #666);
+}
+
+.larson-miller-table-scroll {
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.larson-miller-table {
+  width: 100%;
+  min-width: 0;
+}
+
+.larson-miller-table th,
+.larson-miller-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.larson-miller-table-group-head {
+  text-align: center;
+  font-weight: 600;
+}
+
+.larson-miller-table tbody th {
+  text-align: left;
+  white-space: normal;
+  min-width: 180px;
+}
+
+.larson-miller-table-col--calc {
+  background: rgba(214, 39, 40, 0.08);
+  border-left: 12px solid var(--surface);
+}
+
+.larson-miller-table-col--calc-head {
+  min-width: 112px;
+}
+
+.larson-miller-editable-cell {
+  width: 100%;
+  min-width: 60px;
+  box-sizing: border-box;
+}
+
+.larson-miller-formula-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.larson-miller-formula-hint__value {
+  text-decoration: underline dotted rgba(31, 41, 55, 0.45);
+  text-underline-offset: 3px;
+}
+
+.larson-miller-formula-hint__popover {
+  position: fixed;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(24, 31, 43, 0.96);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    visibility 0.16s ease;
+  z-index: 3;
+}
+
+.larson-miller-formula-hint:hover .larson-miller-formula-hint__popover,
+.larson-miller-formula-hint:focus-within .larson-miller-formula-hint__popover {
+  opacity: 1;
+  visibility: visible;
+}
+
+.larson-miller-formula-hint__popover--open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.larson-miller-extrapolated {
+  margin-left: 4px;
+  color: var(--danger);
+}
+
+.larson-miller-footnote {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.larson-miller-chart-wrap {
+  position: relative;
+  min-height: 460px;
+  height: 52vh;
+}
+
+.larson-miller-legend-panel {
+  position: absolute;
+  z-index: 2;
+  width: 188px !important;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  pointer-events: none;
+}
+
+.larson-miller-legend-panel .ashby-legend {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible;
+}
+
+.larson-miller-legend-panel .ashby-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.larson-miller-legend-panel .ashby-legend-label {
+  white-space: normal;
+}
+
+.larson-miller-legend-marker {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 12px;
+}
+
+.larson-miller-chart-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (max-width: 1100px) {
+  .larson-miller-results-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .larson-miller-chart-wrap {
+    min-height: 520px;
+  }
+
+  .larson-miller-legend-panel {
+    position: static;
+    width: auto !important;
+    max-height: none !important;
+    margin-top: 12px;
+    box-shadow: none;
+  }
+
+  .larson-miller-chart-hint {
+    left: 50%;
+  }
+}
+
+.larson-miller-chart-empty {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.larson-miller-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.larson-miller-dialog {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.larson-miller-dialog h3 {
+  margin: 0 0 8px;
+}
+
+.larson-miller-dialog p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.larson-miller-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .data-table--resizable-headers .calculation-table-col--value,
 .data-table--resizable-headers .calculation-table-col--temp,
 .data-table--resizable-headers.selection-table--unified .selection-table-col--value,
@@ -5218,6 +5581,12 @@ select {
 .tab-tour-btn:hover:not(:disabled):not(.tab-tour-btn--flat):not(.tab-tour-btn--primary) {
   background: #f3f4f6;
   color: #242930;
+}
+
+.tab-tour-btn.tab-tour-btn--back:hover:not(:disabled):not(.tab-tour-btn--flat):not(.tab-tour-btn--primary) {
+  background: #3d5a80;
+  border-color: #3d5a80;
+  color: #fff;
 }
 
 

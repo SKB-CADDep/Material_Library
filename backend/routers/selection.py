@@ -11,6 +11,8 @@ from backend.schemas import (
     ComparePropsResponse,
     ChemCompositionEntriesResponse,
     ChemCompositionEntryItem,
+    LarsonMillerRequest,
+    LarsonMillerResponse,
     SingleCalculationRequest,
     SingleCalculationResponse,
     TemperatureSelectionRequest,
@@ -107,6 +109,41 @@ def post_single_calculation(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/selection/larson-miller/hours")
+def get_larson_miller_hours(
+    service: SelectionService = Depends(get_selection_service),
+):
+    return {"hours": list(service.larson_miller_predefined_hours())}
+
+
+@router.post(
+    "/selection/larson-miller",
+    response_model=LarsonMillerResponse,
+)
+def post_larson_miller(
+    body: LarsonMillerRequest,
+    repo=Depends(get_repository),
+    service: SelectionService = Depends(get_selection_service),
+):
+    try:
+        return service.larson_miller(
+            repo,
+            body.material_id,
+            body.category_index,
+            body.base_service_hours,
+            constant_c=body.constant_c,
+            custom_table_points=(
+                [p.model_dump() for p in body.custom_table_points]
+                if body.custom_table_points
+                else None
+            ),
+            calc_temperature=body.calc_temperature,
+            calc_service_hours=body.calc_service_hours,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post(

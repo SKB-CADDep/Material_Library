@@ -151,7 +151,7 @@ export function ChemComparisonScenario1Tab() {
             />
           </div>
 
-          <div className="chem-comparison-sidebar-field">
+          <div className="chem-comparison-sidebar-field" data-tour="chem-s1-search">
             <label htmlFor="chem-s1-search">Поиск материала:</label>
             <input
               id="chem-s1-search"
@@ -164,7 +164,10 @@ export function ChemComparisonScenario1Tab() {
             />
           </div>
 
-          <div className="chem-comparison-sidebar-field chem-comparison-sidebar-field--list">
+          <div
+            className="chem-comparison-sidebar-field chem-comparison-sidebar-field--list"
+            data-tour="chem-s1-materials"
+          >
             <span className="chem-comparison-sidebar-label">Материалы:</span>
             {materialsQuery.isPending && (
               <p className="tab-placeholder tab-placeholder--inline">
@@ -277,7 +280,6 @@ export function ChemComparisonScenario1Tab() {
                     direction="horizontal"
                     onMouseDown={sourcesResize.onHandleMouseDown}
                   />
-
                   <ChemComparisonNotesSection columns={comparisonView.columns} />
                 </>
               )}
