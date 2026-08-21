@@ -45,26 +45,74 @@ function Wait-ForHttp([string]$Url, [int]$TimeoutSec = 60) {
     return $false
 }
 
-function Assert-PythonVersion {
-    if (-not (Test-CommandExists "python")) {
-        throw "Python not found. Install Python 3.11+ and add to PATH. See README.md."
-    }
-
-    $versionText = (& python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+function Get-PythonVersion([string]$PythonExe) {
+    $versionText = (& $PythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
     $parts = $versionText.Split(".")
     if ($parts.Count -lt 2) {
-        throw "Could not detect Python version. Need Python 3.11+. See README.md."
+        return $null
     }
-
-    $major = [int]$parts[0]
-    $minor = [int]$parts[1]
-    if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 11)) {
-        throw "Python 3.11+ required (found $versionText). Install 3.11+ or use pyenv/uv with .python-version. See README.md."
+    return @{
+        Text = $versionText
+        Major = [int]$parts[0]
+        Minor = [int]$parts[1]
     }
 }
 
+function Test-Python311Plus($VersionInfo) {
+    return $VersionInfo -and (
+        $VersionInfo.Major -gt 3 -or (
+            $VersionInfo.Major -eq 3 -and $VersionInfo.Minor -ge 11
+        )
+    )
+}
+
+function Resolve-PythonExe {
+    param(
+        [switch]$PreferVenv
+    )
+
+    if ($PreferVenv -and (Test-Path -LiteralPath $VenvPython)) {
+        $venvVersion = Get-PythonVersion $VenvPython
+        if (Test-Python311Plus $venvVersion) {
+            return $VenvPython
+        }
+    }
+
+    if (Test-CommandExists "python") {
+        $pythonVersion = Get-PythonVersion "python"
+        if (Test-Python311Plus $pythonVersion) {
+            return "python"
+        }
+    }
+
+    if (Test-CommandExists "py") {
+        foreach ($tag in @("3.13", "3.12", "3.11")) {
+            $candidate = "py -$tag"
+            try {
+                $pyVersion = Get-PythonVersion $candidate
+                if (Test-Python311Plus $pyVersion) {
+                    return $candidate
+                }
+            } catch {
+                continue
+            }
+        }
+    }
+
+    $found = if (Test-CommandExists "python") {
+        (Get-PythonVersion "python").Text
+    } else {
+        "not found"
+    }
+    throw "Python 3.11+ required (found $found). Install 3.11+ or run: py -3.13 -m venv .venv"
+}
+
+function Assert-PythonVersion {
+    $null = Resolve-PythonExe -PreferVenv
+}
+
 function Ensure-Setup {
-    Assert-PythonVersion
+    $pythonExe = Resolve-PythonExe -PreferVenv
     if (-not (Test-CommandExists "npm")) {
         throw "Node.js/npm not found. Install Node.js 20 LTS. See README.md."
     }
@@ -73,7 +121,11 @@ function Ensure-Setup {
     if (-not (Test-Path $VenvPython)) {
         Write-Host "Creating .venv (first run may take a few minutes)..."
         Push-Location -LiteralPath $ProjectRoot
-        python -m venv .venv
+        if ($pythonExe -like "py -*") {
+            Invoke-Expression "$pythonExe -m venv .venv"
+        } else {
+            & $pythonExe -m venv .venv
+        }
         Pop-Location
     }
 
