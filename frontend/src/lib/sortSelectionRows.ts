@@ -89,6 +89,18 @@ export function sortSelectionRows(
   column: SelectionSortColumn,
   direction: SortDirection,
 ): TemperatureSelectionRow[] {
+  return sortRowsByValue(
+    rows,
+    (row) => getSelectionRowSortValue(row, column),
+    direction,
+  );
+}
+
+export function sortRowsByValue<T>(
+  rows: T[],
+  getValue: (row: T) => unknown,
+  direction: SortDirection,
+): T[] {
   if (rows.length <= 1) {
     return rows;
   }
@@ -96,8 +108,8 @@ export function sortSelectionRows(
   const sign = direction === "asc" ? 1 : -1;
 
   return [...rows].sort((rowA, rowB) => {
-    const keyA = buildSortKey(getSelectionRowSortValue(rowA, column));
-    const keyB = buildSortKey(getSelectionRowSortValue(rowB, column));
+    const keyA = buildSortKey(getValue(rowA));
+    const keyB = buildSortKey(getValue(rowB));
     return sign * compareSortKeys(keyA, keyB);
   });
 }

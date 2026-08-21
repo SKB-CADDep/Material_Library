@@ -1,0 +1,12 @@
+[run]
+source =
+    src
+    backend
+omit =
+    */__pycache__/*
+    src/services/interfaces.py
+
+[report]
+precision = 1
+show_missing = True
+skip_empty = True

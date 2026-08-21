@@ -45,12 +45,28 @@ function Wait-ForHttp([string]$Url, [int]$TimeoutSec = 60) {
     return $false
 }
 
-function Ensure-Setup {
+function Assert-PythonVersion {
     if (-not (Test-CommandExists "python")) {
-        throw "Python not found. Install Python 3.10+ and add to PATH."
+        throw "Python not found. Install Python 3.11+ and add to PATH. See README.md."
     }
+
+    $versionText = (& python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+    $parts = $versionText.Split(".")
+    if ($parts.Count -lt 2) {
+        throw "Could not detect Python version. Need Python 3.11+. See README.md."
+    }
+
+    $major = [int]$parts[0]
+    $minor = [int]$parts[1]
+    if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 11)) {
+        throw "Python 3.11+ required (found $versionText). Install 3.11+ or use pyenv/uv with .python-version. See README.md."
+    }
+}
+
+function Ensure-Setup {
+    Assert-PythonVersion
     if (-not (Test-CommandExists "npm")) {
-        throw "Node.js/npm not found. Install Node.js 20 LTS."
+        throw "Node.js/npm not found. Install Node.js 20 LTS. See README.md."
     }
 
     Write-Step "Python virtual environment"

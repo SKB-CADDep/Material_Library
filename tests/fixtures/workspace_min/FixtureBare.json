@@ -1,0 +1,23 @@
+{
+  "material_id": "a1000003-0000-4000-8000-000000000003",
+  "metadata": {
+    "name_material_standard": "Z-FixtureBare",
+    "name_material_alternative": [],
+    "application_area": [],
+    "comment": "без КП и без хим. состава",
+    "classification": {
+      "classification_category": "",
+      "classification_class": "",
+      "classification_subclass": ""
+    }
+  },
+  "physical_properties": {
+    "properties": []
+  },
+  "mechanical_properties": {
+    "strength_category": []
+  },
+  "chemical_properties": {
+    "composition": []
+  }
+}
