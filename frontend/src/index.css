@@ -4275,36 +4275,14 @@ select {
 
 .larson-miller-chart-wrap {
   position: relative;
-  min-height: 460px;
-  height: 52vh;
+  min-height: 520px;
+  height: 58vh;
 }
 
 .larson-miller-legend-panel {
   position: absolute;
-  z-index: 2;
-  width: 188px !important;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(2px);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  z-index: 3;
   pointer-events: none;
-}
-
-.larson-miller-legend-panel .ashby-legend {
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: visible;
-}
-
-.larson-miller-legend-panel .ashby-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.larson-miller-legend-panel .ashby-legend-label {
-  white-space: normal;
 }
 
 .larson-miller-legend-marker {
@@ -4334,15 +4312,11 @@ select {
   }
 
   .larson-miller-chart-wrap {
-    min-height: 520px;
+    min-height: 560px;
   }
 
   .larson-miller-legend-panel {
-    position: static;
-    width: auto !important;
-    max-height: none !important;
-    margin-top: 12px;
-    box-shadow: none;
+    position: absolute;
   }
 
   .larson-miller-chart-hint {
