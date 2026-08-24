@@ -1,11 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { TabErrorBoundary } from "../components/TabErrorBoundary";
@@ -46,6 +40,176 @@ function createTargetRow(element = "-", target = ""): TargetRow {
   };
 }
 
+function formatElementOption(symbol: string): string {
+  if (!symbol || symbol === "-") {
+    return "— выберите —";
+  }
+  const name = elementDisplayName(symbol);
+  return name === symbol ? symbol : `${name} (${symbol})`;
+}
+
+type ElementSelectProps = {
+  value: string;
+  onChange: (symbol: string) => void;
+};
+
+function ChemTargetElementSelect({ value, onChange }: ElementSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [panelPosition, setPanelPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
+
+  const options = useMemo(() => {
+    const symbols = ELEMENTS_SORTED.map((item) => item.symbol);
+    if (value && value !== "-" && !symbols.includes(value)) {
+      return [value, ...symbols];
+    }
+    return symbols;
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) {
+      setPanelPosition(null);
+      return;
+    }
+
+    function updatePosition() {
+      const trigger = triggerRef.current;
+      if (!trigger) {
+        return;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const gap = 4;
+      const viewportPadding = 12;
+      const top = rect.bottom + gap;
+      setPanelPosition({
+        top,
+        left: rect.left,
+        width: Math.max(rect.width, 220),
+        maxHeight: Math.max(120, window.innerHeight - top - viewportPadding),
+      });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target)) {
+        return;
+      }
+      if (panelRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  const panel =
+    open && panelPosition ? (
+      <div
+        ref={panelRef}
+        id={listboxId}
+        className="chem-target-element-picker"
+        role="listbox"
+        aria-label="Элемент"
+        style={{
+          top: panelPosition.top,
+          left: panelPosition.left,
+          width: panelPosition.width,
+          maxHeight: panelPosition.maxHeight,
+        }}
+      >
+        <ul>
+          <li>
+            <button
+              type="button"
+              role="option"
+              aria-selected={value === "-"}
+              data-element="-"
+              onClick={() => {
+                onChange("-");
+                setOpen(false);
+              }}
+            >
+              — выберите —
+            </button>
+          </li>
+          {options.map((symbol) => (
+            <li key={symbol}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={symbol === value}
+                data-element={symbol}
+                onClick={() => {
+                  onChange(symbol);
+                  setOpen(false);
+                }}
+              >
+                {formatElementOption(symbol)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="input input--table chem-target-element-select"
+        aria-label="Элемент"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        title="Выберите элемент из списка"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+      >
+        <span className="chem-target-element-select__label">
+          {formatElementOption(value)}
+        </span>
+      </button>
+      {panel && createPortal(panel, document.body)}
+    </>
+  );
+}
+
 export function ChemComparisonScenario2Tab() {
   const { workspace } = useWorkspace();
   const areaOptions = workspace?.application_areas ?? [];
@@ -64,13 +228,6 @@ export function ChemComparisonScenario2Tab() {
   useResizableTableHeaders(targetTableRef, { eventRootRef: targetScrollRef });
   useResizableTableHeaders(resultsTableRef, { eventRootRef: resultsScrollRef });
   useResizableTableHeaders(detailsTableRef, { eventRootRef: detailsScrollRef });
-  const [pickerState, setPickerState] = useState<{
-    rowId: string;
-    x: number;
-    y: number;
-  } | null>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
-
   const entriesQuery = useQuery({
     queryKey: ["chem-composition-entries"],
     queryFn: getChemCompositionEntries,
@@ -115,8 +272,6 @@ export function ChemComparisonScenario2Tab() {
   const selectedCandidate: CandidateEvaluation | null =
     candidates[selectedCandidateIndex] ?? null;
 
-  const closePicker = useCallback(() => setPickerState(null), []);
-
   const sidebarResize = useDragResize({
     axis: "x",
     initial: 320,
@@ -138,22 +293,6 @@ export function ChemComparisonScenario2Tab() {
     max: 600,
     storageKey: "chem-s2-details-height",
   });
-
-  useEffect(() => {
-    if (!pickerState) {
-      return undefined;
-    }
-    const onPointerDown = (event: MouseEvent) => {
-      if (
-        pickerRef.current &&
-        !pickerRef.current.contains(event.target as Node)
-      ) {
-        closePicker();
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [pickerState, closePicker]);
 
   const updateTargetRow = (
     rowId: string,
@@ -183,22 +322,6 @@ export function ChemComparisonScenario2Tab() {
       setSelectedTargetRowId(next.at(-1)?.id ?? null);
       return next;
     });
-  };
-
-  const handleElementContextMenu = (
-    event: ReactMouseEvent,
-    rowId: string,
-  ) => {
-    event.preventDefault();
-    setPickerState({ rowId, x: event.clientX, y: event.clientY });
-  };
-
-  const pickElement = (symbol: string) => {
-    if (!pickerState) {
-      return;
-    }
-    updateTargetRow(pickerState.rowId, "element", symbol);
-    closePicker();
   };
 
   const toleranceType = selectedCandidate?.composition.tolerance_type;
@@ -276,17 +399,11 @@ export function ChemComparisonScenario2Tab() {
                       onClick={() => setSelectedTargetRowId(row.id)}
                     >
                       <td>
-                        <input
-                          type="text"
-                          className="input input--table"
+                        <ChemTargetElementSelect
                           value={row.element}
-                          onChange={(event) =>
-                            updateTargetRow(row.id, "element", event.target.value)
+                          onChange={(symbol) =>
+                            updateTargetRow(row.id, "element", symbol)
                           }
-                          onContextMenu={(event) =>
-                            handleElementContextMenu(event, row.id)
-                          }
-                          title="ПКМ — выбор из справочника элементов"
                         />
                       </td>
                       <td>
@@ -512,28 +629,6 @@ export function ChemComparisonScenario2Tab() {
         </main>
       </div>
 
-      {pickerState && (
-        <div
-          ref={pickerRef}
-          className="chem-target-element-picker"
-          style={{ top: pickerState.y, left: pickerState.x }}
-          role="listbox"
-          aria-label="Выбор элемента"
-        >
-          <ul>
-            {ELEMENTS_SORTED.map((item) => (
-              <li key={item.symbol}>
-                <button
-                  type="button"
-                  onClick={() => pickElement(item.symbol)}
-                >
-                  {elementDisplayName(item.symbol)} ({item.symbol})
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </TabErrorBoundary>
   );
 }

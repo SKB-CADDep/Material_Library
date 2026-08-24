@@ -22,7 +22,7 @@ test.describe("E2E-5: chem comparison pivot + sources; target → results", () =
       page.getByRole("button", { name: "По стандартам для материала" }),
     ).toHaveClass(/active/);
 
-    await selectChemMaterial(page, FIXTURE_MATERIAL);
+    await selectChemMaterial(page, "FixtureFull");
     await waitForChemPivotTable(page);
 
     const pivot = page.locator(".chem-comparison-pivot-table");

@@ -5,6 +5,7 @@ import { TabErrorBoundary } from "../components/TabErrorBoundary";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { listMaterials, getMaterial } from "../api/materials";
+import { materialListLabel } from "../lib/materialDraft";
 import { postLarsonMiller } from "../api/selection";
 import type { LarsonMillerCustomPoint } from "../types/api";
 
@@ -247,7 +248,7 @@ export function LarsonMillerTab() {
     () =>
       selectWidthCh([
         MATERIAL_PLACEHOLDER,
-        ...materialList.map((item) => item.name),
+        ...materialList.map((item) => materialListLabel(item)),
       ]),
     [materialList],
   );
@@ -557,7 +558,7 @@ export function LarsonMillerTab() {
               <option value="">{MATERIAL_PLACEHOLDER}</option>
               {materialList.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {materialListLabel(item)}
                 </option>
               ))}
             </select>

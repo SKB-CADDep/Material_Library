@@ -5,6 +5,7 @@ import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { CalculationTable } from "../components/CalculationTable";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { listMaterials, getMaterial } from "../api/materials";
+import { materialListLabel } from "../lib/materialDraft";
 import {
   buildStrengthCategoryNtdOptions,
   indicesForStrengthCategoryName,
@@ -368,7 +369,7 @@ export function SepCalculationTab() {
             <option value="">— не выбран —</option>
             {filteredMaterials.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name}
+                {materialListLabel(item)}
               </option>
             ))}
           </select>

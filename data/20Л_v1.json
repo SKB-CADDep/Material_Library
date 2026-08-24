@@ -1,0 +1,485 @@
+{
+  "material_id": "3c60851d-1b64-4a4c-a246-2198b9d96efd",
+  "metadata": {
+    "name_material_standard": "20Л",
+    "name_material_alternative": [],
+    "application_area": [
+      "Литейные материалы"
+    ],
+    "comment": "",
+    "classification": {
+      "classification_category": "Для отливок нелегированная",
+      "classification_class": "",
+      "classification_subclass": ""
+    }
+  },
+  "property_groups": [
+    {
+      "property_type": "physical",
+      "properties": [
+        {
+          "property_name": "modulus_elasticity",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                201000.0
+              ],
+              [
+                100.0,
+                196000.0
+              ],
+              [
+                200.0,
+                188000.0
+              ],
+              [
+                300.0,
+                183000.0
+              ],
+              [
+                400.0,
+                173000.0
+              ],
+              [
+                500.0,
+                165000.0
+              ],
+              [
+                600.0,
+                152000.0
+              ],
+              [
+                700.0,
+                132000.0
+              ],
+              [
+                800.0,
+                120000.0
+              ]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "coefficient_linear_expansion",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                11.1
+              ],
+              [
+                200.0,
+                12.1
+              ],
+              [
+                400.0,
+                13.4
+              ],
+              [
+                500.0,
+                14.4
+              ]
+            ],
+            "value_unit": "1/С",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "coefficient_thermal_conductivity",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                78.0
+              ],
+              [
+                200.0,
+                67.0
+              ],
+              [
+                300.0,
+                48.0
+              ],
+              [
+                800.0,
+                42.0
+              ]
+            ],
+            "value_unit": "Вт/(м*С)",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "density",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                7830.0
+              ],
+              [
+                100.0,
+                7830.0
+              ]
+            ],
+            "value_unit": "кг/м3",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "specific_heat",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                468.9
+              ],
+              [
+                200.0,
+                481.5
+              ],
+              [
+                400.0,
+                523.4
+              ],
+              [
+                600.0,
+                569.4
+              ]
+            ],
+            "value_unit": "Дж/(кг*С)",
+            "comment": "",
+            "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+            "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+          }
+        }
+      ]
+    },
+    {
+      "property_type": "mechanical",
+      "strength_groups": [
+        {
+          "strength_category": "КП22",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    216.0
+                  ],
+                  [
+                    100.0,
+                    206.0
+                  ],
+                  [
+                    200.0,
+                    176.0
+                  ],
+                  [
+                    300.0,
+                    166.0
+                  ],
+                  [
+                    400.0,
+                    166.0
+                  ],
+                  [
+                    450.0,
+                    146.0
+                  ],
+                  [
+                    500.0,
+                    136.0
+                  ],
+                  [
+                    550.0,
+                    126.0
+                  ],
+                  [
+                    600.0,
+                    91.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "Предел текучести записан с разницей в 6 МПа = 216 (КП20) - 210 [12]",
+                "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+                "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    412.0
+                  ],
+                  [
+                    100.0,
+                    392.0
+                  ],
+                  [
+                    200.0,
+                    352.0
+                  ],
+                  [
+                    300.0,
+                    362.0
+                  ],
+                  [
+                    400.0,
+                    332.0
+                  ],
+                  [
+                    450.0,
+                    212.0
+                  ],
+                  [
+                    500.0,
+                    212.0
+                  ],
+                  [
+                    550.0,
+                    182.0
+                  ],
+                  [
+                    600.0,
+                    92.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "Предел прочности записан с разницей в 18 МПа = 430 [12] - 412 (КП20)",
+                "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+                "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+              }
+            },
+            {
+              "property_name": "impact_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    55.0
+                  ],
+                  [
+                    100.0,
+                    90.0
+                  ],
+                  [
+                    200.0,
+                    100.0
+                  ],
+                  [
+                    300.0,
+                    90.0
+                  ],
+                  [
+                    400.0,
+                    70.0
+                  ],
+                  [
+                    450.0,
+                    50.0
+                  ],
+                  [
+                    500.0,
+                    55.0
+                  ],
+                  [
+                    550.0,
+                    50.0
+                  ],
+                  [
+                    600.0,
+                    60.0
+                  ]
+                ],
+                "value_unit": "Дж/см2",
+                "comment": "",
+                "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+                "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+              }
+            },
+            {
+              "property_name": "tensile_strength_limit_10_thousands_hours",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    400.0,
+                    195.0
+                  ],
+                  [
+                    450.0,
+                    125.0
+                  ],
+                  [
+                    500.0,
+                    72.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+                "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+              }
+            },
+            {
+              "property_name": "tensile_strength_limit_100_thousands_hours",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    400.0,
+                    153.0
+                  ],
+                  [
+                    450.0,
+                    95.0
+                  ],
+                  [
+                    500.0,
+                    50.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+                "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+              }
+            },
+            {
+              "property_name": "tensile_strength_limit_200_thousands_hours",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    400.0,
+                    143.0
+                  ],
+                  [
+                    450.0,
+                    87.0
+                  ],
+                  [
+                    500.0,
+                    42.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+              }
+            },
+            {
+              "property_name": "tensile_strength_limit_250_thousands_hours",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    400.0,
+                    140.0
+                  ],
+                  [
+                    450.0,
+                    85.0
+                  ],
+                  [
+                    500.0,
+                    40.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+              }
+            },
+            {
+              "property_name": "сreep_strain_rate_1_100_thousands_hours",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    400.0,
+                    70.0
+                  ],
+                  [
+                    500.0,
+                    36.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "f4f94881-41bb-442b-a5e8-35fe1a7322a0",
+                "property_subsource": "Масленков С.Б., Масленкова Е.А. Стали и сплавы для высоких температур: Справ.изд. В 2-х кн. Кн.2 - М.: Металлургия, 1991. 832 с."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "property_type": "chemical",
+      "properties": [
+        {
+          "property_name": "composition",
+          "data": {
+            "composition_source": "ГОСТ 977 - 88",
+            "other_elements": [
+              {
+                "element": "C",
+                "unit_value": "%",
+                "min_value": 0.17,
+                "max_value": 0.25
+              },
+              {
+                "element": "Si",
+                "unit_value": "%",
+                "min_value": 0.2,
+                "max_value": 0.52
+              },
+              {
+                "element": "Mn",
+                "unit_value": "%",
+                "min_value": 0.45,
+                "max_value": 0.9
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.06
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.06
+              }
+            ],
+            "comment": "",
+            "base_element": "Fe",
+            "source_ref_id": "2a9d8a03-d67e-47fe-b4e8-949f5593f9ee"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -350,9 +350,9 @@ const handleRowClick = (index: number) => {
   return (
     <form
       className="general-form physical-properties-form"
-      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
+      <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="composition_source_select">Набор состава:</label>
@@ -606,6 +606,7 @@ const handleRowClick = (index: number) => {
           <fieldset className="property-section-fields">
           <legend>Элементы(ПКМ для выбора из списка)</legend>
             <div className="table-wrapper table-wrapper--chemical-elements">
+              <div className="data-table-container">
               <table ref={elementsTableRef} className="data-table data-table--chemical-elements">
                 <thead>
                   <tr>
@@ -708,6 +709,7 @@ const handleRowClick = (index: number) => {
                   ))}
                 </tbody>
               </table>
+              </div>
               <div className="table-controls">
   <button 
     type="button"
@@ -785,6 +787,7 @@ const handleRowClick = (index: number) => {
       />
     </div>
       </div>
+      </fieldset>
     </form>
   );
 }

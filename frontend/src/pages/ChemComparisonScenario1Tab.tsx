@@ -5,6 +5,7 @@ import { useWorkspace } from "../context/WorkSpaceContext";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { getMaterial, listMaterials } from "../api/materials";
+import { materialListLabel } from "../lib/materialDraft";
 import {
   buildChemComparisonView,
   type CompositionEntry,
@@ -64,7 +65,11 @@ export function ChemComparisonScenario1Tab() {
       if (!materialMatchesApplicationAreas(item.areas, selectedAreas)) {
         return false;
       }
-      if (search && !item.name.toLowerCase().includes(search)) {
+      if (
+        search &&
+        !item.filename.toLowerCase().includes(search) &&
+        !item.name.toLowerCase().includes(search)
+      ) {
         return false;
       }
       return true;
@@ -209,7 +214,7 @@ export function ChemComparisonScenario1Tab() {
                           className="chem-comparison-material-btn"
                           onClick={() => setSelectedId(item.id)}
                         >
-                          {item.name}
+                          {materialListLabel(item)}
                         </button>
                       </li>
                     );

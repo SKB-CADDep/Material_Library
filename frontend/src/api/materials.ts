@@ -130,6 +130,29 @@ function defaultMaterialFilename(body: Record<string, unknown>): string{
   return metadata?.name_material_standard;
 }
 
+export function parseMaterialFilename(filename: string): { family: string; version: number } {
+  const stem = filename.replace(/\.json$/i, "");
+  const regex = /^(.+)_v(\d+)$/;
+  const match = stem.match(regex);
+  if (!match) {
+      return {family: stem, version: 1};
+  }
+  
+  return {
+      version: parseInt(match[2], 10),
+      family: match[1]
+  };
+}
+
+export function versionForNew(filename: string): string {
+  const regex = /_v\d+\.json$/i;
+  const match = filename.match(regex)
+  if (!match) {
+    const new_filename = filename.replace(/\.json$/i, "_v1.json")
+    return new_filename
+  }
+  return filename
+}
 
 export function materialDraftFilename(body: Record<string, unknown>): string {
   const name = (defaultMaterialFilename(body) ?? "").trim();
@@ -142,32 +165,27 @@ export function materialDraftFilename(body: Record<string, unknown>): string {
 
 
 export function materialFilenameBaseStem(filename: string): string {
-  const stem = filename.replace(/\.json$/i, "");
-  return stem.replace(/ \((\d+)\)$/, "");
+  return parseMaterialFilename(filename)?.family
 }
+
+
 
 
 export function nextVersionedMaterialFilename(
   sourceFilename: string,
   existingFilenames: readonly string[],
 ): string {
-  const base = materialFilenameBaseStem(sourceFilename);
-  const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const versionPattern = new RegExp(`^${escapedBase} \\((\\d+)\\)\\.json$`, "i");
-  const exactBasePattern = new RegExp(`^${escapedBase}\\.json$`, "i");
-
-  let maxVersion = 0;
+  const family = parseMaterialFilename(sourceFilename)?.family
+  const version = parseMaterialFilename(sourceFilename)?.version
+  let maxVersion = version;
   for (const name of existingFilenames) {
-    if (exactBasePattern.test(name)) {
-      maxVersion = Math.max(maxVersion, 0);
-    }
-    const match = name.match(versionPattern);
-    if (match) {
-      maxVersion = Math.max(maxVersion, Number(match[1]));
+    const family_new = parseMaterialFilename(name)?.family
+    if (family_new.toLowerCase() === family.toLowerCase()) {
+      maxVersion = Math.max(parseMaterialFilename(name).version, maxVersion);
     }
   }
 
-  return `${base} (${maxVersion + 1}).json`;
+  return `${family}_v${maxVersion + 1}.json`;
 }
 
 export function normalizeMaterialFilename(input: string): string {

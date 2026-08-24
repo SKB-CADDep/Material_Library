@@ -8,8 +8,9 @@ import {
   normalizeMaterialFilename,
   nextVersionedMaterialFilename,
   validateMaterialDraftForSave,
+  versionForNew
 } from "../api/materials";
-import { syncMaterialsAfterSave, normalizeMaterialDraft } from "../lib/materialDraft";
+import { syncMaterialsAfterSave, normalizeMaterialDraft, materialListLabel } from "../lib/materialDraft";
 import { useEffect } from "react";
 import { AddRedactor } from "./AddRedactor";
 import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
@@ -71,7 +72,7 @@ function promptFilename(draft: Record<string, unknown>, defaultName?: string): s
     try {
       suggested = materialDraftFilename(draft);
     } catch {
-      suggested = "Новыйматериал.json";
+      suggested = "Новыйматериал_v1.json";
     }
   }
   const input = window.prompt("Имя файла для сохранения", suggested);
@@ -228,13 +229,23 @@ export function EditorPage() {
   function pickSaveFilename(): string | null {
     if (!draft) return null;
     const existingFilenames = materials.map((material) => material.filename);
-    const originalFilename = hasFileOnDisk
+    if (hasFileOnDisk){
+      const originalFilename = hasFileOnDisk
       ? materials.find((material) => material.id === selectedId)?.filename
       : undefined;
-    const suggested =
-      hasFileOnDisk && originalFilename
-        ? nextVersionedMaterialFilename(originalFilename, existingFilenames)
-        : undefined;
+      if (!originalFilename){
+        showToastWithOK("Ошибка сохранения: файла не существует", 'error'); 
+        return null;
+      }
+      return nextVersionedMaterialFilename(originalFilename, existingFilenames)
+    }
+    let suggested: string | undefined
+    try {
+      suggested = versionForNew(materialDraftFilename(draft))
+    }
+    catch {
+      suggested = undefined
+    }
     return promptFilename(draft, suggested);
   }
 
@@ -307,7 +318,7 @@ export function EditorPage() {
             <option value="">— не выбран —</option>
             {materials.map((material) => (
               <option key={material.id} value={material.id}>
-                {material.name}
+                {materialListLabel(material)}
               </option>
             ))}
           </select>

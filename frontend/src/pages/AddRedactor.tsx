@@ -65,9 +65,9 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
   return (
     <form
       className="general-form"
-      inert={readOnly ? true : undefined}
       onSubmit={(e) => e.preventDefault()}
     >
+      <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="name-standard">Наименование (стандарт):</label>
@@ -265,6 +265,7 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
           </div>
         </fieldset>
       </div>
+      </fieldset>
     </form>
   );
 }

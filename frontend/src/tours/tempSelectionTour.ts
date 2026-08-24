@@ -26,7 +26,7 @@ export const TEMP_SELECTION_TOUR_STEPS: TourStep[] = [
   {
     id: "ntd",
     title: "Фильтр по НТД",
-    text: "Отфильтруйте материалы по нормативно-техническому документу (НТД).",
+    text: "Фильтр по нормативно-техническому документу находится в заголовке колонки «НТД».",
     selector: "[data-tour='temp-ntd']",
     placement: "bottom",
     geometryDelay: 50,

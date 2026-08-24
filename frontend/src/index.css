@@ -49,6 +49,7 @@
 .compare-props-selected-list,
 .source-page__table-viewport,
 .property-section-fields .table-wrapper,
+.table-wrapper--chemical-elements .data-table-container,
 .editor-body {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -72,6 +73,7 @@
 .compare-props-selected-list::-webkit-scrollbar,
 .source-page__table-viewport::-webkit-scrollbar,
 .property-section-fields .table-wrapper::-webkit-scrollbar,
+.table-wrapper--chemical-elements .data-table-container::-webkit-scrollbar,
 .editor-body::-webkit-scrollbar {
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
@@ -95,6 +97,7 @@
 .compare-props-selected-list::-webkit-scrollbar-thumb,
 .source-page__table-viewport::-webkit-scrollbar-thumb,
 .property-section-fields .table-wrapper::-webkit-scrollbar-thumb,
+.table-wrapper--chemical-elements .data-table-container::-webkit-scrollbar-thumb,
 .editor-body::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb);
   border-radius: 4px;
@@ -118,6 +121,7 @@
 .compare-props-selected-list::-webkit-scrollbar-track,
 .source-page__table-viewport::-webkit-scrollbar-track,
 .property-section-fields .table-wrapper::-webkit-scrollbar-track,
+.table-wrapper--chemical-elements .data-table-container::-webkit-scrollbar-track,
 .editor-body::-webkit-scrollbar-track {
   background-color: var(--scrollbar-track);
 }
@@ -895,7 +899,6 @@ select {
       grid-template-columns:
         minmax(150px, 1.15fr)
         minmax(160px, 1.75fr)
-        120px
         minmax(120px, 200px)
         minmax(0, 1fr);
     }
@@ -1174,8 +1177,7 @@ select {
   }
 
   .selection-control--material select,
-  .selection-control--category select,
-  .selection-control--ntd select {
+  .selection-control--category select {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -1490,7 +1492,7 @@ select {
     flex: 1;
     min-width: 240px;
     max-width: 480px;
-    padding: 6px 10px;
+    padding: 6px 36px 6px 10px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--surface);
@@ -1690,6 +1692,12 @@ select {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  fieldset.editor-readonly-scope:disabled {
+    opacity: 1;
+    color: inherit;
+    pointer-events: auto;
   }
 
   .tab-placeholder {
@@ -1897,6 +1905,17 @@ select {
     box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
   }
 
+  .form-row select.input,
+  .material-select select,
+  .physical-properties-form .property-section-fields .form-row select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
 .property-section-layout {
   display: flex;
   gap: var(--space-xl);
@@ -2010,8 +2029,14 @@ select {
 }
 
 .table-wrapper--chemical-elements {
-  overflow-x: auto;
+  overflow: hidden;
+  width: 100%;
   max-width: 100%;
+  align-self: stretch;
+}
+
+.table-wrapper--chemical-elements .data-table-container {
+  overflow-x: auto;
 }
 
 .property-section-fields table.data-table--chemical-elements {
@@ -2164,7 +2189,7 @@ select {
   min-width: 0;
 }
 
-.property-section-fields .table-wrapper:not(.table-wrapper--temperature-pairs) {
+.property-section-fields .table-wrapper:not(.table-wrapper--temperature-pairs):not(.table-wrapper--chemical-elements) {
   width: 100%;
   align-self: stretch;
   overflow-x: auto;
@@ -2359,6 +2384,8 @@ select {
 .table-controls {
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
+  align-self: stretch;
   gap: 4px;
   padding: 8px;
   background-color: var(--bg);
@@ -3551,12 +3578,69 @@ select {
 }
 
 .selection-table--unified .selection-table-col--source {
-  width: 140px;
-  min-width: 140px;
-  max-width: 200px;
+  width: 168px;
+  min-width: 168px;
+  max-width: 220px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.selection-table--unified th.selection-table-col--ntd-filter {
+  overflow: visible;
+  white-space: normal;
+  vertical-align: top;
+  padding-top: 5px;
+  padding-bottom: 7px;
+}
+
+.selection-ntd-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+.selection-ntd-header__title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.selection-ntd-header__filter {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 18px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.selection-ntd-header__filter:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.selection-table-empty {
+  text-align: center;
+  color: var(--muted, var(--text));
+  padding: 16px 8px;
 }
 
 .selection-table--unified .selection-table-col--temp {
@@ -6322,6 +6406,26 @@ select {
   padding: 4px 6px;
 }
 
+.chem-target-table .chem-target-element-select {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  padding: 4px 22px 4px 6px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+}
+
+.chem-target-element-select__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .chem-target-hint {
   margin: 0;
   font-size: 12px;
@@ -6421,9 +6525,12 @@ select {
 .chem-target-element-picker {
   position: fixed;
   z-index: 1200;
+  box-sizing: border-box;
   width: 240px;
   max-height: 260px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -6433,11 +6540,12 @@ select {
 .chem-target-element-picker ul {
   list-style: none;
   margin: 0;
-  padding: 4px 0;
+  padding: 4px 0 2px;
 }
 
 .chem-target-element-picker button {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   padding: 6px 12px;
   border: none !important;
@@ -6447,6 +6555,7 @@ select {
   text-align: left;
   font: inherit;
   font-size: 13px;
+  line-height: 1.35;
   cursor: pointer;
 }
 
