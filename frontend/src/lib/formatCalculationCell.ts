@@ -1,5 +1,5 @@
-import type { CalculationCell
- } from "../types/api";
+import type { CalculationCell } from "../types/api";
+import { formatDecimal } from "./formatDecimal";
 
 
 function toDisplayNumber(value: CalculationCell["value"]): number | null {
@@ -16,7 +16,7 @@ export function formatCalculationCell(cell: CalculationCell | undefined): string
     return "—";
   }
 
-  const base = numeric.toFixed(1);
+  const base = formatDecimal(numeric, 1);
         if (cell.mode === "interp") {
             return `(${base})`
         }

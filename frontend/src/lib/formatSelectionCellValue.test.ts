@@ -51,6 +51,24 @@ describe("formatSelectionCellValue", () => {
     ).toBe("0.00");
   });
 
+  it("converts linear expansion from 10^-6/C to 1/C", () => {
+    const expansionConfig: UnitResponse = {
+      unit_type: "Коэффициент линейного расширения",
+      system_unit: "10^-6/C",
+      units: ["10^-6/C", "1/С"],
+      factors: { "10^-6/C": 1, "1/С": 1e6 },
+      display_labels: {},
+    };
+    expect(
+      formatSelectionCellValue(10.5, {
+        columnKey: "coefficient_linear_expansion",
+        baseUnit: "10^-6/C",
+        displayUnit: "1/С",
+        unitConfig: expansionConfig,
+      }),
+    ).toBe("1.05e-5");
+  });
+
   it("uses row hardness unit for min/max columns", () => {
     expect(
       formatSelectionCellValue(120, {

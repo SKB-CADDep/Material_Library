@@ -1,3 +1,4 @@
+import { formatDecimal } from "./formatDecimal";
 import type { TemperatureSelectionRow, UnitResponse } from "../types/api";
 import type { SelectionSortColumn } from "./sortSelectionRows";
 import { convertBetweenUnits } from "./unitConversion";
@@ -27,7 +28,7 @@ export function formatSelectionFrozenValue(
 }
 
 function formatSelectionNumericValue(value: number): string {
-  return value.toFixed(2);
+  return formatDecimal(value, 2);
 }
 
 export function formatSelectionCellValue(
