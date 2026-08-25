@@ -19,6 +19,7 @@ import {
   type NamedProperty,
 } from "../lib/namedProperties";
 import { convertBetweenUnits } from "../lib/unitConversion";
+import { parseDecimalInput } from "../lib/formatDecimal";
 import { resolveLinearExpansionUnit } from "../lib/linearExpansionUnit";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
 
@@ -92,11 +93,9 @@ type PhysicalPropertiesTabProps = {
 
 type ChartPoint = { temperature: number; value: number };
 
-/** Пустая строка в input → NaN в draft (можно стереть поле backspace). */
 function parsePairNumber(raw: string): number {
   if (raw === "" || raw === "-") return NaN;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : NaN;
+  return parseDecimalInput(raw) ?? NaN;
 }
 
 function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {

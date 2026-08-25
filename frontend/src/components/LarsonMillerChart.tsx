@@ -37,7 +37,7 @@ const DEFAULT_X_DOMAIN: [number, number] = [14, 18];
 const DEFAULT_Y_DOMAIN: [number, number] = [150, 300];
 const AXIS_TICK_OPTIONS = { targetTickCount: 6 } as const;
 
-const X_AXIS_LABEL = "P = (T + 273,15)(lg τ + C) / 1000";
+const X_AXIS_LABEL = "P = (T + 273.15)(lg τ + C) / 1000";
 const Y_AXIS_LABEL = "Напряжение, МПа";
 
 type ScaleLike = ((value: number | string) => number | undefined) & {

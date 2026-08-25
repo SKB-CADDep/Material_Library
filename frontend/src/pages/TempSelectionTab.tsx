@@ -11,6 +11,7 @@ import {
   TableSortHint,
 } from "../lib/tableSortHeader";
 import { mergeColumnUnits } from "../lib/columnUnits";
+import { parseDecimalInput } from "../lib/formatDecimal";
 import {
   calculationColumnUnitLabel,
   TEMPERATURE_UNIT_TYPE,
@@ -66,7 +67,7 @@ export function TempSelectionTab() {
     queryFn: () =>
       postTemperatureSelection({
         prop_type: propType,
-        temperature: Number(debouncedTemperature) || 0,
+        temperature: parseDecimalInput(debouncedTemperature) ?? 0,
         ...(selectedAreas.length > 0 ? { areas: selectedAreas } : {}),
       }),
     enabled: Boolean(workspace),
@@ -185,7 +186,8 @@ export function TempSelectionTab() {
           </label>
           <input
             id="temperature-input"
-            type="number"
+            type="text"
+            inputMode="decimal"
             className="input"
             value={temperatureInput}
             onChange={(event) => setTemperatureInput(event.target.value)}

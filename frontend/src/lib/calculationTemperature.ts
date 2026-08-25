@@ -1,12 +1,10 @@
 import type { SingleCalculationRow } from "../types/api";
+import { parseDecimalInput } from "./formatDecimal";
 
 const TEMPERATURE_EPSILON = 1e-6;
 
 export function parseCalculationTemperature(value: string): number | null {
-  const normalized = value.trim().replace(",", ".");
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseDecimalInput(value);
 }
 
 function normalizeRowTemperature(value: number | string): number | null {

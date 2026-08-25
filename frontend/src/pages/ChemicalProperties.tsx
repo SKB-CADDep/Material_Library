@@ -11,6 +11,7 @@ import {
 } from "../components/ChemicalCompositionChart";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import { parseDecimalInput } from "../lib/formatDecimal";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
@@ -639,20 +640,23 @@ const handleRowClick = (index: number) => {
                       <td>
                         <input
                           className="table-cell-input"
-                          type="number"
+                        
                           value={row.min_value ?? ""}
                           onChange={(e) =>
-                            updateElementAt(i, { min_value: Number(e.target.value) })
+                            updateElementAt(i, {
+                              min_value: parseDecimalInput(e.target.value) ?? Number.NaN,
+                            })
                           }
                         />
                       </td>
                       <td>
                         <input
                           className="table-cell-input"
-                          type="number"
                           value={row.max_value ?? ""}
                           onChange={(e) =>
-                            updateElementAt(i, { max_value: Number(e.target.value) })
+                            updateElementAt(i, {
+                              max_value: parseDecimalInput(e.target.value) ?? Number.NaN,
+                            })
                           }
                         />
                       </td>

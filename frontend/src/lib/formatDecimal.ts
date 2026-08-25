@@ -8,3 +8,13 @@ export function formatDecimal(value: number, fractionDigits = 2): string {
   }
   return rounded;
 }
+
+
+export function parseDecimalInput(raw: string): number | null {
+  const trimmed = raw.trim().replace(",", ".");
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}

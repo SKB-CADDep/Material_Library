@@ -6,6 +6,7 @@ import { useWorkspace } from "../context/WorkSpaceContext";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { listMaterials, getMaterial } from "../api/materials";
 import { postLarsonMiller } from "../api/selection";
+import { formatDecimal } from "../lib/formatDecimal";
 import type { LarsonMillerCustomPoint } from "../types/api";
 
 const LARSON_MILLER_DEBOUNCE_MS = 600;
@@ -16,9 +17,9 @@ const HOURS_OTHER_LABEL = "Другое";
 const CUSTOM_HOURS_PLACEHOLDER = "Срок службы, ч";
 /** Запас под стрелку выпадающего списка (в единицах ch). */
 const SELECT_ARROW_PADDING_CH = 4;
-/** Минимальная ширина списка срока службы (длиннее «250 000» + стрелка). */
+/** Минимальная ширина списка срока службы (длиннее «250000» + стрелка). */
 const HOURS_SELECT_MIN_CH = 14;
-const P_FORMULA_HINT = "P = (T + 273,15) x (lg τ + C) / 1000";
+const P_FORMULA_HINT = "P = (T + 273.15) x (lg τ + C) / 1000";
 const STRESS_FORMULA_HINT =
   "σ д.п. определяется на основании параметрической зависимости Ларсона-Миллера";
 const FORMULA_HINT_VIEWPORT_GAP = 12;
@@ -58,7 +59,7 @@ type ManualColumn = {
 };
 
 function formatServiceHours(hours: number): string {
-  return hours.toLocaleString("ru-RU");
+  return String(hours);
 }
 
 function parseNumericInput(value: string): number | null {
@@ -69,11 +70,10 @@ function parseNumericInput(value: string): number | null {
 }
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  return value.toLocaleString("ru-RU", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: digits,
-  });
+  if (value == null || !Number.isFinite(value)) return "—";
+  const formatted = formatDecimal(value, digits);
+  if (/e/i.test(formatted)) return formatted;
+  return formatted.replace(/\.?0+$/, "");
 }
 
 function nextColumnId(): string {

@@ -16,6 +16,7 @@ import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
 import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart";
 import { PropertyCommentField } from "../components/PropertyCommentField";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
+import { parseDecimalInput } from "../lib/formatDecimal";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
@@ -60,8 +61,7 @@ type UndependMechPropertiesConfig = {
 };
 function parsePairNumber(raw: string): number {
   if (raw === "" || raw === "-") return NaN;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : NaN;
+  return parseDecimalInput(raw) ?? NaN;
 }
 
 const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
@@ -841,7 +841,6 @@ export function MechanicalPropertiesTab({
                     <label htmlFor={value}>Значение:</label>
                     <input
                       id={value}
-                      type="number"
                       value={data?.min_value ?? ""}
                       className="input"
                       onChange={(event) => {
@@ -852,7 +851,7 @@ export function MechanicalPropertiesTab({
                             mechanical_properties,
                             categoryIndex,
                             prop.key,
-                            { min_value: raw === "" ? undefined : Number(raw) },
+                            { min_value: raw === "" ? undefined : (parseDecimalInput(raw) ?? undefined) },
                           ),
                         );
                       }}
