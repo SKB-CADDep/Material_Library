@@ -209,6 +209,11 @@ body{
   font-size: 14px;
 }
 
+.open-workspace button:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
 .open-workspace button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -469,8 +474,9 @@ button:disabled{
     cursor: not-allowed;
 }
 
-button:hover:not(:disabled):not(.input):not(.unit-select-trigger):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary):not(.calculation-source-ref):not(.source-page__tab):not(.source-page__action-btn):not(.chem-comparison-material-btn):not(.chem-comparison-subtab):not(.chem-comparison-tab .btn--icon):not(.chem-target-element-picker button) {
-    background-color: var(--accent-hover);
+button:hover:not(:disabled):not(.input):not(.unit-select-trigger):not(.area-filter-trigger):not(.area-filter-action):not(.menu-button):not(.dropdown-item):not(.calculation-column-menu-action):not(.column-unit-context-menu__item):not(.ashby-listbox-item):not(.ashby-toolbar-btn):not(.ashby-save-menu-item):not(.button-secondary):not(.calculation-source-ref):not(.source-page__tab):not(.source-page__action-btn):not(.chem-comparison-material-btn):not(.chem-comparison-subtab):not(.chem-comparison-tab .btn--icon):not(.chem-target-element-picker button):not(.btn-primary):not(.retry-button):not(.tab-tour-btn--primary):not(.open-workspace button) {
+    background-color: var(--accent-soft);
+    color: var(--text);
 }
 
 button.button-secondary {
@@ -480,9 +486,9 @@ button.button-secondary {
 }
 
 button.button-secondary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-  color: #fff;
-  border-color: var(--accent-hover);
+  background-color: var(--accent-soft);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
 .error{
@@ -751,6 +757,10 @@ select {
     border-radius: var(--radius);
     background-color: var(--surface);
     color: var(--text);
+  }
+
+  .form-row .input.unit-select-trigger {
+    padding-right: 45px;
   }
 
   /* Excel-like multiselect filter for application areas */
@@ -1827,6 +1837,13 @@ select {
     border: none;
     border-radius: calc(var(--radius) - 2px);
     cursor: pointer;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .property-source-select {
+    flex: 1;
+    min-width: 0;
   }
 
   .unit-select-option:hover {
@@ -2383,9 +2400,9 @@ select {
 }
 
 .table-control-btn:hover {
-  background-color: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
 .table-control-btn:active {
@@ -5456,9 +5473,9 @@ select {
 }
 
 .tab-tour-help-btn:hover:not(:disabled) {
-  background: #3d5a80;
-  border-color: #3d5a80;
-  color: #fff;
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  color: var(--text);
 }
 
 .tab-tour-help-btn:disabled {
@@ -5535,9 +5552,9 @@ select {
 }
 
 .tab-tour-btn--flat:hover:not(:disabled) {
-  color: #fff;
-  background: #3d5a80;
-  border-color: #3d5a80;
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
 .tab-tour-btn--primary {
@@ -5558,9 +5575,9 @@ select {
 }
 
 .tab-tour-btn.tab-tour-btn--back:hover:not(:disabled):not(.tab-tour-btn--flat):not(.tab-tour-btn--primary) {
-  background: #3d5a80;
-  border-color: #3d5a80;
-  color: #fff;
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  color: var(--text);
 }
 
 
