@@ -36,6 +36,12 @@ test.describe("E2E-4: separate calculation — material, KP, table, custom T", (
     await expect(customRow.locator(".calculation-table-col--temp")).toHaveText(
       CUSTOM_TEMP,
     );
-    await expect(customRow).toContainText("(218.5)");
+    await expect(customRow.locator(".calculation-cell--interp").first()).toHaveText(
+      "218.5",
+    );
+    await expect(customRow.locator(".calculation-cell--interp").first()).toHaveAttribute(
+      "title",
+      "Рассчитано интерполяцией между точками",
+    );
   });
 });

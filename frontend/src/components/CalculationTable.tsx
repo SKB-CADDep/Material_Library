@@ -18,7 +18,11 @@ import {
   TEMPERATURE_UNIT_TYPE,
 } from "../lib/calculationColumnHeader";
 
-import { formatCalculationCell } from "../lib/formatCalculationCell";
+import {
+  calculationCellModeClass,
+  calculationCellModeTitle,
+  formatCalculationCell,
+} from "../lib/formatCalculationCell";
 
 import type { CalculationColumnSourceRef } from "../lib/calculationColumnSources";
 
@@ -141,51 +145,21 @@ function CalculationCellValue({
   const text = formatCalculationCell(displayCell);
 
   const isEmpty = !cell || cell.value === null;
-
-
-
-  const modeClass =
-
-    cell?.mode === "interp"
-
-      ? "calculation-cell--interp"
-
-      : cell?.mode === "approx"
-
-        ? "calculation-cell--approx"
-
-        : cell?.mode === "scalar"
-
-          ? "calculation-cell--scalar"
-
-          : "";
-
-
+  const modeClass = calculationCellModeClass(displayCell?.mode);
 
   return (
-
     <span
-
       className={[
-
         "calculation-cell",
-
         modeClass,
-
         isEmpty ? "calculation-cell--empty" : "",
-
       ]
-
         .filter(Boolean)
-
         .join(" ")}
-
+      title={isEmpty ? undefined : calculationCellModeTitle(displayCell?.mode)}
     >
-
       {text}
-
     </span>
-
   );
 
 }
@@ -453,11 +427,6 @@ export function CalculationTable({
 
                     }}
 
-                    title={
-                      canChangeUnit
-                        ? `${header.title ?? headerTitle}. ПКМ — смена единицы измерения`
-                        : header.title ?? headerTitle
-                    }
                     onClick={header.onClick}
                   >
 
@@ -465,7 +434,11 @@ export function CalculationTable({
 
                       <span
                         className="calculation-table-header__text"
-                        title={headerTitle}
+                        title={
+                          canChangeUnit
+                            ? `${header.title ?? headerTitle}. ПКМ — смена единицы измерения`
+                            : header.title ?? headerTitle
+                        }
                       >
 
                         <span className="calculation-table-header__symbol">
