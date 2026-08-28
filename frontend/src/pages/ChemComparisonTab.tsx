@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChemComparisonScenario1Tab } from "./ChemComparisonScenario1Tab";
 import { ChemComparisonScenario2Tab } from "./ChemComparisonScenario2Tab";
+import { KeepAlivePanes } from "../components/KeepAlivePanes";
 
 type ChemScenario = "standards" | "target";
 
@@ -61,11 +62,13 @@ export function ChemComparisonTab() {
         </button>
       </nav>
 
-      {scenario === "standards" ? (
-        <ChemComparisonScenario1Tab />
-      ) : (
-        <ChemComparisonScenario2Tab />
-      )}
+      <KeepAlivePanes
+        activeKey={scenario}
+        panes={[
+          { key: "standards", node: <ChemComparisonScenario1Tab /> },
+          { key: "target", node: <ChemComparisonScenario2Tab /> },
+        ]}
+      />
     </div>
   );
 }

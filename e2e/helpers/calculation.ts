@@ -12,7 +12,7 @@ export async function selectCalculationMaterial(
   page: Page,
   name: string,
 ): Promise<void> {
-  await page.locator("#material-select").selectOption({ label: name });
+  await page.locator("#sep-material-select").selectOption({ label: name });
 }
 
 export async function waitForCalculationDbRows(

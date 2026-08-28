@@ -1,4 +1,4 @@
-import { NavLink, Routes, Route, Navigate } from "react-router-dom";
+import { NavLink, Navigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listMaterials,
@@ -18,6 +18,9 @@ import { ChemicalProperties } from "./ChemicalProperties";
 import { showToastWithOK } from "../lib/toast";
 import { useEditor } from "../context/EditorContext";
 import { useWorkspace } from "../context/WorkSpaceContext";
+import { KeepAlivePanes } from "../components/KeepAlivePanes";
+import { useStickyTabKey } from "../hooks/useStickyTabKey";
+import { editorTabKeyFromPath, isEditorIndexPath } from "../lib/keepAliveRoutes";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -95,6 +98,11 @@ function draftCopyAsNewFile(draft: Record<string, unknown>): Record<string, unkn
 }
 
 export function EditorPage() {
+  const { pathname } = useLocation();
+  const activeEditorTab = useStickyTabKey(
+    editorTabKeyFromPath(pathname),
+    "general",
+  );
   const { workspace } = useWorkspace();
   const result = useQuery({
     queryKey: ["materials"],
@@ -389,49 +397,56 @@ export function EditorPage() {
               </button>
             </div>
           ) : (
-            <Routes>
-              <Route index element={<Navigate to="general" replace />} />
-              <Route
-                path="general"
-                element={
-                  <AddRedactor
-                    material={draft ?? undefined}
-                    onDraftChange={handleDraftChange}
-                    readOnly={readOnly}
-                  />
-                }
+            <>
+              {isEditorIndexPath(pathname) && (
+                <Navigate to="/editor/general" replace />
+              )}
+              <KeepAlivePanes
+                activeKey={activeEditorTab}
+                panes={[
+                  {
+                    key: "general",
+                    node: (
+                      <AddRedactor
+                        material={draft ?? undefined}
+                        onDraftChange={handleDraftChange}
+                        readOnly={readOnly}
+                      />
+                    ),
+                  },
+                  {
+                    key: "physical",
+                    node: (
+                      <PhysicalPropertiesTab
+                        material={draft ?? undefined}
+                        onDraftChange={handleDraftChange}
+                        readOnly={readOnly}
+                      />
+                    ),
+                  },
+                  {
+                    key: "mechanical",
+                    node: (
+                      <MechanicalPropertiesTab
+                        material={draft ?? undefined}
+                        onDraftChange={handleDraftChange}
+                        readOnly={readOnly}
+                      />
+                    ),
+                  },
+                  {
+                    key: "chemical",
+                    node: (
+                      <ChemicalProperties
+                        material={draft ?? undefined}
+                        onDraftChange={handleDraftChange}
+                        readOnly={readOnly}
+                      />
+                    ),
+                  },
+                ]}
               />
-              <Route
-                path="physical"
-                element={
-                  <PhysicalPropertiesTab
-                    material={draft ?? undefined}
-                    onDraftChange={handleDraftChange}
-                    readOnly={readOnly}
-                  />
-                }
-              />
-              <Route
-                path="mechanical"
-                element={
-                  <MechanicalPropertiesTab
-                    material={draft ?? undefined}
-                    onDraftChange={handleDraftChange}
-                    readOnly={readOnly}
-                  />
-                }
-              />
-              <Route
-                path="chemical"
-                element={
-                  <ChemicalProperties
-                    material={draft ?? undefined}
-                    onDraftChange={handleDraftChange}
-                    readOnly={readOnly}
-                  />
-                }
-              />
-            </Routes>
+            </>
           )}
         </div>
       </div>

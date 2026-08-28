@@ -270,10 +270,10 @@ export function MechanicalPropertiesTab({
     >
       <div className="form-stack">
         <div className="form-row">
-          <label htmlFor="strength_category_select">Категория прочности:</label>
+          <label htmlFor="editor-strength-category-select">Категория прочности:</label>
           <div className="form-row-inline">
           <select
-            id="strength_category_select"
+            id="editor-strength-category-select"
             className="input"
             value={
               (mechanical_properties.strength_category?.length ?? 0) > 0

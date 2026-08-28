@@ -19,7 +19,7 @@ test.describe("E2E-4: separate calculation — material, KP, table, custom T", (
     await openCalculationTab(page);
 
     await selectCalculationMaterial(page, FIXTURE_MATERIAL);
-    await expect(page.locator("#strength_category_select")).toHaveValue(FIXTURE_KP);
+    await expect(page.locator("#sep-strength-category-select")).toHaveValue(FIXTURE_KP);
     await expect(page.locator("#strength_category_ntd_select")).toBeDisabled();
 
     await waitForCalculationDbRows(page, 4);

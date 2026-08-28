@@ -36,6 +36,9 @@ export function AppShell() {
             {workspace!.directory} · {workspace!.count} материалов
           </p>
         )}
+        <p className="session-reset-hint">
+          Чтобы сбросить фильтры, выбранные материалы и черновики, нажмите F5
+        </p>
       </div>
 
       <nav className="main-tabs">
