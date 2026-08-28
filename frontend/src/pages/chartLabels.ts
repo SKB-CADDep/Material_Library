@@ -39,6 +39,8 @@ export function unitDisplayLabel(
   return labels[key] ?? key;
 }
 
+export { propertyUnitForDisplay } from "../lib/columnUnits";
+
 export function formatChartTooltipLine(symbol: string, value: number, unit: string): string {
   if (!Number.isFinite(value)) {
     return unit ? `${symbol} = — ${unit}` : `${symbol} = —`;

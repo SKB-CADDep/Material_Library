@@ -4,6 +4,8 @@ import { postCompareProps, postComparePropsPool } from "../api/selection";
 import { PropertyComparisonChart } from "../components/PropertyComparisonChart";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
+import { useUnitLabels } from "../hooks/useUnitLabels";
+import { formatScientificPlain } from "../lib/scientificNotation";
 import type {
   ComparePropsPoolItem,
   ComparePropsResponse,
@@ -24,10 +26,11 @@ function buildPropertyOptions(
     if (!entries) return;
     for (const [key, meta] of Object.entries(entries)) {
       if (meta.temperature_dependent === false) continue;
-      const symbol = meta.symbol ? ` (${meta.symbol})` : "";
+      const symbol = (meta.display_symbol || meta.symbol || "").trim();
+      const raw = symbol ? `${meta.name} (${symbol})` : meta.name;
       options.push({
         key,
-        label: `${meta.name}${symbol}`,
+        label: formatScientificPlain(raw),
       });
     }
   };
@@ -59,6 +62,16 @@ export function ComparePropsTab() {
   const [activeSearchId, setActiveSearchId] = useState<string | null>(null);
   const [activeSelectedId, setActiveSelectedId] = useState<string | null>(null);
   const [plotData, setPlotData] = useState<ComparePropsResponse | null>(null);
+
+  const selectedPropertyMeta = useMemo(() => {
+    const physical = catalogQuery.data?.physical ?? {};
+    const mechanical = catalogQuery.data?.mechanical ?? {};
+    return physical[propertyKey] ?? mechanical[propertyKey];
+  }, [catalogQuery.data, propertyKey]);
+
+  const { labels: unitLabels } = useUnitLabels(
+    selectedPropertyMeta?.unit_type ?? plotData?.property.unit_type ?? "",
+  );
 
   useEffect(() => {
     if (!propertyKey && propertyOptions.length > 0) {
@@ -342,6 +355,7 @@ export function ComparePropsTab() {
             )}
             <PropertyComparisonChart
               data={plotData}
+              unitLabels={unitLabels}
               emptyMessage={
                 plotMutation.isPending
                   ? "Построение графика…"

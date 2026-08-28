@@ -36,6 +36,11 @@ import {
   exportChartWithLegendSvg,
   type ChartSaveFormat,
 } from "../lib/chartLegendExport";
+import {
+  formatScientificPlain,
+  ScientificText,
+} from "../lib/scientificNotation";
+import { propertyUnitForDisplay } from "../lib/columnUnits";
 
 /** Как у подписи оси X (`label.offset`) — зазор от текста до цифр. */
 const AXIS_LABEL_GAP = 18;
@@ -594,10 +599,11 @@ function formatAxisReadout(
   const safeSymbol =
     symbol.toLowerCase() === "x" || symbol.toLowerCase() === "y" ? "?" : symbol;
   const valueLabel = Number.isFinite(value) ? String(Math.round(value)) : "";
-  const unit = (axis?.unit || "").trim();
-  return unit
+  const unit = propertyUnitForDisplay((axis?.unit || "").trim());
+  const line = unit
     ? `${safeSymbol} = ${valueLabel} ${unit}`
     : `${safeSymbol} = ${valueLabel}`;
+  return formatScientificPlain(line);
 }
 
 function collectMaterialsAtPoint(
@@ -706,8 +712,12 @@ function ComparePointTipPlaque({
           ))}
         </div>
       ) : null}
-      <div>{formatAxisReadout(yAxis, tip.value)}</div>
-      <div>{formatAxisReadout(xAxis, tip.temperature)}</div>
+      <div>
+        <ScientificText>{formatAxisReadout(yAxis, tip.value)}</ScientificText>
+      </div>
+      <div>
+        <ScientificText>{formatAxisReadout(xAxis, tip.temperature)}</ScientificText>
+      </div>
     </div>
   );
 }
@@ -910,7 +920,7 @@ function CompareYAxisLabel({
       fontWeight={400}
       transform={`rotate(-90, ${x}, ${y})`}
     >
-      {label}
+      {formatScientificPlain(label)}
     </text>
   );
 }
@@ -1646,11 +1656,13 @@ function CompareChartToolbar({
 type PropertyComparisonChartProps = {
   data: ComparePropsResponse | null;
   emptyMessage?: string;
+  unitLabels?: Record<string, string>;
 };
 
 export function PropertyComparisonChart({
   data,
   emptyMessage = "Выберите материалы и нажмите «Построить график»",
+  unitLabels = {},
 }: PropertyComparisonChartProps) {
   const plotRef = useRef<HTMLDivElement>(null);
   const legendOverlayRef = useRef<HTMLDivElement>(null);
@@ -1741,15 +1753,15 @@ export function PropertyComparisonChart({
       return { symbol: "?", key: "value", unit: "", label: "Значение" };
     }
     return {
-      symbol: data.property.symbol || data.property.name,
+      symbol: formatScientificPlain(data.property.symbol || data.property.name),
       key: data.property.key,
-      unit: data.property.unit,
+      unit: propertyUnitForDisplay(data.property.unit, unitLabels),
       label: data.property.name,
     };
-  }, [data?.property]);
+  }, [data?.property, unitLabels]);
 
   const yLabel = data
-    ? `${data.property.name} [${data.property.unit}]`
+    ? `${data.property.name} [${propertyUnitForDisplay(data.property.unit, unitLabels)}]`
     : "Значение";
   const title = data
     ? `Зависимость свойства «${data.property.name}» от температуры`
@@ -2018,8 +2030,12 @@ export function PropertyComparisonChart({
       labelEl.style.transform = `translate(${left}px, ${top}px)`;
       labelEl.style.visibility = "visible";
 
-      const yText = formatAxisReadout(yAxisRef.current, dataY);
-      const xText = formatAxisReadout(xAxisRef.current, dataX);
+      const yText = formatScientificPlain(
+        formatAxisReadout(yAxisRef.current, dataY),
+      );
+      const xText = formatScientificPlain(
+        formatAxisReadout(xAxisRef.current, dataX),
+      );
       if (cursorLastTextRef.current.y !== yText) {
         cursorLastTextRef.current.y = yText;
         yLineEl.textContent = yText;

@@ -302,6 +302,7 @@ class ComparePropsPropertyMeta(BaseModel):
     name: str
     symbol: str = ""
     unit: str = ""
+    unit_type: str | None = None
 
 
 class ComparePropsResponse(BaseModel):
