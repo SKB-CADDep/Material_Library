@@ -21,6 +21,7 @@ import {
 import { convertBetweenUnits } from "../lib/unitConversion";
 import { parseDecimalInput } from "../lib/formatDecimal";
 import { resolveLinearExpansionUnit } from "../lib/linearExpansionUnit";
+import { ScientificText } from "../lib/scientificNotation";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
 
 const PHYSICAL_Y_LABELS = {
@@ -194,7 +195,9 @@ function PhysicalPropertySection({
 
   return (
     <fieldset className="form-section">
-      <legend>{config.legend}</legend>
+      <legend>
+        <ScientificText>{config.legend}</ScientificText>
+      </legend>
       <div className="property-section-layout">
         <div className="property-section-fields">
           <div className="form-row">

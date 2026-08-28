@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import type { LarsonMillerResponse } from "../types/api";
 import { formatChartTooltipLine } from "../pages/chartLabels";
+import { ScientificText } from "../lib/scientificNotation";
 import {
   computeNiceAxisFromValues,
   computeTicksForFixedDomain,
@@ -212,7 +213,11 @@ function LarsonMillerPointTooltip({
         boxSizing: "border-box",
       }}
     >
-      <div>{formatChartTooltipLine("σдп", point.stress, "МПа")}</div>
+      <div>
+        <ScientificText>
+          {formatChartTooltipLine("σ_дп", point.stress, "МПа")}
+        </ScientificText>
+      </div>
       <div>{formatChartTooltipLine("P", point.p, "")}</div>
     </div>
   );

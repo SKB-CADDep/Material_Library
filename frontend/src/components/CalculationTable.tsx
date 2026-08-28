@@ -34,6 +34,7 @@ import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 
 import { TempCommentIndicator } from "./TempCommentIndicator";
 
+import { formatScientificPlain, ScientificText } from "../lib/scientificNotation";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import {
   sortCalculationRows,
@@ -321,7 +322,7 @@ export function CalculationTable({
 
                     <span className="calculation-table-header__unit">
 
-                      {temperatureUnitLabel || "°C"}
+                      <ScientificText>{temperatureUnitLabel || "°C"}</ScientificText>
 
                     </span>
 
@@ -436,14 +437,14 @@ export function CalculationTable({
                         className="calculation-table-header__text"
                         title={
                           canChangeUnit
-                            ? `${header.title ?? headerTitle}. ПКМ — смена единицы измерения`
-                            : header.title ?? headerTitle
+                            ? `${formatScientificPlain(header.title ?? headerTitle)}. ПКМ — смена единицы измерения`
+                            : formatScientificPlain(header.title ?? headerTitle)
                         }
                       >
 
                         <span className="calculation-table-header__symbol">
 
-                          {symbol}
+                          <ScientificText>{symbol}</ScientificText>
 
                         </span>
 
@@ -451,7 +452,7 @@ export function CalculationTable({
 
                           <span className="calculation-table-header__unit">
 
-                            {unitLabel}
+                            <ScientificText>{unitLabel}</ScientificText>
 
                           </span>
 

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SingleCalculationColumn, UnitResponse } from "../types/api";
 import { calculationColumnMenuLabel } from "../lib/calculationColumnHeader";
+import { ScientificText } from "../lib/scientificNotation";
 import {
   filterVisibleColumns,
   setAllColumnVisibility,
@@ -137,11 +138,13 @@ export function CalculationColumnMenu({
                       onChange(toggleColumnVisibility(visibility, col.key))
                     }
                   />{" "}
-                  {calculationColumnMenuLabel(
-                    col,
-                    columnUnits[col.key] ?? col.unit,
-                    col.unit_type ? unitConfigs[col.unit_type] : undefined,
-                  )}
+                  <ScientificText>
+                    {calculationColumnMenuLabel(
+                      col,
+                      columnUnits[col.key] ?? col.unit,
+                      col.unit_type ? unitConfigs[col.unit_type] : undefined,
+                    )}
+                  </ScientificText>
                 </label>
               ))}
             </div>

@@ -36,6 +36,10 @@ import type {
   AshbyResponse,
 } from "../types/api";
 import {
+  formatScientificPlain,
+  ScientificText,
+} from "../lib/scientificNotation";
+import {
   computeNiceAxisFromValues,
   computeTicksForFixedDomain,
   type NiceAxisResult,
@@ -1594,7 +1598,7 @@ function AshbyAxisLabels({
           fill="currentColor"
           fontSize={14}
         >
-          {xLabel}
+          {formatScientificPlain(xLabel)}
         </text>
       ) : null}
       {yLabel ? (
@@ -1608,7 +1612,7 @@ function AshbyAxisLabels({
           fontSize={14}
           transform={`rotate(-90, ${yTextX}, ${yTextY})`}
         >
-          {yLabel}
+          {formatScientificPlain(yLabel)}
         </text>
       ) : null}
     </g>
@@ -2300,8 +2304,12 @@ function AshbyPointTipPlaque({
           ))}
         </div>
       ) : null}
-      <div>{formatAshbyAxisReadout(yAxis, tip.y)}</div>
-      <div>{formatAshbyAxisReadout(xAxis, tip.x)}</div>
+      <div>
+        <ScientificText>{formatAshbyAxisReadout(yAxis, tip.y)}</ScientificText>
+      </div>
+      <div>
+        <ScientificText>{formatAshbyAxisReadout(xAxis, tip.x)}</ScientificText>
+      </div>
     </div>
   );
 }
@@ -2903,8 +2911,12 @@ function AshbyChart({
       labelEl.style.transform = `translate(${left}px, ${top}px)`;
       labelEl.style.visibility = "visible";
 
-      const yText = formatAshbyAxisReadout(yAxisRef.current, dataY);
-      const xText = formatAshbyAxisReadout(xAxisRef.current, dataX);
+      const yText = formatScientificPlain(
+        formatAshbyAxisReadout(yAxisRef.current, dataY),
+      );
+      const xText = formatScientificPlain(
+        formatAshbyAxisReadout(xAxisRef.current, dataX),
+      );
       if (cursorLastTextRef.current.y !== yText) {
         cursorLastTextRef.current.y = yText;
         yLineEl.textContent = yText;
@@ -4447,7 +4459,7 @@ export function AshbyTab() {
               >
                 {xOptions.map((axis) => (
                   <option key={axis.key} value={axis.key}>
-                    {axis.label}
+                    {formatScientificPlain(axis.label)}
                   </option>
                 ))}
               </select>
@@ -4468,7 +4480,7 @@ export function AshbyTab() {
               >
                 {yOptions.map((axis) => (
                   <option key={axis.key} value={axis.key}>
-                    {axis.label}
+                    {formatScientificPlain(axis.label)}
                   </option>
                 ))}
               </select>

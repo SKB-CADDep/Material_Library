@@ -7,6 +7,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { listMaterials, getMaterial } from "../api/materials";
 import { postLarsonMiller } from "../api/selection";
 import { formatDecimal } from "../lib/formatDecimal";
+import { ScientificText } from "../lib/scientificNotation";
 import type { LarsonMillerCustomPoint } from "../types/api";
 
 const LARSON_MILLER_DEBOUNCE_MS = 600;
@@ -655,7 +656,9 @@ export function LarsonMillerTab() {
                         )
                       }
                     />
-                    <label>σдп, МПа</label>
+                    <label>
+                      <ScientificText>{"σ_дп, МПа"}</ScientificText>
+                    </label>
                     <input
                       type="text"
                       className="input larson-miller-editable-cell"
@@ -714,7 +717,10 @@ export function LarsonMillerTab() {
                       </thead>
                       <tbody>
                         <tr>
-                          <th scope="row">Предел длительной прочности, σдп, МПа</th>
+                          <th scope="row">
+                            Предел длительной прочности,{" "}
+                            <ScientificText>{"σ_дп, МПа"}</ScientificText>
+                          </th>
                           {tableColumns.map((column) => (
                             <td
                               key={`${column.key}-stress`}
