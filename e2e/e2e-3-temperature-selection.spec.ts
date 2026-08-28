@@ -18,10 +18,10 @@ test.describe("E2E-3: temperature selection table, sort, NTD filter", () => {
 
     await expect(
       page.locator("th.selection-table-col--material"),
-    ).toContainText("Материал");
+    ).toContainText("Маркировка");
     await expect(page.locator("th.selection-table-col--kp")).toContainText("КП");
     await expect(page.locator("th.selection-table-col--source")).toContainText(
-      "НТД",
+      "Нормативно-техническая документация",
     );
 
     const materialHeader = page.locator("th.selection-table-col--material");
@@ -60,5 +60,75 @@ test.describe("E2E-3: temperature selection table, sort, NTD filter", () => {
 
     await ntdSelect.selectOption("");
     await waitForSelectionTableRows(page, 3);
+  });
+
+  test("keeps tприм column aligned with header after temperature change", async ({
+    page,
+  }) => {
+    await openTemperatureSelectionTab(page);
+    await waitForSelectionTableRows(page, 3);
+
+    const assertTprimAligned = async () => {
+      const header = page
+        .locator(
+          "thead tr:not(.table-header-resize-rail-row) th.selection-table-col--temp",
+        )
+        .first();
+      const cell = page.locator("tbody td.selection-table-col--temp").first();
+      const sourceHeader = page.locator("th.selection-table-col--source").first();
+
+      const [headerBox, cellBox, sourceBox] = await Promise.all([
+        header.boundingBox(),
+        cell.boundingBox(),
+        sourceHeader.boundingBox(),
+      ]);
+
+      expect(headerBox).toBeTruthy();
+      expect(cellBox).toBeTruthy();
+      expect(sourceBox).toBeTruthy();
+      expect(Math.abs(headerBox!.x - cellBox!.x)).toBeLessThan(2);
+      expect(Math.abs(headerBox!.width - cellBox!.width)).toBeLessThan(2);
+      expect(Math.abs(headerBox!.x - (sourceBox!.x + sourceBox!.width))).toBeLessThan(
+        2,
+      );
+    };
+
+    await assertTprimAligned();
+
+    const temperatureInput = page.locator("#temperature-input");
+    await temperatureInput.fill("2");
+    await temperatureInput.press("Enter");
+    await waitForSelectionTableRows(page, 1);
+
+    await assertTprimAligned();
+  });
+
+  test("keeps header and marking column visible while scrolling rows", async ({
+    page,
+  }) => {
+    await openTemperatureSelectionTab(page);
+    await waitForSelectionTableRows(page, 3);
+
+    const viewport = page.locator(".selection-table-viewport--unified");
+    await viewport.evaluate((el) => {
+      (el as HTMLElement).style.maxHeight = "140px";
+    });
+
+    const header = page.locator("th.selection-table-col--material");
+    const markingCell = page
+      .locator("tbody td.selection-table-col--material")
+      .first();
+    const before = await header.boundingBox();
+    expect(before).toBeTruthy();
+
+    await viewport.evaluate((el) => {
+      el.scrollTop = 80;
+    });
+
+    const after = await header.boundingBox();
+    expect(after).toBeTruthy();
+    expect(Math.abs(after!.y - before!.y)).toBeLessThan(2);
+    await expect(header).toContainText("Маркировка");
+    await expect(markingCell).toBeVisible();
   });
 });

@@ -35,22 +35,32 @@ export type ResizableTableHeadersOptions = {
 };
 
 function recalculateFrozenStickyLeft(table: HTMLTableElement): number {
-  const frozenThs = table.querySelectorAll("thead th.selection-table-col--frozen");
+  const headerRow = table.querySelector(
+    "thead tr:not(.table-header-resize-rail-row)",
+  );
+  if (!headerRow) {
+    return 0;
+  }
+
+  const frozenThs = Array.from(headerRow.children).filter((cell) =>
+    (cell as HTMLElement).classList.contains("selection-table-col--frozen"),
+  ) as HTMLElement[];
   if (frozenThs.length === 0) {
     return 0;
   }
 
   let left = 0;
   frozenThs.forEach((th) => {
-    const el = th as HTMLElement;
-    const idx = Array.from(el.parentElement!.children).indexOf(el);
-    const width = el.getBoundingClientRect().width;
-    table.querySelectorAll("tr").forEach((tr) => {
-      const cell = tr.children[idx] as HTMLElement | undefined;
-      if (cell?.classList.contains("selection-table-col--frozen")) {
-        cell.style.left = `${left}px`;
-      }
-    });
+    const idx = Array.from(headerRow.children).indexOf(th);
+    const width = th.offsetWidth;
+    table
+      .querySelectorAll("tr:not(.table-header-resize-rail-row)")
+      .forEach((tr) => {
+        const cell = tr.children[idx] as HTMLElement | undefined;
+        if (cell?.classList.contains("selection-table-col--frozen")) {
+          cell.style.left = `${left}px`;
+        }
+      });
     left += width;
   });
 

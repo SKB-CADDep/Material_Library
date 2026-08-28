@@ -50,6 +50,12 @@ export function TempSelectionTab() {
     temperatureInput,
     TEMPERATURE_DEBOUNCE_MS,
   );
+  const [appliedTemperature, setAppliedTemperature] =
+    useState(debouncedTemperature);
+
+  useEffect(() => {
+    setAppliedTemperature(debouncedTemperature);
+  }, [debouncedTemperature]);
   const [sortState, setSortState] = useState<SelectionSortState>(null);
   const [selectedNtd, setSelectedNtd] = useState(ALL_NTD_FILTER);
   const [columnUnits, setColumnUnits] = useState<Record<string, string>>({});
@@ -62,12 +68,12 @@ export function TempSelectionTab() {
       "temperature",
       propType,
       selectedAreas,
-      debouncedTemperature,
+      appliedTemperature,
     ],
     queryFn: () =>
       postTemperatureSelection({
         prop_type: propType,
-        temperature: parseDecimalInput(debouncedTemperature) ?? 0,
+        temperature: parseDecimalInput(appliedTemperature) ?? 0,
         ...(selectedAreas.length > 0 ? { areas: selectedAreas } : {}),
       }),
     enabled: Boolean(workspace),
@@ -89,7 +95,7 @@ export function TempSelectionTab() {
   useEffect(() => {
     setSortState(null);
     setSelectedNtd(ALL_NTD_FILTER);
-  }, [propType, debouncedTemperature, selectedAreas]);
+  }, [propType, appliedTemperature, selectedAreas]);
 
   useEffect(() => {
     if (!selectedNtd) {
@@ -191,6 +197,13 @@ export function TempSelectionTab() {
             className="input"
             value={temperatureInput}
             onChange={(event) => setTemperatureInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") {
+                return;
+              }
+              event.preventDefault();
+              setAppliedTemperature(temperatureInput);
+            }}
           />
         </div>
 
