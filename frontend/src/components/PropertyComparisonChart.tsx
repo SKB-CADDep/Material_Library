@@ -41,6 +41,7 @@ import {
   ScientificText,
 } from "../lib/scientificNotation";
 import { propertyUnitForDisplay } from "../lib/columnUnits";
+import { computePointTooltipPosition } from "../lib/chartTooltipPosition";
 
 /** Как у подписи оси X (`label.offset`) — зазор от текста до цифр. */
 const AXIS_LABEL_GAP = 18;
@@ -666,13 +667,45 @@ function ComparePointTipPlaque({
   tip,
   xAxis,
   yAxis,
+  plotArea,
+  containerWidth,
+  containerHeight,
 }: {
   tip: ComparePointTip;
   xAxis: AxisReadoutMeta;
   yAxis: AxisReadoutMeta;
+  plotArea: PlotArea;
+  containerWidth: number;
+  containerHeight: number;
 }) {
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!el) {
+      return;
+    }
+    const { x, y } = computePointTooltipPosition({
+      anchorX: tip.chartX,
+      anchorY: tip.chartY,
+      tipWidth: el.offsetWidth,
+      tipHeight: el.offsetHeight,
+      containerWidth,
+      containerHeight,
+      plotArea: {
+        left: plotArea.x,
+        top: plotArea.y,
+        width: plotArea.width,
+        height: plotArea.height,
+      },
+      offset: TOOLTIP_OFFSET,
+    });
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }, [tip, plotArea, containerWidth, containerHeight]);
+
   return (
     <div
+      ref={tipRef}
       className="ashby-point-tooltip compare-props-point-tooltip"
       style={{
         position: "absolute",
@@ -2594,6 +2627,9 @@ export function PropertyComparisonChart({
               tip={pointTip}
               xAxis={xAxisMeta}
               yAxis={yAxisMeta}
+              plotArea={plotAreaForOverlay}
+              containerWidth={chartSize.width}
+              containerHeight={chartSize.height}
             />
           ) : null}
           <CompareCursorCoordsLabel
