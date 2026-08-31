@@ -1,32 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkSpaceContext";
-import { useState, useRef, useEffect } from 'react';
-import { HelpMenu } from "../HelpMenu";
+import { useStickyRoutes } from "../../context/StickyRouteContext";
 
 export function AppShell() {
-  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const { workspace, isOpen } = useWorkspace();
+  const { selectionMainPath, editorMainPath } = useStickyRoutes();
 
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsFileMenuOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const { workspace ,isOpen, openDirectory } = useWorkspace();
-
-  const handleOpenFolder = async () => {
-    const path = window.prompt("Путь к папке с JSON:", workspace?.directory ?? "");
-    if (path) await openDirectory(path);
-  };
-
-  
   return (
     <div className="app-shell">
       <div className="window-header">
@@ -42,8 +21,8 @@ export function AppShell() {
       </div>
 
       <nav className="main-tabs">
-        <NavLink to="/selection">Подбор материала</NavLink>
-        <NavLink to="/editor">Добавление / Редактирование</NavLink>
+        <NavLink to={selectionMainPath}>Подбор материала</NavLink>
+        <NavLink to={editorMainPath}>Добавление / Редактирование</NavLink>
         <NavLink to="/sources">Работа с источниками</NavLink>
       </nav>
 

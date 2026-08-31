@@ -387,6 +387,7 @@ export function CalculationTable({
                   <th
 
                     key={col.key}
+                    data-col-key={col.key}
 
                     className={[
 
@@ -565,6 +566,7 @@ export function CalculationTable({
                     <td
 
                       key={col.key}
+                      data-col-key={col.key}
 
                       className="selection-table-col--value calculation-table-col--value"
 
@@ -665,6 +667,7 @@ export function CalculationTable({
                     <td
 
                       key={col.key}
+                      data-col-key={col.key}
 
                       className="selection-table-col--value calculation-table-col--value"
 

@@ -10,6 +10,30 @@ export type SelectionTabKey =
 
 export type EditorTabKey = "general" | "physical" | "mechanical" | "chemical";
 
+const SELECTION_TAB_PATH: Record<SelectionTabKey, string> = {
+  temperature: "/selection/temperature",
+  calc: "/selection/calc",
+  "compare-props": "/selection/compare-props",
+  "compare-chem": "/selection/compare-chem",
+  ashby: "/selection/ashby",
+  "larson-miller": "/selection/larson-miller",
+};
+
+const EDITOR_TAB_PATH: Record<EditorTabKey, string> = {
+  general: "/editor/general",
+  physical: "/editor/physical",
+  mechanical: "/editor/mechanical",
+  chemical: "/editor/chemical",
+};
+
+export function selectionTabPathFromKey(key: SelectionTabKey): string {
+  return SELECTION_TAB_PATH[key];
+}
+
+export function editorTabPathFromKey(key: EditorTabKey): string {
+  return EDITOR_TAB_PATH[key];
+}
+
 export function mainPageKeyFromPath(pathname: string): MainPageKey {
   if (pathname.startsWith("/editor")) {
     return "editor";
@@ -22,6 +46,9 @@ export function mainPageKeyFromPath(pathname: string): MainPageKey {
 
 export function selectionTabKeyFromPath(pathname: string): SelectionTabKey | null {
   if (!pathname.startsWith("/selection")) {
+    return null;
+  }
+  if (isSelectionIndexPath(pathname)) {
     return null;
   }
   if (pathname.includes("/selection/calc")) {
@@ -44,6 +71,9 @@ export function selectionTabKeyFromPath(pathname: string): SelectionTabKey | nul
 
 export function editorTabKeyFromPath(pathname: string): EditorTabKey | null {
   if (!pathname.startsWith("/editor")) {
+    return null;
+  }
+  if (isEditorIndexPath(pathname)) {
     return null;
   }
   if (pathname.includes("/editor/physical")) {

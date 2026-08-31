@@ -1,4 +1,4 @@
-import { NavLink, Navigate, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listMaterials,
@@ -10,17 +10,17 @@ import {
   validateMaterialDraftForSave,
 } from "../api/materials";
 import { syncMaterialsAfterSave, normalizeMaterialDraft } from "../lib/materialDraft";
-import { useEffect } from "react";
-import { AddRedactor } from "./AddRedactor";
-import { PhysicalPropertiesTab } from "./PhysicalPropertiesTab";
-import { MechanicalPropertiesTab } from "./MechaicalPropertiesTab";
-import { ChemicalProperties } from "./ChemicalProperties";
-import { showToastWithOK } from "../lib/toast";
+import { useEffect, useMemo, useRef, useCallback } from "react";
+import { EditorTabPaneProvider } from "../context/EditorTabPaneContext";
+import { EditorTabPanes } from "./EditorTabPanes";
 import { useEditor } from "../context/EditorContext";
 import { useWorkspace } from "../context/WorkSpaceContext";
-import { KeepAlivePanes } from "../components/KeepAlivePanes";
 import { useStickyTabKey } from "../hooks/useStickyTabKey";
-import { editorTabKeyFromPath, isEditorIndexPath } from "../lib/keepAliveRoutes";
+import { useStickyIndexRedirect } from "../hooks/useStickyIndexRedirect";
+import { useRememberStickyEditorTab } from "../context/StickyRouteContext";
+import { editorTabKeyFromPath, isEditorIndexPath, editorTabPathFromKey } from "../lib/keepAliveRoutes";
+import { readEditorMaterialSearchParams } from "../lib/editorNavigation";
+import { showToastWithOK } from "../lib/toast";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -98,11 +98,18 @@ function draftCopyAsNewFile(draft: Record<string, unknown>): Record<string, unkn
 }
 
 export function EditorPage() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeEditorTab = useStickyTabKey(
     editorTabKeyFromPath(pathname),
     "general",
   );
+  useStickyIndexRedirect(
+    isEditorIndexPath,
+    editorTabPathFromKey,
+    activeEditorTab,
+  );
+  useRememberStickyEditorTab(editorTabKeyFromPath(pathname));
   const { workspace } = useWorkspace();
   const result = useQuery({
     queryKey: ["materials"],
@@ -154,13 +161,47 @@ export function EditorPage() {
     }
   }, [selectedId, detail.data, isNewMaterial]);
 
+  const materials = result.data ?? [];
+
+  useEffect(() => {
+    const { materialId, edit } = readEditorMaterialSearchParams(searchParams);
+    if (!materialId || materials.length === 0) {
+      return;
+    }
+    if (!materials.some((material) => material.id === materialId)) {
+      return;
+    }
+
+    setIsNewMaterial(false);
+    setSelectedId(materialId);
+    setIsEditing(edit);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("material");
+    nextParams.delete("edit");
+    setSearchParams(nextParams, { replace: true });
+  }, [materials, searchParams, setSearchParams, setIsEditing, setIsNewMaterial, setSelectedId]);
+
   const hasFileOnDisk = selectedId !== null && !isNewMaterial;
   const canEdit = isNewMaterial || isEditing;
   const readOnly = hasFileOnDisk && !canEdit;
   const materialLoading = selectedId !== null && !isNewMaterial && detail.isLoading;
   const materialLoadError = selectedId !== null && !isNewMaterial && detail.isError;
-  const showEmptyPanel = !draft && !materialLoading && !materialLoadError
+  const showEmptyPanel = !draft && !materialLoading && !materialLoadError;
+  const showEditorTabs = Boolean(draft) && !materialLoadError;;
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (materialLoading || !draft || hash !== "#larson-miller-constant-c") {
+      return;
+    }
+    const field = document.getElementById("larson-miller-constant-c");
+    if (!(field instanceof HTMLElement)) {
+      return;
+    }
+    field.scrollIntoView({ block: "center", behavior: "smooth" });
+    field.focus({ preventScroll: true });
+  }, [materialLoading, draft, hash]);
 
   const newSave = useMutation({
     mutationFn: ({ body, filename }: { body: Record<string, unknown>; filename: string }) =>
@@ -182,14 +223,28 @@ export function EditorPage() {
   });
 
   const saveBusy = newSave.isPending;
+  const newSaveRef = useRef(newSave);
+  newSaveRef.current = newSave;
 
-  function handleDraftChange(next: Record<string, unknown>) {
-    if (readOnly) {
-      return;
-    }
-    setDraft(next);
-    newSave.reset();
-  }
+  const handleDraftChange = useCallback(
+    (next: Record<string, unknown>) => {
+      if (readOnly) {
+        return;
+      }
+      setDraft(next);
+      newSaveRef.current.reset();
+    },
+    [readOnly, setDraft],
+  );
+
+  const tabPaneState = useMemo(
+    () => ({
+      draft,
+      onDraftChange: handleDraftChange,
+      readOnly,
+    }),
+    [draft, handleDraftChange, readOnly],
+  );
 
   if (result.isLoading) {
     return (
@@ -219,8 +274,6 @@ export function EditorPage() {
     );
   }
 
-
-  const materials = result.data ?? [];
 
   function handleCreateNew() {
     setSelectedId(null);
@@ -373,7 +426,16 @@ export function EditorPage() {
         </nav>
 
         <div className="editor-tab-panel">
-          {materialLoading ? (
+          {showEditorTabs ? (
+            <EditorTabPaneProvider value={tabPaneState}>
+              {materialLoading && (
+                <p className="tab-placeholder editor-panel-state">
+                  Обновление материала…
+                </p>
+              )}
+              <EditorTabPanes activeKey={activeEditorTab} />
+            </EditorTabPaneProvider>
+          ) : materialLoading ? (
             <div className="editor-panel-state">
               <p className="tab-placeholder">Загрузка материала…</p>
             </div>
@@ -387,7 +449,7 @@ export function EditorPage() {
                 </button>
               </div>
             </div>
-          ) : showEmptyPanel ? (
+          ) : (
             <div className="editor-panel-state">
               <p className="tab-placeholder">
                 Выберите материал в списке выше или создайте новый
@@ -396,57 +458,6 @@ export function EditorPage() {
                 Создать новый
               </button>
             </div>
-          ) : (
-            <>
-              {isEditorIndexPath(pathname) && (
-                <Navigate to="/editor/general" replace />
-              )}
-              <KeepAlivePanes
-                activeKey={activeEditorTab}
-                panes={[
-                  {
-                    key: "general",
-                    node: (
-                      <AddRedactor
-                        material={draft ?? undefined}
-                        onDraftChange={handleDraftChange}
-                        readOnly={readOnly}
-                      />
-                    ),
-                  },
-                  {
-                    key: "physical",
-                    node: (
-                      <PhysicalPropertiesTab
-                        material={draft ?? undefined}
-                        onDraftChange={handleDraftChange}
-                        readOnly={readOnly}
-                      />
-                    ),
-                  },
-                  {
-                    key: "mechanical",
-                    node: (
-                      <MechanicalPropertiesTab
-                        material={draft ?? undefined}
-                        onDraftChange={handleDraftChange}
-                        readOnly={readOnly}
-                      />
-                    ),
-                  },
-                  {
-                    key: "chemical",
-                    node: (
-                      <ChemicalProperties
-                        material={draft ?? undefined}
-                        onDraftChange={handleDraftChange}
-                        readOnly={readOnly}
-                      />
-                    ),
-                  },
-                ]}
-              />
-            </>
           )}
         </div>
       </div>

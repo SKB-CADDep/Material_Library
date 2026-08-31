@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { postCompareProps, postComparePropsPool } from "../api/selection";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { PropertyComparisonChart } from "../components/PropertyComparisonChart";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
@@ -41,6 +42,7 @@ function buildPropertyOptions(
 
 export function ComparePropsTab() {
   const { workspace } = useWorkspace();
+  const paneActive = useKeepAlivePaneActive();
   const catalogQuery = usePropertiesCatalog();
   const areaOptions = workspace?.application_areas ?? [];
 
@@ -89,7 +91,7 @@ export function ComparePropsTab() {
         property_key: propertyKey,
         ...(areaFilter ? { area: areaFilter } : {}),
       }),
-    enabled: Boolean(workspace && propertyKey),
+    enabled: Boolean(workspace && propertyKey && paneActive),
   });
 
   const poolItems = useMemo(

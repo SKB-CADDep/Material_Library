@@ -96,9 +96,17 @@ test.describe("E2E-3: temperature selection table, sort, NTD filter", () => {
     await assertTprimAligned();
 
     const temperatureInput = page.locator("#temperature-input");
+    const responsePromise = page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/selection/temperature") &&
+        res.request().method() === "POST" &&
+        res.ok(),
+    );
     await temperatureInput.fill("2");
     await temperatureInput.press("Enter");
-    await waitForSelectionTableRows(page, 1);
+    await responsePromise;
+    await expect(temperatureInput).toHaveValue("2");
+    await waitForSelectionTableRows(page, 3);
 
     await assertTprimAligned();
   });

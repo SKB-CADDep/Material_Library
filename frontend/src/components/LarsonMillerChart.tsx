@@ -15,6 +15,11 @@ import type { LarsonMillerResponse } from "../types/api";
 import { formatChartTooltipLine } from "../pages/chartLabels";
 import { ScientificText } from "../lib/scientificNotation";
 import {
+  larsonMillerChartEmptyMessage,
+  type LarsonMillerChartEmptyReason,
+} from "../lib/larsonMillerStatus";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
+import {
   computeNiceAxisFromValues,
   computeTicksForFixedDomain,
   formatTickLabel,
@@ -259,6 +264,7 @@ const LEGEND_ITEM_STYLE: CSSProperties = {
 
 type LarsonMillerChartProps = {
   data: LarsonMillerResponse | null;
+  emptyReason?: LarsonMillerChartEmptyReason | null;
 };
 
 type PlotPoint = { x: number; y: number };
@@ -470,7 +476,11 @@ function findBestLegendPlacement(
   return bestPlacement;
 }
 
-export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
+export function LarsonMillerChart({
+  data,
+  emptyReason = null,
+}: LarsonMillerChartProps) {
+  const layoutActive = useKeepAlivePaneActive();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -557,6 +567,9 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
   const hasSeries = curvePoints.length > 0 || calcPoint.length > 0;
 
   useEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const wrapEl = wrapRef.current;
     const legendEl = legendRef.current;
     if (!wrapEl || typeof ResizeObserver === "undefined") {
@@ -590,7 +603,19 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
       wrapObserver.disconnect();
       legendObserver?.disconnect();
     };
-  }, []);
+  }, [layoutActive, hasSeries]);
+
+  if (!hasSeries) {
+    return (
+      <div className="larson-miller-chart-wrap larson-miller-chart-empty">
+        <p className="larson-miller-chart-empty-message">
+          {emptyReason
+            ? larsonMillerChartEmptyMessage(emptyReason)
+            : "Недостаточно данных для построения кривой."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapRef} className="larson-miller-chart-wrap">
@@ -744,12 +769,6 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
           ))}
         </ul>
       </div>
-      {!hasSeries && (
-        <p className="larson-miller-chart-hint">
-          Укажите константу C в «Общих данных» материала и заполните табличные
-          данные для построения кривой
-        </p>
-      )}
     </div>
   );
 }

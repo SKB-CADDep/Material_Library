@@ -42,6 +42,7 @@ import {
 } from "../lib/scientificNotation";
 import { propertyUnitForDisplay } from "../lib/columnUnits";
 import { computePointTooltipPosition } from "../lib/chartTooltipPosition";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 
 /** Как у подписи оси X (`label.offset`) — зазор от текста до цифр. */
 const AXIS_LABEL_GAP = 18;
@@ -1697,6 +1698,7 @@ export function PropertyComparisonChart({
   emptyMessage = "Выберите материалы и нажмите «Построить график»",
   unitLabels = {},
 }: PropertyComparisonChartProps) {
+  const layoutActive = useKeepAlivePaneActive();
   const plotRef = useRef<HTMLDivElement>(null);
   const legendOverlayRef = useRef<HTMLDivElement>(null);
   const cursorScaleBridgeRef = useRef<CursorScaleBridge | null>(null);
@@ -2181,6 +2183,9 @@ export function PropertyComparisonChart({
   const chartMargin = useMemo(() => buildChartMargin(), []);
 
   useEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const el = plotRef.current;
     if (!el || typeof ResizeObserver === "undefined") {
       return;
@@ -2194,9 +2199,12 @@ export function PropertyComparisonChart({
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [layoutActive]);
 
   useLayoutEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const el = legendOverlayRef.current;
     if (!el || typeof ResizeObserver === "undefined") {
       return;
@@ -2215,7 +2223,7 @@ export function PropertyComparisonChart({
     const observer = new ResizeObserver(updateLegendSize);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [legendItems, chartSize.height, legendPlacement?.top]);
+  }, [layoutActive, legendItems, chartSize.height, legendPlacement?.top]);
 
   const handleLegendPlacementChange = useCallback((next: LegendPlacement) => {
     setLegendPlacement((prev) =>

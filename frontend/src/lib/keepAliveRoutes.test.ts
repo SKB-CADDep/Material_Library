@@ -20,12 +20,12 @@ describe("keepAliveRoutes", () => {
     expect(selectionTabKeyFromPath("/selection/compare-chem")).toBe(
       "compare-chem",
     );
-    expect(selectionTabKeyFromPath("/selection")).toBe("temperature");
+    expect(selectionTabKeyFromPath("/selection")).toBeNull();
     expect(selectionTabKeyFromPath("/editor/general")).toBeNull();
   });
 
   it("maps editor subtabs and ignores selection paths", () => {
-    expect(editorTabKeyFromPath("/editor")).toBe("general");
+    expect(editorTabKeyFromPath("/editor")).toBeNull();
     expect(editorTabKeyFromPath("/editor/physical")).toBe("physical");
     expect(editorTabKeyFromPath("/selection/calc")).toBeNull();
   });

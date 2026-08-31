@@ -1,4 +1,5 @@
-import { useLayoutEffect, useState, type ReactNode } from "react";
+import { memo, useLayoutEffect, useState, type ReactNode } from "react";
+import { KeepAlivePaneActiveProvider } from "../context/KeepAlivePaneContext";
 
 export type KeepAlivePane = {
   key: string;
@@ -10,6 +11,34 @@ type KeepAlivePanesProps = {
   panes: KeepAlivePane[];
   className?: string;
 };
+
+type KeepAlivePaneSlotProps = {
+  paneKey: string;
+  active: boolean;
+  className?: string;
+  children: ReactNode;
+};
+
+const KeepAlivePaneSlot = memo(function KeepAlivePaneSlot({
+  paneKey,
+  active,
+  className,
+  children,
+}: KeepAlivePaneSlotProps) {
+  return (
+    <div
+      data-keep-alive-key={paneKey}
+      className={["keep-alive-pane", className].filter(Boolean).join(" ")}
+      hidden={!active}
+      inert={!active}
+      aria-hidden={!active}
+    >
+      <KeepAlivePaneActiveProvider active={active}>
+        {children}
+      </KeepAlivePaneActiveProvider>
+    </div>
+  );
+});
 
 export function KeepAlivePanes({
   activeKey,
@@ -35,17 +64,15 @@ export function KeepAlivePanes({
         if (!seen.has(pane.key)) {
           return null;
         }
-        const active = pane.key === activeKey;
         return (
-          <div
+          <KeepAlivePaneSlot
             key={pane.key}
-            className={["keep-alive-pane", className].filter(Boolean).join(" ")}
-            hidden={!active}
-            inert={!active}
-            aria-hidden={!active}
+            paneKey={pane.key}
+            active={pane.key === activeKey}
+            className={className}
           >
             {pane.node}
-          </div>
+          </KeepAlivePaneSlot>
         );
       })}
     </>

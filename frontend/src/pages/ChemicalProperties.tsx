@@ -1,4 +1,5 @@
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { useState, useRef, useEffect } from "react";
 import elements_catalog from '../config/elements_catalog.json'
 import { UnitSelect } from "./UnitSelect";
@@ -107,8 +108,9 @@ export function ChemicalProperties({
   onDraftChange,
   readOnly = false,
 }: ChemicalPropertiesProps) {
-  const propertiesCatalog = usePropertiesCatalog();
-  const result = useSourcesCatalog();
+  const paneActive = useKeepAlivePaneActive();
+  const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
+  const result = useSourcesCatalog({ enabled: paneActive });
   const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
   const [chartMode, setChartMode] = useState<ChartMode>("max");
   const [contextMenu, setContextMenu] = useState<{
@@ -119,7 +121,7 @@ export function ChemicalProperties({
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const elementsTableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(elementsTableRef);
+  useResizableTableHeaders(elementsTableRef, { disabled: !paneActive });
 
   const materialId = material?.material_id as string | undefined;
   const compositionLength =
@@ -159,6 +161,9 @@ export function ChemicalProperties({
   }, [compositionLength]);
 
   useEffect(() => {
+    if (!paneActive) {
+      return;
+    }
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setContextMenu(null);
@@ -167,7 +172,7 @@ export function ChemicalProperties({
 
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [paneActive]);
 
   useEffect(() => {
     setSelectedRowIndex(null);
@@ -607,6 +612,7 @@ const handleRowClick = (index: number) => {
           <fieldset className="property-section-fields">
           <legend>Элементы(ПКМ для выбора из списка)</legend>
             <div className="table-wrapper table-wrapper--chemical-elements">
+              <div className="data-table-container">
               <table ref={elementsTableRef} className="data-table data-table--chemical-elements">
                 <thead>
                   <tr>
@@ -712,6 +718,7 @@ const handleRowClick = (index: number) => {
                   ))}
                 </tbody>
               </table>
+              </div>
               <div className="table-controls">
   <button 
     type="button"

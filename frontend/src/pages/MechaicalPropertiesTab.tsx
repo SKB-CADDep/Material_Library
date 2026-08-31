@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UnitSelect } from "./UnitSelect";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import {
   PropertySourceSelect,
   isOrphanSource,
@@ -219,7 +220,8 @@ export function MechanicalPropertiesTab({
   onDraftChange,
   readOnly = false,
 }: MechanicalPropertiesTabProps) {
-  const result = useSourcesCatalog();
+  const paneActive = useKeepAlivePaneActive();
+  const result = useSourcesCatalog({ enabled: paneActive });
   const mechanicalSources = result.data?.strength_sources ?? [];
   const propertySources = result.data?.property_sources ?? [];
   const propertySourceNames = propertySources.map((src) => src.name_source);
@@ -244,9 +246,9 @@ export function MechanicalPropertiesTab({
   >(null);
   const hardnessTableRef = useRef<HTMLTableElement>(null);
   const scalarHardnessTableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(hardnessTableRef);
-  useResizableTableHeaders(scalarHardnessTableRef);
-  const propertiesCatalog = usePropertiesCatalog()
+  useResizableTableHeaders(hardnessTableRef, { disabled: !paneActive });
+  useResizableTableHeaders(scalarHardnessTableRef, { disabled: !paneActive });
+  const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
   const mechanicalUnitType = (key: string) =>
     propertiesCatalog.data?.mechanical[key]?.unit_type ?? "";
 

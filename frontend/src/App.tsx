@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { WorkspaceProvider, useWorkspace } from "./context/WorkSpaceContext";
 import { AppShell } from "./components/Layout/AppShell";
@@ -7,23 +8,21 @@ import { SelectionPage } from "./pages/SelectionPage";
 import { EditorPage } from "./pages/EditorPage";
 import { SourcesPage } from "./pages/SourcesPage";
 import { EditorProvider } from "./context/EditorContext";
+import { StickyRouteProvider } from "./context/StickyRouteContext";
 import { KeepAlivePanes } from "./components/KeepAlivePanes";
 import { mainPageKeyFromPath } from "./lib/keepAliveRoutes";
+
+const MAIN_KEEP_ALIVE_PANES = [
+  { key: "selection", node: <SelectionPage /> },
+  { key: "editor", node: <EditorPage /> },
+  { key: "sources", node: <SourcesPage /> },
+];
 
 function KeepAliveMainPages() {
   const { pathname } = useLocation();
   const activeKey = mainPageKeyFromPath(pathname);
 
-  return (
-    <KeepAlivePanes
-      activeKey={activeKey}
-      panes={[
-        { key: "selection", node: <SelectionPage /> },
-        { key: "editor", node: <EditorPage /> },
-        { key: "sources", node: <SourcesPage /> },
-      ]}
-    />
-  );
+  return <KeepAlivePanes activeKey={activeKey} panes={MAIN_KEEP_ALIVE_PANES} />;
 }
 
 function AppRoutes() {
@@ -69,7 +68,9 @@ export default function App() {
     <BrowserRouter>
       <WorkspaceProvider>
         <EditorProvider>
+        <StickyRouteProvider>
         <AppRoutes />
+        </StickyRouteProvider>
         </EditorProvider>
       </WorkspaceProvider>
     </BrowserRouter>

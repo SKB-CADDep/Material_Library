@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useClassificationCatalog } from "../hooks/useClassificationCatalog";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { ClassificationFieldset } from "../components/ClassificationFieldset";
 import { parseDecimalInput } from "../lib/formatDecimal";
 
@@ -11,10 +12,11 @@ type AddRedactorProps = {
 };
 
 export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRedactorProps) {
+  const paneActive = useKeepAlivePaneActive();
   const [newArea, setNewArea] = useState("");
   const [localAddedAreas, setLocalAddedAreas] = useState<string[]>([]);
   const { workspace } = useWorkspace();
-  const classificationQuery = useClassificationCatalog();
+  const classificationQuery = useClassificationCatalog({ enabled: paneActive });
 
   const materialKey =
     (material as { material_id?: string } | undefined)?.material_id ?? null;

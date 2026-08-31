@@ -13,6 +13,7 @@ import { useUnitLabels } from "../hooks/useUnitLabels";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import {
   findNamedProp,
   patchPhysicalProperty,
@@ -138,6 +139,7 @@ function PhysicalPropertySection({
   onRowSelect,
   onDraftChange,
   unitType,
+  layoutActive: layoutActiveProp = true,
 }: {
   config: PhysicalPropConfig;
   material: Record<string, unknown>;
@@ -147,7 +149,9 @@ function PhysicalPropertySection({
   onRowSelect: (index: number | null) => void;
   onDraftChange: (next: Record<string, unknown>) => void;
   unitType: string;
+  layoutActive?: boolean;
 }) {
+  const layoutActive = layoutActiveProp;
   const currentSource = resolvePropertySourceName(prop, sources);
   const sourceNames = sources.map((src) => src.name_source);
   const showOrphan = isOrphanSource(currentSource, sourceNames);
@@ -155,7 +159,7 @@ function PhysicalPropertySection({
   const unitsQuery = useQuery({
     queryKey: ["units", unitType],
     queryFn: () => getUnits(unitType),
-    enabled: unitType.length > 0,
+    enabled: layoutActive && unitType.length > 0,
   });
   const storedUnit = prop?.value_unit ?? "";
   const displayUnit =
@@ -298,8 +302,9 @@ export function PhysicalPropertiesTab({
   onDraftChange,
   readOnly = false,
 }: PhysicalPropertiesTabProps) {
-  const result = useSourcesCatalog();
-  const propertiesCatalog = usePropertiesCatalog();
+  const paneActive = useKeepAlivePaneActive();
+  const result = useSourcesCatalog({ enabled: paneActive });
+  const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
   const physicalSources = result.data?.property_sources ?? [];
   const [selectedRows, setSelectedRows] = useState<
     Partial<Record<PhysicalPropKey, number | null>>
@@ -336,6 +341,7 @@ export function PhysicalPropertiesTab({
                 setSelectedRows((prev) => ({ ...prev, [config.key]: index }));
               }}
               onDraftChange={onDraftChange}
+              layoutActive={paneActive}
             />
           ))}
         </div>
