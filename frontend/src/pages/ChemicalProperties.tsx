@@ -1,4 +1,5 @@
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { useState, useRef, useEffect } from "react";
 import elements_catalog from '../config/elements_catalog.json'
 import { UnitSelect } from "./UnitSelect";
@@ -11,6 +12,7 @@ import {
 } from "../components/ChemicalCompositionChart";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import { parseDecimalInput } from "../lib/formatDecimal";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
@@ -106,8 +108,9 @@ export function ChemicalProperties({
   onDraftChange,
   readOnly = false,
 }: ChemicalPropertiesProps) {
-  const propertiesCatalog = usePropertiesCatalog();
-  const result = useSourcesCatalog();
+  const paneActive = useKeepAlivePaneActive();
+  const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
+  const result = useSourcesCatalog({ enabled: paneActive });
   const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
   const [chartMode, setChartMode] = useState<ChartMode>("max");
   const [contextMenu, setContextMenu] = useState<{
@@ -118,7 +121,7 @@ export function ChemicalProperties({
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const elementsTableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(elementsTableRef);
+  useResizableTableHeaders(elementsTableRef, { disabled: !paneActive });
 
   const materialId = material?.material_id as string | undefined;
   const compositionLength =
@@ -158,6 +161,9 @@ export function ChemicalProperties({
   }, [compositionLength]);
 
   useEffect(() => {
+    if (!paneActive) {
+      return;
+    }
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setContextMenu(null);
@@ -166,7 +172,7 @@ export function ChemicalProperties({
 
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [paneActive]);
 
   useEffect(() => {
     setSelectedRowIndex(null);
@@ -640,20 +646,23 @@ const handleRowClick = (index: number) => {
                       <td>
                         <input
                           className="table-cell-input"
-                          type="number"
+                        
                           value={row.min_value ?? ""}
                           onChange={(e) =>
-                            updateElementAt(i, { min_value: Number(e.target.value) })
+                            updateElementAt(i, {
+                              min_value: parseDecimalInput(e.target.value) ?? Number.NaN,
+                            })
                           }
                         />
                       </td>
                       <td>
                         <input
                           className="table-cell-input"
-                          type="number"
                           value={row.max_value ?? ""}
                           onChange={(e) =>
-                            updateElementAt(i, { max_value: Number(e.target.value) })
+                            updateElementAt(i, {
+                              max_value: parseDecimalInput(e.target.value) ?? Number.NaN,
+                            })
                           }
                         />
                       </td>

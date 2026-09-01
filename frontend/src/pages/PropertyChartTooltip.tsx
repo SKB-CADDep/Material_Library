@@ -1,3 +1,4 @@
+import { ScientificText } from "../lib/scientificNotation";
 import { formatChartTooltipLine, parseChartAxisLabel } from "./chartLabels";
 
 type ChartPoint = { temperature: number; value: number };
@@ -28,8 +29,12 @@ export function PropertyChartTooltip({
 
   return (
     <div className="property-chart-tooltip">
-      <p>{temperatureLine}</p>
-      <p>{valueLine}</p>
+      <p>
+        <ScientificText>{temperatureLine}</ScientificText>
+      </p>
+      <p>
+        <ScientificText>{valueLine}</ScientificText>
+      </p>
     </div>
   );
 }

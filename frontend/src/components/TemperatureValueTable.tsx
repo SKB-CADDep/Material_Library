@@ -64,7 +64,6 @@ export function TemperatureValueTable({
                     }
                   >
                     <input
-                      type="number"
                       readOnly={!onChangeTemperature}
                       value={formatPairNumber(temperature)}
                       onChange={
@@ -84,7 +83,6 @@ export function TemperatureValueTable({
                     }
                   >
                     <input
-                      type="number"
                       readOnly={!onChangeValue}
                       onChange={
                         onChangeValue

@@ -13,6 +13,12 @@ import {
 } from "recharts";
 import type { LarsonMillerResponse } from "../types/api";
 import { formatChartTooltipLine } from "../pages/chartLabels";
+import { ScientificText } from "../lib/scientificNotation";
+import {
+  larsonMillerChartEmptyMessage,
+  type LarsonMillerChartEmptyReason,
+} from "../lib/larsonMillerStatus";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import {
   computeNiceAxisFromValues,
   computeTicksForFixedDomain,
@@ -37,7 +43,7 @@ const DEFAULT_X_DOMAIN: [number, number] = [14, 18];
 const DEFAULT_Y_DOMAIN: [number, number] = [150, 300];
 const AXIS_TICK_OPTIONS = { targetTickCount: 6 } as const;
 
-const X_AXIS_LABEL = "P = (T + 273,15)(lg τ + C) / 1000";
+const X_AXIS_LABEL = "P = (T + 273.15)(lg τ + C) / 1000";
 const Y_AXIS_LABEL = "Напряжение, МПа";
 
 type ScaleLike = ((value: number | string) => number | undefined) & {
@@ -211,7 +217,11 @@ function LarsonMillerPointTooltip({
         boxSizing: "border-box",
       }}
     >
-      <div>{formatChartTooltipLine("σдп", point.stress, "МПа")}</div>
+      <div>
+        <ScientificText>
+          {formatChartTooltipLine("σ_дп", point.stress, "МПа")}
+        </ScientificText>
+      </div>
       <div>{formatChartTooltipLine("P", point.p, "")}</div>
     </div>
   );
@@ -253,6 +263,7 @@ const LEGEND_ITEM_STYLE: CSSProperties = {
 
 type LarsonMillerChartProps = {
   data: LarsonMillerResponse | null;
+  emptyReason?: LarsonMillerChartEmptyReason | null;
 };
 
 type PlotPoint = { x: number; y: number };
@@ -464,7 +475,11 @@ function findBestLegendPlacement(
   return bestPlacement;
 }
 
-export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
+export function LarsonMillerChart({
+  data,
+  emptyReason = null,
+}: LarsonMillerChartProps) {
+  const layoutActive = useKeepAlivePaneActive();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -551,6 +566,9 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
   const hasSeries = curvePoints.length > 0 || calcPoint.length > 0;
 
   useEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const wrapEl = wrapRef.current;
     const legendEl = legendRef.current;
     if (!wrapEl || typeof ResizeObserver === "undefined") {
@@ -584,7 +602,19 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
       wrapObserver.disconnect();
       legendObserver?.disconnect();
     };
-  }, []);
+  }, [layoutActive, hasSeries]);
+
+  if (!hasSeries) {
+    return (
+      <div className="larson-miller-chart-wrap larson-miller-chart-empty">
+        <p className="larson-miller-chart-empty-message">
+          {emptyReason
+            ? larsonMillerChartEmptyMessage(emptyReason)
+            : "Недостаточно данных для построения кривой."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapRef} className="larson-miller-chart-wrap">
@@ -738,12 +768,6 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
           ))}
         </ul>
       </div>
-      {!hasSeries && (
-        <p className="larson-miller-chart-hint">
-          Укажите константу C в «Общих данных» материала и заполните табличные
-          данные для построения кривой
-        </p>
-      )}
     </div>
   );
 }

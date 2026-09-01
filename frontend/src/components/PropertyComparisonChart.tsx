@@ -36,6 +36,13 @@ import {
   exportChartWithLegendSvg,
   type ChartSaveFormat,
 } from "../lib/chartLegendExport";
+import {
+  formatScientificPlain,
+  ScientificText,
+} from "../lib/scientificNotation";
+import { propertyUnitForDisplay } from "../lib/columnUnits";
+import { computePointTooltipPosition } from "../lib/chartTooltipPosition";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 
 /** Как у подписи оси X (`label.offset`) — зазор от текста до цифр. */
 const AXIS_LABEL_GAP = 18;
@@ -594,10 +601,11 @@ function formatAxisReadout(
   const safeSymbol =
     symbol.toLowerCase() === "x" || symbol.toLowerCase() === "y" ? "?" : symbol;
   const valueLabel = Number.isFinite(value) ? String(Math.round(value)) : "";
-  const unit = (axis?.unit || "").trim();
-  return unit
+  const unit = propertyUnitForDisplay((axis?.unit || "").trim());
+  const line = unit
     ? `${safeSymbol} = ${valueLabel} ${unit}`
     : `${safeSymbol} = ${valueLabel}`;
+  return formatScientificPlain(line);
 }
 
 function collectMaterialsAtPoint(
@@ -660,13 +668,45 @@ function ComparePointTipPlaque({
   tip,
   xAxis,
   yAxis,
+  plotArea,
+  containerWidth,
+  containerHeight,
 }: {
   tip: ComparePointTip;
   xAxis: AxisReadoutMeta;
   yAxis: AxisReadoutMeta;
+  plotArea: PlotArea;
+  containerWidth: number;
+  containerHeight: number;
 }) {
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!el) {
+      return;
+    }
+    const { x, y } = computePointTooltipPosition({
+      anchorX: tip.chartX,
+      anchorY: tip.chartY,
+      tipWidth: el.offsetWidth,
+      tipHeight: el.offsetHeight,
+      containerWidth,
+      containerHeight,
+      plotArea: {
+        left: plotArea.x,
+        top: plotArea.y,
+        width: plotArea.width,
+        height: plotArea.height,
+      },
+      offset: TOOLTIP_OFFSET,
+    });
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }, [tip, plotArea, containerWidth, containerHeight]);
+
   return (
     <div
+      ref={tipRef}
       className="ashby-point-tooltip compare-props-point-tooltip"
       style={{
         position: "absolute",
@@ -706,8 +746,12 @@ function ComparePointTipPlaque({
           ))}
         </div>
       ) : null}
-      <div>{formatAxisReadout(yAxis, tip.value)}</div>
-      <div>{formatAxisReadout(xAxis, tip.temperature)}</div>
+      <div>
+        <ScientificText>{formatAxisReadout(yAxis, tip.value)}</ScientificText>
+      </div>
+      <div>
+        <ScientificText>{formatAxisReadout(xAxis, tip.temperature)}</ScientificText>
+      </div>
     </div>
   );
 }
@@ -910,7 +954,7 @@ function CompareYAxisLabel({
       fontWeight={400}
       transform={`rotate(-90, ${x}, ${y})`}
     >
-      {label}
+      {formatScientificPlain(label)}
     </text>
   );
 }
@@ -1646,12 +1690,15 @@ function CompareChartToolbar({
 type PropertyComparisonChartProps = {
   data: ComparePropsResponse | null;
   emptyMessage?: string;
+  unitLabels?: Record<string, string>;
 };
 
 export function PropertyComparisonChart({
   data,
   emptyMessage = "Выберите материалы и нажмите «Построить график»",
+  unitLabels = {},
 }: PropertyComparisonChartProps) {
+  const layoutActive = useKeepAlivePaneActive();
   const plotRef = useRef<HTMLDivElement>(null);
   const legendOverlayRef = useRef<HTMLDivElement>(null);
   const cursorScaleBridgeRef = useRef<CursorScaleBridge | null>(null);
@@ -1741,15 +1788,15 @@ export function PropertyComparisonChart({
       return { symbol: "?", key: "value", unit: "", label: "Значение" };
     }
     return {
-      symbol: data.property.symbol || data.property.name,
+      symbol: formatScientificPlain(data.property.symbol || data.property.name),
       key: data.property.key,
-      unit: data.property.unit,
+      unit: propertyUnitForDisplay(data.property.unit, unitLabels),
       label: data.property.name,
     };
-  }, [data?.property]);
+  }, [data?.property, unitLabels]);
 
   const yLabel = data
-    ? `${data.property.name} [${data.property.unit}]`
+    ? `${data.property.name} [${propertyUnitForDisplay(data.property.unit, unitLabels)}]`
     : "Значение";
   const title = data
     ? `Зависимость свойства «${data.property.name}» от температуры`
@@ -2018,8 +2065,12 @@ export function PropertyComparisonChart({
       labelEl.style.transform = `translate(${left}px, ${top}px)`;
       labelEl.style.visibility = "visible";
 
-      const yText = formatAxisReadout(yAxisRef.current, dataY);
-      const xText = formatAxisReadout(xAxisRef.current, dataX);
+      const yText = formatScientificPlain(
+        formatAxisReadout(yAxisRef.current, dataY),
+      );
+      const xText = formatScientificPlain(
+        formatAxisReadout(xAxisRef.current, dataX),
+      );
       if (cursorLastTextRef.current.y !== yText) {
         cursorLastTextRef.current.y = yText;
         yLineEl.textContent = yText;
@@ -2132,6 +2183,9 @@ export function PropertyComparisonChart({
   const chartMargin = useMemo(() => buildChartMargin(), []);
 
   useEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const el = plotRef.current;
     if (!el || typeof ResizeObserver === "undefined") {
       return;
@@ -2145,9 +2199,12 @@ export function PropertyComparisonChart({
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [layoutActive]);
 
   useLayoutEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const el = legendOverlayRef.current;
     if (!el || typeof ResizeObserver === "undefined") {
       return;
@@ -2166,7 +2223,7 @@ export function PropertyComparisonChart({
     const observer = new ResizeObserver(updateLegendSize);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [legendItems, chartSize.height, legendPlacement?.top]);
+  }, [layoutActive, legendItems, chartSize.height, legendPlacement?.top]);
 
   const handleLegendPlacementChange = useCallback((next: LegendPlacement) => {
     setLegendPlacement((prev) =>
@@ -2578,6 +2635,9 @@ export function PropertyComparisonChart({
               tip={pointTip}
               xAxis={xAxisMeta}
               yAxis={yAxisMeta}
+              plotArea={plotAreaForOverlay}
+              containerWidth={chartSize.width}
+              containerHeight={chartSize.height}
             />
           ) : null}
           <CompareCursorCoordsLabel

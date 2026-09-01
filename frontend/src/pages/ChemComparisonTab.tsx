@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChemComparisonScenario1Tab } from "./ChemComparisonScenario1Tab";
 import { ChemComparisonScenario2Tab } from "./ChemComparisonScenario2Tab";
+import { KeepAlivePanes } from "../components/KeepAlivePanes";
 
 type ChemScenario = "standards" | "target";
 
@@ -12,6 +13,13 @@ function scenarioTabClass(isActive: boolean): string {
 
 export function ChemComparisonTab() {
   const [scenario, setScenario] = useState<ChemScenario>("standards");
+  const scenarioPanes = useMemo(
+    () => [
+      { key: "standards", node: <ChemComparisonScenario1Tab /> },
+      { key: "target", node: <ChemComparisonScenario2Tab /> },
+    ],
+    [],
+  );
 
   useEffect(() => {
     function handleTourStart() {
@@ -61,11 +69,7 @@ export function ChemComparisonTab() {
         </button>
       </nav>
 
-      {scenario === "standards" ? (
-        <ChemComparisonScenario1Tab />
-      ) : (
-        <ChemComparisonScenario2Tab />
-      )}
+      <KeepAlivePanes activeKey={scenario} panes={scenarioPanes} />
     </div>
   );
 }

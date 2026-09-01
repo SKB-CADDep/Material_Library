@@ -439,7 +439,10 @@ class SelectionService:
                     _TEMPERATURE_AXIS["name"],
                     _TEMPERATURE_AXIS["symbol"],
                 ),
-                "unit": _TEMPERATURE_AXIS["unit"],
+                "unit": self._ashby_display_unit(
+                    _TEMPERATURE_AXIS["unit"],
+                    _TEMPERATURE_AXIS["unit_type"],
+                ),
                 "unit_type": _TEMPERATURE_AXIS["unit_type"],
                 "kind": "temperature",
             }
@@ -450,9 +453,13 @@ class SelectionService:
                 {
                     "key": key,
                     "label": self._axis_label(
-                        meta.get("name", key), meta.get("symbol", "")
+                        meta.get("name", key),
+                        self._properties.get_display_symbol(key),
                     ),
-                    "unit": meta.get("unit", ""),
+                    "unit": self._ashby_display_unit(
+                        meta.get("unit", "") or "",
+                        meta.get("unit_type"),
+                    ),
                     "unit_type": meta.get("unit_type"),
                     "kind": "physical",
                 }
@@ -463,9 +470,13 @@ class SelectionService:
                 {
                     "key": key,
                     "label": self._axis_label(
-                        meta.get("name", key), meta.get("symbol", "")
+                        meta.get("name", key),
+                        self._properties.get_display_symbol(key),
                     ),
-                    "unit": meta.get("unit", ""),
+                    "unit": self._ashby_display_unit(
+                        meta.get("unit", "") or "",
+                        meta.get("unit_type"),
+                    ),
                     "unit_type": meta.get("unit_type"),
                     "kind": "mechanical",
                 }
@@ -995,8 +1006,12 @@ class SelectionService:
             "property": {
                 "key": property_key,
                 "name": meta.get("name", property_key),
-                "symbol": meta.get("symbol", ""),
-                "unit": meta.get("unit", ""),
+                "symbol": self._properties.get_display_symbol(property_key),
+                "unit": self._ashby_display_unit(
+                    meta.get("unit", "") or "",
+                    meta.get("unit_type"),
+                ),
+                "unit_type": meta.get("unit_type"),
             },
             "series": series,
         }

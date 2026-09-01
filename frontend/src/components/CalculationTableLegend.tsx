@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CALCULATION_CELL_TITLES } from "../lib/formatCalculationCell";
 import {
   TABLE_SORT_HINT,
   TableSortHint,
@@ -46,25 +47,25 @@ export function CalculationTableLegend({
           <span className="calculation-cell calculation-table-legend__cell">330.0</span>
         }
         label="из БД"
-        title="Точное значение из базы данных"
+        title={CALCULATION_CELL_TITLES.exact}
       />
       <LegendItem
         sample={
           <span className="calculation-cell calculation-cell--interp calculation-table-legend__cell">
-            (330.0)
+            330.0
           </span>
         }
         label="интерполяция"
-        title="Рассчитано интерполяцией между точками"
+        title={CALCULATION_CELL_TITLES.interp}
       />
       <LegendItem
         sample={
           <span className="calculation-cell calculation-cell--approx calculation-table-legend__cell">
-            [330.0]
+            330.0
           </span>
         }
         label="экстраполяция"
-        title="Рассчитано экстраполяцией за пределы диапазона"
+        title={CALCULATION_CELL_TITLES.approx}
       />
 
       {(showAcceptance || showComments || showSourceRefs) && (

@@ -121,6 +121,9 @@ def test_compare_props_plot_and_no_data():
         ],
     )
     assert plotted["property"]["key"] == "density"
+    assert plotted["property"]["symbol"] == "ρ"
+    assert plotted["property"]["unit"] == "кг/м³"
+    assert plotted["property"]["unit_type"] == "Плотность"
     assert plotted["series"][0]["has_data"] is True
     assert len(plotted["series"][0]["points"]) == 2
     assert plotted["series"][0]["color"].startswith("#")
@@ -138,6 +141,7 @@ def test_compare_props_plot_and_no_data():
             }
         ],
     )
+    assert no_data["property"]["symbol"] == "σ_0,2"
     assert no_data["series"][0]["has_data"] is False
     assert "нет данных" in no_data["series"][0]["label"]
     assert no_data["series"][0]["points"] == []

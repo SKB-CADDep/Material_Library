@@ -345,9 +345,9 @@ export function SepCalculationTab() {
           className="selection-control selection-control--area"
           data-tour="sep-calc-area"
         >
-          <label htmlFor="area-filter-select">Область применения:</label>
+          <label htmlFor="sep-area-filter-select">Область применения:</label>
           <ApplicationAreaFilter
-            id="area-filter-select"
+            id="sep-area-filter-select"
             options={areaOptions}
             selected={selectedAreas}
             onChange={setSelectedAreas}
@@ -357,9 +357,9 @@ export function SepCalculationTab() {
           className="selection-control selection-control--material"
           data-tour="sep-calc-material"
         >
-          <label htmlFor="material-select">Материал:</label>
+          <label htmlFor="sep-material-select">Материал:</label>
           <select
-            id="material-select"
+            id="sep-material-select"
             className="input"
             value={selectedId ?? ""}
             onChange={(event) => {
@@ -378,9 +378,9 @@ export function SepCalculationTab() {
           className="selection-control selection-control--category"
           data-tour="sep-calc-category"
         >
-          <label htmlFor="strength_category_select">Категория прочности:</label>
+          <label htmlFor="sep-strength-category-select">Категория прочности:</label>
           <select
-            id="strength_category_select"
+            id="sep-strength-category-select"
             className="input"
             value={hasCategories ? selectedCategoryName : ""}
             onChange={(event) => {

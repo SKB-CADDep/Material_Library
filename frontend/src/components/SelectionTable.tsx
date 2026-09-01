@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   calculationColumnSymbol,
   calculationColumnUnitLabel,
@@ -14,6 +21,7 @@ import {
   renderSortIndicator,
   sortableHeaderProps,
 } from "../lib/tableSortHeader";
+import { formatScientificPlain, ScientificText } from "../lib/scientificNotation";
 import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 import { SelectionCellContextMenu } from "./SelectionCellContextMenu";
 import { TempCommentIndicator } from "./TempCommentIndicator";
@@ -40,7 +48,7 @@ const FROZEN_COLUMNS: {
 }[] = [
   {
     key: "material_name",
-    label: "Материал",
+    label: "Маркировка",
     className: "selection-table-col--material",
     width: 220,
     stickyLeft: 0,
@@ -54,9 +62,9 @@ const FROZEN_COLUMNS: {
   },
   {
     key: "source",
-    label: "НТД",
+    label: "Нормативно-техническая документация",
     className: "selection-table-col--source",
-    width: 168,
+    width: 160,
     stickyLeft: 284,
   },
   {
@@ -64,7 +72,7 @@ const FROZEN_COLUMNS: {
     label: "tприм ДО",
     className: "selection-table-col--temp",
     width: 100,
-    stickyLeft: 452,
+    stickyLeft: 444,
   },
 ];
 
@@ -101,6 +109,21 @@ type SelectionTableProps = {
   emptyFilterMessage?: string;
 };
 
+function frozenCellStyle(
+  col: (typeof FROZEN_COLUMNS)[number],
+  columnsResized: boolean,
+): CSSProperties | undefined {
+  if (columnsResized) {
+    return undefined;
+  }
+  return {
+    left: col.stickyLeft,
+    width: col.width,
+    minWidth: col.width,
+    maxWidth: col.width,
+  };
+}
+
 function hasTemperatureComment(row: TemperatureSelectionRow): boolean {
   return Boolean((row.temperature_comment ?? "").trim());
 }
@@ -119,11 +142,15 @@ function renderColumnHeader(
   const fullTitle = title ?? (unitLabel ? `${symbol}, ${unitLabel}` : symbol);
 
   return (
-    <span className="calculation-table-header" title={fullTitle}>
+    <span className="calculation-table-header" title={formatScientificPlain(fullTitle)}>
       <span className="calculation-table-header__text">
-        <span className="calculation-table-header__symbol">{symbol}</span>
+        <span className="calculation-table-header__symbol">
+          <ScientificText>{symbol}</ScientificText>
+        </span>
         {unitLabel && (
-          <span className="calculation-table-header__unit">{unitLabel}</span>
+          <span className="calculation-table-header__unit">
+            <ScientificText>{unitLabel}</ScientificText>
+          </span>
         )}
       </span>
     </span>
@@ -155,9 +182,11 @@ export function SelectionTable({
   const [layoutTick, setLayoutTick] = useState(0);
   const [columnsResized, setColumnsResized] = useState(false);
 
+  const scrollColumnKeys = scrollColumns.map((col) => col.key).join("|");
+
   useResizableTableHeaders(tableRef, {
     eventRootRef: viewportRef,
-    headerStructureKey: scrollColumns.map((col) => col.key).join("|"),
+    headerStructureKey: scrollColumnKeys,
     onLayoutChange: () => {
       setColumnsResized(true);
       setLayoutTick((value) => value + 1);
@@ -218,6 +247,7 @@ export function SelectionTable({
     table.classList.remove("data-table--columns-resized");
     table.style.removeProperty("table-layout");
     table.style.removeProperty("width");
+    table.style.removeProperty("min-width");
     table.querySelectorAll("colgroup col").forEach((col) => {
       (col as HTMLElement).style.removeProperty("width");
     });
@@ -228,7 +258,7 @@ export function SelectionTable({
       el.style.removeProperty("max-width");
       el.style.removeProperty("left");
     });
-  }, [scrollColumns]);
+  }, [scrollColumnKeys]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -236,6 +266,12 @@ export function SelectionTable({
     if (!viewport || !table) {
       return;
     }
+
+    const clearMeasuredStickyLeft = () => {
+      table.querySelectorAll(".selection-table-col--frozen").forEach((cell) => {
+        (cell as HTMLElement).style.removeProperty("left");
+      });
+    };
 
     const measure = () => {
       if (scrollColumns.length === 0) {
@@ -248,48 +284,36 @@ export function SelectionTable({
       const viewportWidth = viewport.clientWidth;
       const isResized = table.classList.contains("data-table--columns-resized");
 
-      if (isResized) {
-        table.style.tableLayout = "fixed";
-        table.style.width = "max-content";
-
-        const measuredFrozenWidth = syncFrozenStickyColumns(table);
-        const frozenPart =
-          measuredFrozenWidth > 0 ? measuredFrozenWidth : FROZEN_WIDTH;
-        const totalWidth = table.scrollWidth;
-        const needsScroll = totalWidth > viewportWidth + 1;
-
-        setFrozenWidth(frozenPart);
-        setFillsWidth(false);
-        setHasHorizontalScroll(needsScroll);
-        setScrollWidth(
-          needsScroll
-            ? Math.max(0, totalWidth - frozenPart)
-            : viewportWidth,
-        );
-        return;
-      }
-
       const previousWidth = table.style.width;
       const previousLayout = table.style.tableLayout;
-      table.style.tableLayout = "auto";
+      const previousMinWidth = table.style.minWidth;
+      table.style.tableLayout = "fixed";
+      table.style.minWidth = "0";
       table.style.width = "max-content";
+
       const naturalWidth = table.scrollWidth;
+      const measuredFrozenWidth = isResized
+        ? syncFrozenStickyColumns(table)
+        : FROZEN_WIDTH;
+
+      if (!isResized) {
+        clearMeasuredStickyLeft();
+      }
+
       table.style.width = previousWidth;
       table.style.tableLayout = previousLayout;
+      table.style.minWidth = previousMinWidth;
 
+      const frozenPart =
+        measuredFrozenWidth > 0 ? measuredFrozenWidth : FROZEN_WIDTH;
       const needsScroll = naturalWidth > viewportWidth + 1;
 
-      let measuredFrozenWidth = syncFrozenStickyColumns(table);
-      if (measuredFrozenWidth <= 0) {
-        measuredFrozenWidth = FROZEN_WIDTH;
-      }
-      setFrozenWidth(measuredFrozenWidth);
-
-      setFillsWidth(!needsScroll);
+      setFrozenWidth(frozenPart);
+      setFillsWidth(!needsScroll && !isResized);
       setHasHorizontalScroll(needsScroll);
       setScrollWidth(
         needsScroll
-          ? Math.max(0, naturalWidth - measuredFrozenWidth)
+          ? Math.max(0, naturalWidth - frozenPart)
           : viewportWidth,
       );
 
@@ -305,7 +329,7 @@ export function SelectionTable({
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [scrollColumns, rows, columnUnits, sortState, unitConfigs, layoutTick]);
+  }, [scrollColumnKeys, rows, columnUnits, sortState, unitConfigs, layoutTick]);
 
   const syncScrollLeft = useCallback((source: "viewport" | "track", left: number) => {
     if (syncingRef.current) {
@@ -379,7 +403,7 @@ export function SelectionTable({
                 <col key={col.key} style={{ width: col.width }} />
               ))}
               {scrollColumns.map((col) => (
-                <col key={col.key} />
+                <col key={col.key} style={{ width: 88 }} />
               ))}
             </colgroup>
             <thead>
@@ -406,6 +430,7 @@ export function SelectionTable({
                         ]
                           .filter(Boolean)
                           .join(" ")}
+                        style={frozenCellStyle(col, columnsResized)}
                         title={onSortColumn ? header.title : title}
                         onClick={header.onClick}
                       >
@@ -478,6 +503,7 @@ export function SelectionTable({
                       ]
                         .filter(Boolean)
                         .join(" ")}
+                      style={frozenCellStyle(col, columnsResized)}
                       title={header.title ?? col.label}
                       onClick={header.onClick}
                     >
@@ -565,6 +591,7 @@ export function SelectionTable({
                       ]
                         .filter(Boolean)
                         .join(" ")}
+                      style={frozenCellStyle(col, columnsResized)}
                       title={
                         col.key === "material_name"
                           ? row.material_name

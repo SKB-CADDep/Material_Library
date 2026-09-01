@@ -260,6 +260,7 @@ export type ComparePropsPropertyMeta = {
   name: string;
   symbol: string;
   unit: string;
+  unit_type?: string | null;
 };
 
 export type ComparePropsResponse = {

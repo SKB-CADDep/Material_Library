@@ -6,9 +6,9 @@
         "temperature_dependent": true
     },
     "coefficient_linear_expansion": {
-        "name": "Коэффициент линейного расширения (·10¯⁶)",
+        "name": "Коэффициент линейного расширения",
         "symbol": "α",
-        "unit": "1/С",
+        "unit": "10^-6/C",
         "unit_type": "Коэффициент линейного расширения",
         "temperature_dependent": true
     },

@@ -15,6 +15,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -35,6 +36,11 @@ import type {
   AshbyHull,
   AshbyResponse,
 } from "../types/api";
+import {
+  formatScientificPlain,
+  ScientificText,
+} from "../lib/scientificNotation";
+import { computePointTooltipPosition } from "../lib/chartTooltipPosition";
 import {
   computeNiceAxisFromValues,
   computeTicksForFixedDomain,
@@ -1594,7 +1600,7 @@ function AshbyAxisLabels({
           fill="currentColor"
           fontSize={14}
         >
-          {xLabel}
+          {formatScientificPlain(xLabel)}
         </text>
       ) : null}
       {yLabel ? (
@@ -1608,7 +1614,7 @@ function AshbyAxisLabels({
           fontSize={14}
           transform={`rotate(-90, ${yTextX}, ${yTextY})`}
         >
-          {yLabel}
+          {formatScientificPlain(yLabel)}
         </text>
       ) : null}
     </g>
@@ -2249,18 +2255,50 @@ function AshbyLegendClassSwatch({ color }: { color: string }) {
   );
 }
 
-/** Белая плашка у точки (материалы + Y/X). */
+
 function AshbyPointTipPlaque({
   tip,
   xAxis,
   yAxis,
+  plotArea,
+  containerWidth,
+  containerHeight,
 }: {
   tip: AshbyPointTip;
   xAxis: AshbyAxisMeta | null;
   yAxis: AshbyAxisMeta | null;
+  plotArea: { x: number; y: number; width: number; height: number };
+  containerWidth: number;
+  containerHeight: number;
 }) {
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!el) {
+      return;
+    }
+    const { x, y } = computePointTooltipPosition({
+      anchorX: tip.chartX,
+      anchorY: tip.chartY,
+      tipWidth: el.offsetWidth,
+      tipHeight: el.offsetHeight,
+      containerWidth,
+      containerHeight,
+      plotArea: {
+        left: plotArea.x,
+        top: plotArea.y,
+        width: plotArea.width,
+        height: plotArea.height,
+      },
+      offset: ASHBY_TOOLTIP_OFFSET,
+    });
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }, [tip, plotArea, containerWidth, containerHeight]);
+
   return (
     <div
+      ref={tipRef}
       className="ashby-point-tooltip"
       style={{
         position: "absolute",
@@ -2300,8 +2338,12 @@ function AshbyPointTipPlaque({
           ))}
         </div>
       ) : null}
-      <div>{formatAshbyAxisReadout(yAxis, tip.y)}</div>
-      <div>{formatAshbyAxisReadout(xAxis, tip.x)}</div>
+      <div>
+        <ScientificText>{formatAshbyAxisReadout(yAxis, tip.y)}</ScientificText>
+      </div>
+      <div>
+        <ScientificText>{formatAshbyAxisReadout(xAxis, tip.x)}</ScientificText>
+      </div>
     </div>
   );
 }
@@ -2359,9 +2401,16 @@ function AshbyCursorCoordsLabel({
 function AshbyCursorScaleReporter({
   domain,
   bridgeRef,
+  onPlotAreaChange,
 }: {
   domain: AxisDomain;
   bridgeRef: RefObject<AshbyCursorScaleBridge | null>;
+  onPlotAreaChange?: (plotArea: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void;
 }) {
   const plotArea = usePlotArea();
   const xScale = useXAxisScale() as ScaleLike | undefined;
@@ -2372,6 +2421,18 @@ function AshbyCursorScaleReporter({
   } else {
     bridgeRef.current = null;
   }
+
+  useLayoutEffect(() => {
+    if (plotArea && plotArea.width > 0 && plotArea.height > 0) {
+      onPlotAreaChange?.(plotArea);
+    }
+  }, [
+    plotArea?.x,
+    plotArea?.y,
+    plotArea?.width,
+    plotArea?.height,
+    onPlotAreaChange,
+  ]);
 
   return null;
 }
@@ -2586,6 +2647,7 @@ function AshbyChart({
   legendItems,
   toolMode,
   interactionEnabled,
+  layoutActive = true,
   onDomainPreview,
   onDomainCommit,
 }: {
@@ -2599,6 +2661,7 @@ function AshbyChart({
   legendItems: AshbyLegendItem[];
   toolMode: ChartToolMode;
   interactionEnabled: boolean;
+  layoutActive?: boolean;
   onDomainPreview: (next: AxisDomain) => void;
   onDomainCommit: (next: AxisDomain) => void;
 }) {
@@ -2639,6 +2702,27 @@ function AshbyChart({
   const [legendSize, setLegendSize] = useState({ width: 280, height: 120 });
   const [legendPlacement, setLegendPlacement] = useState<AshbyLegendPlacement | null>(
     null,
+  );
+  const [livePlotArea, setLivePlotArea] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const handlePlotAreaChange = useCallback(
+    (next: { x: number; y: number; width: number; height: number }) => {
+      setLivePlotArea((prev) =>
+        prev &&
+        prev.x === next.x &&
+        prev.y === next.y &&
+        prev.width === next.width &&
+        prev.height === next.height
+          ? prev
+          : next,
+      );
+    },
+    [],
   );
 
   xAxisRef.current = xAxis;
@@ -2903,8 +2987,12 @@ function AshbyChart({
       labelEl.style.transform = `translate(${left}px, ${top}px)`;
       labelEl.style.visibility = "visible";
 
-      const yText = formatAshbyAxisReadout(yAxisRef.current, dataY);
-      const xText = formatAshbyAxisReadout(xAxisRef.current, dataX);
+      const yText = formatScientificPlain(
+        formatAshbyAxisReadout(yAxisRef.current, dataY),
+      );
+      const xText = formatScientificPlain(
+        formatAshbyAxisReadout(xAxisRef.current, dataX),
+      );
       if (cursorLastTextRef.current.y !== yText) {
         cursorLastTextRef.current.y = yText;
         yLineEl.textContent = yText;
@@ -2994,6 +3082,9 @@ function AshbyChart({
   }, []);
 
   useLayoutEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const el = legendOverlayRef.current;
     if (!el) {
       return;
@@ -3017,9 +3108,12 @@ function AshbyChart({
     return () => {
       observer.disconnect();
     };
-  }, [legendItems, chartSize.height, legendPlacement?.top]);
+  }, [layoutActive, legendItems, chartSize.height, legendPlacement?.top]);
 
   useEffect(() => {
+    if (!layoutActive) {
+      return;
+    }
     const stage = stageRef.current;
     if (!stage) {
       return;
@@ -3045,7 +3139,7 @@ function AshbyChart({
       observer.disconnect();
       window.removeEventListener("resize", updateSize);
     };
-  }, []);
+  }, [layoutActive]);
 
   const domainLiveRef = useRef(domain);
   domainLiveRef.current = domain;
@@ -3162,9 +3256,24 @@ function AshbyChart({
     }
   }, [estimatedYAxisWidth]);
 
-  // React onWheel — passive, preventDefault не блокирует скролл страницы.
-  // Нативный listener с { passive: false } нужен, чтобы зум не крутил страницу.
-  // Над легендой preventDefault не ставим — иначе не крутится список.
+  const plotAreaForTooltip =
+    livePlotArea ??
+    (() => {
+      const x = ASHBY_CHART_MARGIN.left + yAxisWidth;
+      return {
+        x,
+        y: ASHBY_CHART_MARGIN.top,
+        width: Math.max(1, chartSize.width - x - ASHBY_CHART_MARGIN.right),
+        height: Math.max(
+          1,
+          chartSize.height -
+            ASHBY_CHART_MARGIN.top -
+            ASHBY_CHART_MARGIN.bottom,
+        ),
+      };
+    })();
+
+
   useEffect(() => {
     const el = canvasRef.current;
     if (!el) {
@@ -3325,6 +3434,7 @@ function AshbyChart({
                 <AshbyCursorScaleReporter
                   domain={domain}
                   bridgeRef={cursorScaleBridgeRef}
+                  onPlotAreaChange={handlePlotAreaChange}
                 />
                 <AshbyChartInteraction
                   mode={toolMode}
@@ -3365,6 +3475,9 @@ function AshbyChart({
                 tip={pointTip}
                 xAxis={xAxis}
                 yAxis={yAxis}
+                plotArea={plotAreaForTooltip}
+                containerWidth={chartSize.width}
+                containerHeight={chartSize.height}
               />
             ) : null}
             <AshbyCursorCoordsLabel
@@ -4138,6 +4251,7 @@ function AshbyChartToolbar({
 
 export function AshbyTab() {
   const { workspace } = useWorkspace();
+  const paneActive = useKeepAlivePaneActive();
   const areaOptions = workspace?.application_areas ?? [];
 
   const [selectedArea, setSelectedArea] = useState("Все");
@@ -4156,7 +4270,7 @@ export function AshbyTab() {
   const optionsQuery = useQuery({
     queryKey: ["selection", "ashby", "options", selectedArea],
     queryFn: () => getAshbyOptions(areasParam),
-    enabled: Boolean(workspace),
+    enabled: Boolean(workspace) && paneActive,
   });
 
   const axes = optionsQuery.data?.axes ?? EMPTY_AXES;
@@ -4447,7 +4561,7 @@ export function AshbyTab() {
               >
                 {xOptions.map((axis) => (
                   <option key={axis.key} value={axis.key}>
-                    {axis.label}
+                    {formatScientificPlain(axis.label)}
                   </option>
                 ))}
               </select>
@@ -4468,7 +4582,7 @@ export function AshbyTab() {
               >
                 {yOptions.map((axis) => (
                   <option key={axis.key} value={axis.key}>
-                    {axis.label}
+                    {formatScientificPlain(axis.label)}
                   </option>
                 ))}
               </select>
@@ -4624,7 +4738,8 @@ export function AshbyTab() {
                 title={chartTitle}
                 legendItems={legendItems}
                 toolMode={toolMode}
-                interactionEnabled={hasPlottedPoints}
+                interactionEnabled={hasPlottedPoints && paneActive}
+                layoutActive={paneActive}
                 onDomainPreview={setViewDomain}
                 onDomainCommit={setViewDomain}
               />

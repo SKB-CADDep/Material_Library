@@ -55,3 +55,31 @@ describe("convertBetweenUnits", () => {
     expect(fahrenheit).toBeCloseTo(212);
   });
 });
+
+const expansionConfig: UnitConfig = {
+  system_unit: "10^-6/C",
+  factors: {
+    "10^-6/C": 1,
+    "1/С": 1e6,
+  },
+};
+
+describe("linear expansion units", () => {
+  it("keeps 10.5 when staying in 10^-6/C", () => {
+    expect(
+      convertBetweenUnits(10.5, "10^-6/C", "10^-6/C", expansionConfig),
+    ).toBe(10.5);
+  });
+
+  it("converts 10.5 × 10^-6/C to 1/C", () => {
+    expect(
+      convertBetweenUnits(10.5, "10^-6/C", "1/С", expansionConfig),
+    ).toBeCloseTo(1.05e-5);
+  });
+
+  it("converts true 1/C back to 10^-6/C", () => {
+    expect(
+      convertBetweenUnits(1.05e-5, "1/С", "10^-6/C", expansionConfig),
+    ).toBeCloseTo(10.5);
+  });
+});

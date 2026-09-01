@@ -16,6 +16,7 @@ export type PointTooltipPositionInput = {
   offset?: number;
 };
 
+/** Плашка по умолчанию справа-снизу от точки; у края плота — зеркало и кламп. */
 export function computePointTooltipPosition(
   input: PointTooltipPositionInput,
 ): { x: number; y: number } {

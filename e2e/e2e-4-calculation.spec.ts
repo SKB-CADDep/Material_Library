@@ -1,6 +1,7 @@
 import { test, expect } from "./test";
 import {
   addCustomCalculationTemperature,
+  customRowCellByColumnKey,
   dbTemperaturesInTable,
   openCalculationTab,
   selectCalculationMaterial,
@@ -19,7 +20,7 @@ test.describe("E2E-4: separate calculation — material, KP, table, custom T", (
     await openCalculationTab(page);
 
     await selectCalculationMaterial(page, FIXTURE_MATERIAL);
-    await expect(page.locator("#strength_category_select")).toHaveValue(FIXTURE_KP);
+    await expect(page.locator("#sep-strength-category-select")).toHaveValue(FIXTURE_KP);
     await expect(page.locator("#strength_category_ntd_select")).toBeDisabled();
 
     await waitForCalculationDbRows(page, 4);
@@ -36,6 +37,11 @@ test.describe("E2E-4: separate calculation — material, KP, table, custom T", (
     await expect(customRow.locator(".calculation-table-col--temp")).toHaveText(
       CUSTOM_TEMP,
     );
-    await expect(customRow).toContainText("(218.5)");
+    const yieldCell = customRowCellByColumnKey(page, "yield_strength");
+    await expect(yieldCell.locator(".calculation-cell--interp")).toHaveText("218.5");
+    await expect(yieldCell.locator(".calculation-cell--interp")).toHaveAttribute(
+      "title",
+      "Рассчитано интерполяцией между точками",
+    );
   });
 });

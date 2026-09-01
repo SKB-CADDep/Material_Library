@@ -51,20 +51,26 @@ function readTargetRect(
   paddingX: number,
   paddingY: number,
 ): Rect | null {
-  const el = document.querySelector(selector);
-  if (!(el instanceof HTMLElement) || !el.isConnected) {
-    return null;
+  const matches = document.querySelectorAll(selector);
+  for (const node of matches) {
+    if (!(node instanceof HTMLElement) || !node.isConnected) {
+      continue;
+    }
+    if (node.closest("[hidden]")) {
+      continue;
+    }
+    const r = node.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) {
+      continue;
+    }
+    return {
+      left: r.left - paddingX,
+      top: r.top - paddingY,
+      width: r.width + paddingX * 2,
+      height: r.height + paddingY * 2,
+    };
   }
-  const r = el.getBoundingClientRect();
-  if (r.width <= 0 || r.height <= 0) {
-    return null;
-  }
-  return {
-    left: r.left - paddingX,
-    top: r.top - paddingY,
-    width: r.width + paddingX * 2,
-    height: r.height + paddingY * 2,
-  };
+  return null;
 }
 
 function fallbackRect(): Rect {

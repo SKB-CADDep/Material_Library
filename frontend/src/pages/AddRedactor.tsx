@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useClassificationCatalog } from "../hooks/useClassificationCatalog";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { ClassificationFieldset } from "../components/ClassificationFieldset";
+import { parseDecimalInput } from "../lib/formatDecimal";
 
 type AddRedactorProps = {
   material: Record<string, unknown> | undefined;
@@ -10,10 +12,11 @@ type AddRedactorProps = {
 };
 
 export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRedactorProps) {
+  const paneActive = useKeepAlivePaneActive();
   const [newArea, setNewArea] = useState("");
   const [localAddedAreas, setLocalAddedAreas] = useState<string[]>([]);
   const { workspace } = useWorkspace();
-  const classificationQuery = useClassificationCatalog();
+  const classificationQuery = useClassificationCatalog({ enabled: paneActive });
 
   const materialKey =
     (material as { material_id?: string } | undefined)?.material_id ?? null;
@@ -234,12 +237,14 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
             <label htmlFor="temperature">Температура применения ДО, °C:</label>
             <input
               id="temperature"
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={metadata.temperature_application?.value ?? ""}
               className="input"
               onChange={(event) => {
                 const raw = event.target.value;
-                const value = raw === "" ? "": Number(raw);
+                const parsed = parseDecimalInput(raw);
+                const value = raw === "" ? "" : (parsed ?? raw);
                 onDraftChange({
                     ...material,
                     metadata: { ...metadata, temperature_application:{...metadata.temperature_application, value: value }

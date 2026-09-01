@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { LarsonMillerChart } from "../components/LarsonMillerChart";
 import { TabErrorBoundary } from "../components/TabErrorBoundary";
 import { useWorkspace } from "../context/WorkSpaceContext";
@@ -7,6 +9,10 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { listMaterials, getMaterial } from "../api/materials";
 import { materialListLabel } from "../lib/materialDraft";
 import { postLarsonMiller } from "../api/selection";
+import { formatDecimal } from "../lib/formatDecimal";
+import { resolveLarsonMillerChartEmptyReason } from "../lib/larsonMillerStatus";
+import { buildEditorMaterialUrl } from "../lib/editorNavigation";
+import { ScientificText } from "../lib/scientificNotation";
 import type { LarsonMillerCustomPoint } from "../types/api";
 
 const LARSON_MILLER_DEBOUNCE_MS = 600;
@@ -17,9 +23,9 @@ const HOURS_OTHER_LABEL = "Другое";
 const CUSTOM_HOURS_PLACEHOLDER = "Срок службы, ч";
 /** Запас под стрелку выпадающего списка (в единицах ch). */
 const SELECT_ARROW_PADDING_CH = 4;
-/** Минимальная ширина списка срока службы (длиннее «250 000» + стрелка). */
+/** Минимальная ширина списка срока службы (длиннее «250000» + стрелка). */
 const HOURS_SELECT_MIN_CH = 14;
-const P_FORMULA_HINT = "P = (T + 273,15) x (lg τ + C) / 1000";
+const P_FORMULA_HINT = "P = (T + 273.15) x (lg τ + C) / 1000";
 const STRESS_FORMULA_HINT =
   "σ д.п. определяется на основании параметрической зависимости Ларсона-Миллера";
 const FORMULA_HINT_VIEWPORT_GAP = 12;
@@ -59,7 +65,7 @@ type ManualColumn = {
 };
 
 function formatServiceHours(hours: number): string {
-  return hours.toLocaleString("ru-RU");
+  return String(hours);
 }
 
 function parseNumericInput(value: string): number | null {
@@ -70,11 +76,10 @@ function parseNumericInput(value: string): number | null {
 }
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  return value.toLocaleString("ru-RU", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: digits,
-  });
+  if (value == null || !Number.isFinite(value)) return "—";
+  const formatted = formatDecimal(value, digits);
+  if (/e/i.test(formatted)) return formatted;
+  return formatted.replace(/\.?0+$/, "");
 }
 
 function nextColumnId(): string {
@@ -164,6 +169,7 @@ function FormulaHint({
 
 export function LarsonMillerTab() {
   const { workspace } = useWorkspace();
+  const paneActive = useKeepAlivePaneActive();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -185,12 +191,13 @@ export function LarsonMillerTab() {
   const materialsQuery = useQuery({
     queryKey: ["materials"],
     queryFn: listMaterials,
+    enabled: paneActive,
   });
 
   const detailQuery = useQuery({
     queryKey: ["material", selectedId],
     queryFn: () => getMaterial(selectedId!),
-    enabled: selectedId !== null,
+    enabled: selectedId !== null && paneActive,
   });
 
   const materialList = materialsQuery.data ?? [];
@@ -348,6 +355,7 @@ export function LarsonMillerTab() {
   }, [customHoursMode, debouncedManualColumns]);
 
   const queryEnabled =
+    paneActive &&
     Boolean(workspace) &&
     selectedId !== null &&
     activeCategoryIndex !== null &&
@@ -512,6 +520,18 @@ export function LarsonMillerTab() {
     parsedCustomBaseHoursForUi != null &&
     parsedCustomBaseHoursForUi > 0;
 
+  const missingConstantC =
+    selectedId !== null && hasCategories && storedConstantC == null;
+
+  const chartEmptyReason = useMemo(
+    () =>
+      resolveLarsonMillerChartEmptyReason(
+        larsonData,
+        storedConstantC != null,
+      ),
+    [larsonData, storedConstantC],
+  );
+
   const statusMessage = !workspace
     ? "Откройте workspace с материалами"
     : !selectedId
@@ -522,17 +542,16 @@ export function LarsonMillerTab() {
             (parsedCustomBaseHoursForUi == null ||
               parsedCustomBaseHoursForUi <= 0)
           ? "Укажите срок службы в поле ввода"
-        : customHoursMode && manualColumns.length === 0
-          ? "Добавьте столбцы и заполните табличные данные"
-          : larsonQuery.isError
-            ? larsonQuery.error.message
-            : !customHoursMode &&
-                larsonData &&
-                !larsonData.from_database &&
-                larsonData.table_points.length === 0
-              ? "Нет данных в базе для выбранного срока — выберите «Другое» и укажите срок вручную"
-              : storedConstantC == null
-                ? "Укажите константу C в карточке материала: Добавление / редактирование → Общие данные → «Константа Ларсона–Миллера C»"
+          : customHoursMode && manualColumns.length === 0
+            ? "Добавьте столбцы и заполните табличные данные"
+            : larsonQuery.isError
+              ? larsonQuery.error.message
+              : larsonData &&
+                  larsonData.table_points.length === 0 &&
+                  !showManualEditor
+                ? customHoursMode
+                  ? "Заполните температуру и σдп в табличных столбцах"
+                  : `Нет данных σдп для срока ${titleHoursLabel} ч в базе — выберите другой срок из списка или «Другое»`
                 : null;
 
   return (
@@ -611,6 +630,38 @@ export function LarsonMillerTab() {
               )}
             </div>
           )}
+          {selectedId && hasCategories && (
+            <div
+              className={
+                missingConstantC
+                  ? "larson-miller-constant-banner larson-miller-constant-banner--missing"
+                  : "larson-miller-constant-banner"
+              }
+              data-tour="lm-constant-c"
+            >
+              {storedConstantC != null ? (
+                <p className="larson-miller-constant-banner__text">
+                  Константа Ларсона–Миллера{" "}
+                  <strong>C = {formatNumber(storedConstantC)}</strong> берётся из
+                  «Общих данных» материала и на этой вкладке не редактируется.
+                </p>
+              ) : (
+                <p className="larson-miller-constant-banner__text">
+                  Константа C не задана.{" "}
+                  <Link
+                    to={buildEditorMaterialUrl(selectedId!, "general", {
+                      edit: true,
+                      hash: "larson-miller-constant-c",
+                    })}
+                    className="larson-miller-editor-link"
+                  >
+                    Откройте карточку этого материала в «Общих данных»
+                  </Link>
+                  , укажите «Константа Ларсона–Миллера C» и сохраните.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <section className="selection-body larson-miller-body">
@@ -656,7 +707,9 @@ export function LarsonMillerTab() {
                         )
                       }
                     />
-                    <label>σдп, МПа</label>
+                    <label>
+                      <ScientificText>{"σ_дп, МПа"}</ScientificText>
+                    </label>
                     <input
                       type="text"
                       className="input larson-miller-editable-cell"
@@ -715,7 +768,10 @@ export function LarsonMillerTab() {
                       </thead>
                       <tbody>
                         <tr>
-                          <th scope="row">Предел длительной прочности, σдп, МПа</th>
+                          <th scope="row">
+                            Предел длительной прочности,{" "}
+                            <ScientificText>{"σ_дп, МПа"}</ScientificText>
+                          </th>
                           {tableColumns.map((column) => (
                             <td
                               key={`${column.key}-stress`}
@@ -769,13 +825,33 @@ export function LarsonMillerTab() {
                             </td>
                           ))}
                         </tr>
-                        <tr>
-                          <th scope="row">Постоянная C</th>
-                          {tableColumns.map((column) => (
-                            <td key={`${column.key}-c`}>
-                              {formatNumber(storedConstantC)}
+                        <tr className="larson-miller-table-row--constant-c">
+                          <th scope="row">
+                            Постоянная C
+                            <span className="larson-miller-table-row-note">
+                              {" "}
+                              (из «Общих данных», не редактируется здесь)
+                            </span>
+                          </th>
+                          {materialColumnCount > 0 && (
+                            <td
+                              colSpan={materialColumnCount}
+                              className="larson-miller-c-value-cell"
+                            >
+                              {storedConstantC != null
+                                ? formatNumber(storedConstantC)
+                                : "—"}
                             </td>
-                          ))}
+                          )}
+                          <td className="larson-miller-table-col--calc larson-miller-c-value-cell">
+                            {storedConstantC != null ? (
+                              formatNumber(storedConstantC)
+                            ) : (
+                              <span className="larson-miller-c-missing">
+                                не задана
+                              </span>
+                            )}
+                          </td>
                         </tr>
                         <tr>
                           <th scope="row">Температура T, °C</th>
@@ -842,7 +918,10 @@ export function LarsonMillerTab() {
                     Предел длительной прочности через параметрическую зависимость
                     Ларсона–Миллера
                   </h2>
-                  <LarsonMillerChart data={larsonData} />
+                  <LarsonMillerChart
+                    data={larsonData}
+                    emptyReason={chartEmptyReason}
+                  />
                 </div>
               )}
             </div>

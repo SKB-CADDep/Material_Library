@@ -113,20 +113,6 @@ export function ChemComparisonScenario1Tab() {
     max: 420,
     storageKey: "chem-s1-sidebar-width",
   });
-  const pivotResize = useDragResize({
-    axis: "y",
-    initial: 280,
-    min: 120,
-    max: 720,
-    storageKey: "chem-s1-pivot-height",
-  });
-  const sourcesResize = useDragResize({
-    axis: "y",
-    initial: 140,
-    min: 80,
-    max: 400,
-    storageKey: "chem-s1-sources-height",
-  });
   const hasNotes = useMemo(
     () => collectChemComparisonNotes(comparisonView.columns).length > 0,
     [comparisonView.columns],
@@ -257,37 +243,24 @@ export function ChemComparisonScenario1Tab() {
             )}
 
           {compositionReady && (
-            <div className="chem-comparison-content chem-comparison-content--resizable">
+            <div className="chem-comparison-content chem-comparison-content--stacked">
               <div
-                className="chem-comparison-panel-slot"
-                style={pivotResize.style}
+                className="chem-comparison-panel-slot chem-comparison-panel-slot--pivot"
                 data-tour="chem-s1-pivot"
               >
                 <ChemComparisonPivotPanel view={comparisonView} />
               </div>
 
-              <PanelResizeHandle
-                direction="horizontal"
-                onMouseDown={pivotResize.onHandleMouseDown}
-              />
+              {hasNotes && (
+                <ChemComparisonNotesSection columns={comparisonView.columns} />
+              )}
 
               <div
-                className="chem-comparison-panel-slot"
-                style={sourcesResize.style}
+                className="chem-comparison-panel-slot chem-comparison-panel-slot--sources"
                 data-tour="chem-s1-sources"
               >
                 <ChemComparisonSourcesTable columns={comparisonView.columns} />
               </div>
-
-              {hasNotes && (
-                <>
-                  <PanelResizeHandle
-                    direction="horizontal"
-                    onMouseDown={sourcesResize.onHandleMouseDown}
-                  />
-                  <ChemComparisonNotesSection columns={comparisonView.columns} />
-                </>
-              )}
             </div>
           )}
         </main>

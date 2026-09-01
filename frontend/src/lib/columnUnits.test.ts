@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { UnitResponse } from "../types/api";
 import {
   mergeColumnUnits,
+  propertyUnitForDisplay,
   resolveDefaultColumnUnit,
   unitDisplayText,
 } from "./columnUnits";
@@ -75,5 +76,20 @@ describe("unitDisplayText", () => {
   it("returns raw unit or empty string", () => {
     expect(unitDisplayText("K")).toBe("K");
     expect(unitDisplayText("")).toBe("");
+  });
+});
+
+describe("propertyUnitForDisplay", () => {
+  const densityLabels = {
+    "кг/м3": "кг/м³",
+    "г/см3": "г/см³",
+  };
+
+  it("maps registry key to display_labels with superscript", () => {
+    expect(propertyUnitForDisplay("кг/м3", densityLabels)).toBe("кг/м³");
+  });
+
+  it("raises 2/3 in raw keys without labels", () => {
+    expect(propertyUnitForDisplay("кг/м3")).toBe("кг/м³");
   });
 });

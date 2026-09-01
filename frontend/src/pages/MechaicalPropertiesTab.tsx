@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UnitSelect } from "./UnitSelect";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import {
   PropertySourceSelect,
   isOrphanSource,
@@ -16,6 +17,7 @@ import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
 import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart";
 import { PropertyCommentField } from "../components/PropertyCommentField";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
+import { parseDecimalInput } from "../lib/formatDecimal";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
@@ -60,8 +62,7 @@ type UndependMechPropertiesConfig = {
 };
 function parsePairNumber(raw: string): number {
   if (raw === "" || raw === "-") return NaN;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : NaN;
+  return parseDecimalInput(raw) ?? NaN;
 }
 
 const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
@@ -219,7 +220,8 @@ export function MechanicalPropertiesTab({
   onDraftChange,
   readOnly = false,
 }: MechanicalPropertiesTabProps) {
-  const result = useSourcesCatalog();
+  const paneActive = useKeepAlivePaneActive();
+  const result = useSourcesCatalog({ enabled: paneActive });
   const mechanicalSources = result.data?.strength_sources ?? [];
   const propertySources = result.data?.property_sources ?? [];
   const propertySourceNames = propertySources.map((src) => src.name_source);
@@ -244,9 +246,9 @@ export function MechanicalPropertiesTab({
   >(null);
   const hardnessTableRef = useRef<HTMLTableElement>(null);
   const scalarHardnessTableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(hardnessTableRef);
-  useResizableTableHeaders(scalarHardnessTableRef);
-  const propertiesCatalog = usePropertiesCatalog()
+  useResizableTableHeaders(hardnessTableRef, { disabled: !paneActive });
+  useResizableTableHeaders(scalarHardnessTableRef, { disabled: !paneActive });
+  const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
   const mechanicalUnitType = (key: string) =>
     propertiesCatalog.data?.mechanical[key]?.unit_type ?? "";
 
@@ -270,10 +272,10 @@ export function MechanicalPropertiesTab({
       <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         <div className="form-row">
-          <label htmlFor="strength_category_select">Категория прочности:</label>
+          <label htmlFor="editor-strength-category-select">Категория прочности:</label>
           <div className="form-row-inline">
           <select
-            id="strength_category_select"
+            id="editor-strength-category-select"
             className="input"
             value={
               (mechanical_properties.strength_category?.length ?? 0) > 0
@@ -841,7 +843,6 @@ export function MechanicalPropertiesTab({
                     <label htmlFor={value}>Значение:</label>
                     <input
                       id={value}
-                      type="number"
                       value={data?.min_value ?? ""}
                       className="input"
                       onChange={(event) => {
@@ -852,7 +853,7 @@ export function MechanicalPropertiesTab({
                             mechanical_properties,
                             categoryIndex,
                             prop.key,
-                            { min_value: raw === "" ? undefined : Number(raw) },
+                            { min_value: raw === "" ? undefined : (parseDecimalInput(raw) ?? undefined) },
                           ),
                         );
                       }}

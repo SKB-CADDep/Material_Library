@@ -67,6 +67,17 @@ def test_ashby_options_and_diagram_smoke():
     options = service.ashby_options(repo)
     assert "temperature" in {a["key"] for a in options["axes"]}
     assert "Ферритный" in options["classes"]
+    density_axis = next(axis for axis in options["axes"] if axis["key"] == "density")
+    assert density_axis["unit"] == "кг/м³"
+    assert "ρ" in density_axis["label"]
+    alpha_axis = next(
+        axis
+        for axis in options["axes"]
+        if axis["key"] == "coefficient_linear_expansion"
+    )
+    assert alpha_axis["unit"] == "10⁻⁶/°C"
+    yield_axis = next(axis for axis in options["axes"] if axis["key"] == "yield_strength")
+    assert "σ_0,2" in yield_axis["label"]
 
     result = service.ashby_diagram(
         repo,
@@ -76,6 +87,7 @@ def test_ashby_options_and_diagram_smoke():
     )
     assert result["x_axis"]["key"] == "density"
     assert result["x_axis"]["symbol"] == "ρ"
+    assert result["x_axis"]["unit"] == "кг/м³"
     assert result["y_axis"]["key"] == "temperature"
     assert result["y_axis"]["symbol"] == "T"
     assert len(result["series"]) == 1

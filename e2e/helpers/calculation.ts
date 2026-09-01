@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export async function openCalculationTab(page: Page): Promise<void> {
   await page.goto("/");
@@ -12,7 +12,7 @@ export async function selectCalculationMaterial(
   page: Page,
   name: string,
 ): Promise<void> {
-  await page.locator("#material-select").selectOption({ label: name });
+  await page.locator("#sep-material-select").selectOption({ label: name });
 }
 
 export async function waitForCalculationDbRows(
@@ -60,4 +60,14 @@ export async function waitForCustomCalculationRows(
     rowCount,
     { timeout: 15_000 },
   );
+}
+
+export function customRowCellByColumnKey(
+  page: Page,
+  columnKey: string,
+): Locator {
+  return page
+    .locator(".calculation-table-row--custom")
+    .first()
+    .locator(`td[data-col-key="${columnKey}"]`);
 }

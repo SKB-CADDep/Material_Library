@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useMemo } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { WorkspaceProvider, useWorkspace } from "./context/WorkSpaceContext";
 import { AppShell } from "./components/Layout/AppShell";
 import { OpenWorkspaceScreen } from "./components/Layout/OpenWorkSpaceScreen";
@@ -7,6 +8,22 @@ import { SelectionPage } from "./pages/SelectionPage";
 import { EditorPage } from "./pages/EditorPage";
 import { SourcesPage } from "./pages/SourcesPage";
 import { EditorProvider } from "./context/EditorContext";
+import { StickyRouteProvider } from "./context/StickyRouteContext";
+import { KeepAlivePanes } from "./components/KeepAlivePanes";
+import { mainPageKeyFromPath } from "./lib/keepAliveRoutes";
+
+const MAIN_KEEP_ALIVE_PANES = [
+  { key: "selection", node: <SelectionPage /> },
+  { key: "editor", node: <EditorPage /> },
+  { key: "sources", node: <SourcesPage /> },
+];
+
+function KeepAliveMainPages() {
+  const { pathname } = useLocation();
+  const activeKey = mainPageKeyFromPath(pathname);
+
+  return <KeepAlivePanes activeKey={activeKey} panes={MAIN_KEEP_ALIVE_PANES} />;
+}
 
 function AppRoutes() {
   const { isOpen, isLoading, error, placeholderMode, configuredMaterialsDir } =
@@ -40,9 +57,7 @@ function AppRoutes() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/selection" replace />} />
-        <Route path="selection/*" element={<SelectionPage />} />
-        <Route path="editor/*" element={<EditorPage />} />
-        <Route path="sources" element={<SourcesPage />} />
+        <Route path="*" element={<KeepAliveMainPages />} />
       </Route>
     </Routes>
   );
@@ -53,7 +68,9 @@ export default function App() {
     <BrowserRouter>
       <WorkspaceProvider>
         <EditorProvider>
+        <StickyRouteProvider>
         <AppRoutes />
+        </StickyRouteProvider>
         </EditorProvider>
       </WorkspaceProvider>
     </BrowserRouter>

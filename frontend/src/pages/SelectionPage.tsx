@@ -1,14 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import {
-  NavLink,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, memo } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { TempSelectionTab } from "./TempSelectionTab";
 import { SepCalculationTab } from "./SepCalculationTab";
 import { TabTour, type TourStep } from "../components/TabTour";
+import { KeepAlivePanes } from "../components/KeepAlivePanes";
 import { ASHBY_TOUR_STEPS } from "../tours/ashbyTour";
 import { COMPARE_PROPS_TOUR_STEPS } from "../tours/comparePropsTour";
 import { LARSON_MILLER_TOUR_STEPS } from "../tours/larsonMillerTour";
@@ -16,6 +11,14 @@ import { TEMP_SELECTION_TOUR_STEPS } from "../tours/tempSelectionTour";
 import { SEP_CALCULATION_TOUR_STEPS } from "../tours/sepCalculationTour";
 import { ChemComparisonTab } from "./ChemComparisonTab";
 import { CHEM_COMPARISON_TOUR_STEPS } from "../tours/chemComparisonTour";
+import { useStickyTabKey } from "../hooks/useStickyTabKey";
+import { useStickyIndexRedirect } from "../hooks/useStickyIndexRedirect";
+import { useRememberStickySelectionTab } from "../context/StickyRouteContext";
+import {
+  isSelectionIndexPath,
+  selectionTabKeyFromPath,
+  selectionTabPathFromKey,
+} from "../lib/keepAliveRoutes";
 
 const LarsonMillerTab = lazy(() =>
   import("./LarsonMillerTab").then((module) => ({
@@ -31,6 +34,44 @@ const ComparePropsTab = lazy(() =>
     default: module.ComparePropsTab,
   })),
 );
+
+const SELECTION_KEEP_ALIVE_PANES = [
+  { key: "temperature", node: <TempSelectionTab /> },
+  { key: "calc", node: <SepCalculationTab /> },
+  {
+    key: "compare-props",
+    node: (
+      <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
+        <ComparePropsTab />
+      </Suspense>
+    ),
+  },
+  { key: "compare-chem", node: <ChemComparisonTab /> },
+  {
+    key: "ashby",
+    node: (
+      <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
+        <AshbyTab />
+      </Suspense>
+    ),
+  },
+  {
+    key: "larson-miller",
+    node: (
+      <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
+        <LarsonMillerTab />
+      </Suspense>
+    ),
+  },
+];
+
+const SelectionTabPanes = memo(function SelectionTabPanes({
+  activeKey,
+}: {
+  activeKey: string;
+}) {
+  return <KeepAlivePanes activeKey={activeKey} panes={SELECTION_KEEP_ALIVE_PANES} />;
+});
 
 function selectionSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -83,6 +124,16 @@ function tourLabelForPath(pathname: string): string {
 
 export function SelectionPage() {
   const location = useLocation();
+  const activeTabKey = useStickyTabKey(
+    selectionTabKeyFromPath(location.pathname),
+    "temperature",
+  );
+  useStickyIndexRedirect(
+    isSelectionIndexPath,
+    selectionTabPathFromKey,
+    activeTabKey,
+  );
+  useRememberStickySelectionTab(selectionTabKeyFromPath(location.pathname));
   const [tourOpen, setTourOpen] = useState(false);
   const prevTourOpenRef = useRef(false);
 
@@ -165,36 +216,7 @@ export function SelectionPage() {
         </button>
       </nav>
 
-      <Routes>
-        <Route index element={<Navigate to="temperature" replace />} />
-        <Route path="temperature" element={<TempSelectionTab />} />
-        <Route path="calc" element={<SepCalculationTab />} />
-        <Route
-          path="compare-props"
-          element={
-            <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
-              <ComparePropsTab />
-            </Suspense>
-          }
-        />
-        <Route path="compare-chem" element={<ChemComparisonTab />} />
-        <Route
-          path="ashby"
-          element={
-            <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
-              <AshbyTab />
-            </Suspense>
-          }
-        />
-        <Route
-          path="larson-miller"
-          element={
-            <Suspense fallback={<p className="tab-placeholder">Загрузка…</p>}>
-              <LarsonMillerTab />
-            </Suspense>
-          }
-        />
-      </Routes>
+      <SelectionTabPanes activeKey={activeTabKey} />
 
       {tourSteps && (
         <TabTour

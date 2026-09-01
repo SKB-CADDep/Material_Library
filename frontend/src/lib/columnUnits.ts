@@ -1,4 +1,5 @@
 import type { UnitResponse } from "../types/api";
+import { formatScientificPlain } from "./scientificNotation";
 
 export type ColumnWithUnit = {
   key: string;
@@ -57,4 +58,16 @@ export function unitDisplayText(
   }
 
   return displayLabels?.[unit]?.trim() || unit;
+}
+
+
+export function propertyUnitForDisplay(
+  unit: string | undefined,
+  displayLabels?: Record<string, string>,
+): string {
+  const raw = (unit ?? "").trim();
+  if (!raw) {
+    return "";
+  }
+  return formatScientificPlain(unitDisplayText(raw, displayLabels));
 }

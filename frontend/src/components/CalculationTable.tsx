@@ -18,7 +18,11 @@ import {
   TEMPERATURE_UNIT_TYPE,
 } from "../lib/calculationColumnHeader";
 
-import { formatCalculationCell } from "../lib/formatCalculationCell";
+import {
+  calculationCellModeClass,
+  calculationCellModeTitle,
+  formatCalculationCell,
+} from "../lib/formatCalculationCell";
 
 import type { CalculationColumnSourceRef } from "../lib/calculationColumnSources";
 
@@ -30,6 +34,7 @@ import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 
 import { TempCommentIndicator } from "./TempCommentIndicator";
 
+import { formatScientificPlain, ScientificText } from "../lib/scientificNotation";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import {
   sortCalculationRows,
@@ -141,51 +146,21 @@ function CalculationCellValue({
   const text = formatCalculationCell(displayCell);
 
   const isEmpty = !cell || cell.value === null;
-
-
-
-  const modeClass =
-
-    cell?.mode === "interp"
-
-      ? "calculation-cell--interp"
-
-      : cell?.mode === "approx"
-
-        ? "calculation-cell--approx"
-
-        : cell?.mode === "scalar"
-
-          ? "calculation-cell--scalar"
-
-          : "";
-
-
+  const modeClass = calculationCellModeClass(displayCell?.mode);
 
   return (
-
     <span
-
       className={[
-
         "calculation-cell",
-
         modeClass,
-
         isEmpty ? "calculation-cell--empty" : "",
-
       ]
-
         .filter(Boolean)
-
         .join(" ")}
-
+      title={isEmpty ? undefined : calculationCellModeTitle(displayCell?.mode)}
     >
-
       {text}
-
     </span>
-
   );
 
 }
@@ -347,7 +322,7 @@ export function CalculationTable({
 
                     <span className="calculation-table-header__unit">
 
-                      {temperatureUnitLabel || "°C"}
+                      <ScientificText>{temperatureUnitLabel || "°C"}</ScientificText>
 
                     </span>
 
@@ -412,6 +387,7 @@ export function CalculationTable({
                   <th
 
                     key={col.key}
+                    data-col-key={col.key}
 
                     className={[
 
@@ -453,11 +429,6 @@ export function CalculationTable({
 
                     }}
 
-                    title={
-                      canChangeUnit
-                        ? `${header.title ?? headerTitle}. ПКМ — смена единицы измерения`
-                        : header.title ?? headerTitle
-                    }
                     onClick={header.onClick}
                   >
 
@@ -465,12 +436,16 @@ export function CalculationTable({
 
                       <span
                         className="calculation-table-header__text"
-                        title={headerTitle}
+                        title={
+                          canChangeUnit
+                            ? `${formatScientificPlain(header.title ?? headerTitle)}. ПКМ — смена единицы измерения`
+                            : formatScientificPlain(header.title ?? headerTitle)
+                        }
                       >
 
                         <span className="calculation-table-header__symbol">
 
-                          {symbol}
+                          <ScientificText>{symbol}</ScientificText>
 
                         </span>
 
@@ -478,7 +453,7 @@ export function CalculationTable({
 
                           <span className="calculation-table-header__unit">
 
-                            {unitLabel}
+                            <ScientificText>{unitLabel}</ScientificText>
 
                           </span>
 
@@ -591,6 +566,7 @@ export function CalculationTable({
                     <td
 
                       key={col.key}
+                      data-col-key={col.key}
 
                       className="selection-table-col--value calculation-table-col--value"
 
@@ -691,6 +667,7 @@ export function CalculationTable({
                     <td
 
                       key={col.key}
+                      data-col-key={col.key}
 
                       className="selection-table-col--value calculation-table-col--value"
 
