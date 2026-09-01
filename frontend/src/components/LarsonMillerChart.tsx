@@ -167,7 +167,6 @@ function LarsonMillerMinorGridlines({
   );
 }
 
-/** Белая плашка у точки: «σдп = … МПа», «P = …» (как в Эшби / сравнении свойств). */
 function LarsonMillerPointTooltip({
   active,
   payload,
@@ -176,7 +175,7 @@ function LarsonMillerPointTooltip({
   payload?: ReadonlyArray<{
     color?: string;
     fill?: string;
-    name?: string;
+    name?: string | number;
     payload?: { p?: number; stress?: number };
   }>;
 }) {
@@ -192,7 +191,7 @@ function LarsonMillerPointTooltip({
   const accent =
     entry.color ||
     entry.fill ||
-    (entry.name === "Расчетные данные" ? CALC_COLOR : CURVE_COLOR);
+    (String(entry.name) === "Расчетные данные" ? CALC_COLOR : CURVE_COLOR);
 
   return (
     <div

@@ -443,6 +443,96 @@ class Material:
     def normalize_schema(self):
         self._normalize_physical()
         self._normalize_mechanical()
+        self._hydrate_from_property_groups()
+
+    def _hydrate_from_property_groups(self):
+        groups = self.data.get("property_groups")
+        if not isinstance(groups, list):
+            return
+        for group in groups:
+            if not isinstance(group, dict):
+                continue
+            kind = group.get("property_type")
+            if kind == "physical":
+                self._hydrate_physical_from_group(group)
+            elif kind == "mechanical":
+                self._hydrate_mechanical_from_group(group)
+            elif kind == "chemical":
+                self._hydrate_chemical_from_group(group)
+
+    def _hydrate_physical_from_group(self, group: dict) -> None:
+        if self.get_physical_list():
+            return
+        props = []
+        for entry in group.get("properties") or []:
+            item = self._named_prop_from_group_entry(entry)
+            if item:
+                props.append(item)
+        self.data[Schema.PHYSICAL] = {Schema.PROPERTIES: props}
+
+    def _hydrate_mechanical_from_group(self, group: dict) -> None:
+        if self.get_strength_categories():
+            return
+        categories = []
+        for strength_group in group.get("strength_groups") or []:
+            if not isinstance(strength_group, dict):
+                continue
+            category = {
+                Schema.VAL_STR_CAT: strength_group.get("strength_category") or "",
+                "comment": strength_group.get("comment") or "",
+                Schema.PROPERTIES: [],
+                Schema.HARDNESS: [],
+            }
+            if strength_group.get(Schema.REF_ID):
+                category[Schema.REF_ID] = strength_group[Schema.REF_ID]
+            if strength_group.get("property_subsource") is not None:
+                category["property_subsource"] = strength_group["property_subsource"]
+            if strength_group.get("property_source") is not None:
+                category["property_source"] = strength_group["property_source"]
+            for entry in strength_group.get("properties") or []:
+                if not isinstance(entry, dict):
+                    continue
+                name = entry.get("property_name")
+                data = entry.get("data")
+                if name == "hardness" and isinstance(data, dict):
+                    hardness = data.get("hardness_values")
+                    category[Schema.HARDNESS] = hardness if isinstance(hardness, list) else []
+                    category[Schema.HARDNESS_UNIT] = data.get("hardness_unit") or ""
+                    continue
+                item = self._named_prop_from_group_entry(entry)
+                if item:
+                    category[Schema.PROPERTIES].append(item)
+            categories.append(category)
+        self.data[Schema.MECHANICAL] = {Schema.STRENGTH_CAT: categories}
+
+    def _hydrate_chemical_from_group(self, group: dict) -> None:
+        chemical = self.data.get(Schema.CHEMICAL)
+        if isinstance(chemical, dict):
+            composition = chemical.get(Schema.COMPOSITION)
+            if isinstance(composition, list) and composition:
+                return
+        composition = []
+        for entry in group.get("properties") or []:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("property_name") != "composition":
+                continue
+            data = entry.get("data")
+            if isinstance(data, dict):
+                composition.append(dict(data))
+        self.data[Schema.CHEMICAL] = {Schema.COMPOSITION: composition}
+
+    @staticmethod
+    def _named_prop_from_group_entry(entry: object) -> dict | None:
+        if not isinstance(entry, dict):
+            return None
+        name = entry.get("property_name")
+        data = entry.get("data")
+        if not name or not isinstance(data, dict):
+            return None
+        item = dict(data)
+        item[Schema.PROP_NAME] = name
+        return item
 
     def _normalize_physical(self):
         phys = self.data.get(Schema.PHYSICAL)

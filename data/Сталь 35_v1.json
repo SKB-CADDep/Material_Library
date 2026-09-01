@@ -1,0 +1,482 @@
+{
+  "material_id": "1811a055-48c7-4669-bd38-a0c3c90bda32",
+  "metadata": {
+    "name_material_standard": "Сталь 35",
+    "name_material_alternative": [],
+    "application_area": [
+      "Конструкционные материалы",
+      "Крепежные материалы"
+    ],
+    "comment": "",
+    "classification": {
+      "classification_category": "",
+      "classification_class": "",
+      "classification_subclass": ""
+    }
+  },
+  "property_groups": [
+    {
+      "property_type": "physical",
+      "properties": [
+        {
+          "property_name": "modulus_elasticity",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                206000.0
+              ],
+              [
+                100.0,
+                197000.0
+              ],
+              [
+                200.0,
+                183000.0
+              ],
+              [
+                300.0,
+                176000.0
+              ],
+              [
+                400.0,
+                167000.0
+              ]
+            ],
+            "value_unit": "МПа",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "coefficient_linear_expansion",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                11.1
+              ],
+              [
+                200.0,
+                11.9
+              ],
+              [
+                300.0,
+                13.0
+              ],
+              [
+                400.0,
+                13.4
+              ],
+              [
+                500.0,
+                14.0
+              ],
+              [
+                600.0,
+                14.4
+              ],
+              [
+                700.0,
+                15.0
+              ]
+            ],
+            "value_unit": "1/С",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "coefficient_thermal_conductivity",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                51.0
+              ],
+              [
+                200.0,
+                49.0
+              ],
+              [
+                400.0,
+                42.0
+              ]
+            ],
+            "value_unit": "Вт/(м*С)",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "density",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                20.0,
+                7826.0
+              ],
+              [
+                100.0,
+                7804.0
+              ],
+              [
+                200.0,
+                7771.0
+              ],
+              [
+                300.0,
+                7737.0
+              ],
+              [
+                400.0,
+                7700.0
+              ],
+              [
+                500.0,
+                7662.0
+              ],
+              [
+                600.0,
+                7623.0
+              ],
+              [
+                700.0,
+                7583.0
+              ],
+              [
+                800.0,
+                7600.0
+              ],
+              [
+                900.0,
+                7549.0
+              ]
+            ],
+            "value_unit": "кг/м3",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        },
+        {
+          "property_name": "specific_heat",
+          "data": {
+            "temperature_value_pairs": [
+              [
+                100.0,
+                469.0
+              ],
+              [
+                200.0,
+                481.0
+              ],
+              [
+                400.0,
+                523.0
+              ],
+              [
+                500.0,
+                569.0
+              ]
+            ],
+            "value_unit": "Дж/(кг*С)",
+            "comment": "",
+            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+          }
+        }
+      ]
+    },
+    {
+      "property_type": "mechanical",
+      "strength_groups": [
+        {
+          "strength_category": "КП28",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [
+                  {
+                    "unit_value": "HB",
+                    "min_value": 156.0,
+                    "max_value": 207.0
+                  }
+                ],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    275.0
+                  ],
+                  [
+                    50.0,
+                    255.0
+                  ],
+                  [
+                    100.0,
+                    235.0
+                  ],
+                  [
+                    150.0,
+                    225.0
+                  ],
+                  [
+                    200.0,
+                    225.0
+                  ],
+                  [
+                    250.0,
+                    186.0
+                  ],
+                  [
+                    300.0,
+                    147.0
+                  ],
+                  [
+                    350.0,
+                    127.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "3c1cbc63-2e1b-45c6-bee0-01b551c02633",
+                "property_subsource": "ПНАЭ Г-7-002-86"
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    530.0
+                  ],
+                  [
+                    50.0,
+                    530.0
+                  ],
+                  [
+                    100.0,
+                    530.0
+                  ],
+                  [
+                    150.0,
+                    520.0
+                  ],
+                  [
+                    200.0,
+                    510.0
+                  ],
+                  [
+                    250.0,
+                    500.0
+                  ],
+                  [
+                    300.0,
+                    500.0
+                  ],
+                  [
+                    350.0,
+                    500.0
+                  ]
+                ],
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "3c1cbc63-2e1b-45c6-bee0-01b551c02633",
+                "property_subsource": "ПНАЭ Г-7-002-86"
+              }
+            }
+          ]
+        },
+        {
+          "strength_category": "КП32",
+          "comment": "",
+          "properties": [
+            {
+              "property_name": "hardness",
+              "data": {
+                "hardness_values": [
+                  {
+                    "property_source": "",
+                    "property_subsource": "",
+                    "unit_value": "HB",
+                    "min_value": 207.0,
+                    "max_value": 207.0
+                  }
+                ],
+                "hardness_unit": "HB",
+                "comment": ""
+              }
+            },
+            {
+              "property_name": "yield_strength",
+              "data": {
+                "property_name": "Предел текучести",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ-1050-2013",
+                "property_subsource": "[11]",
+                "comment": "",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    315.0
+                  ],
+                  [
+                    50.0,
+                    304.0
+                  ],
+                  [
+                    100.0,
+                    304.0
+                  ],
+                  [
+                    150.0,
+                    294.0
+                  ],
+                  [
+                    200.0,
+                    274.0
+                  ],
+                  [
+                    250.0,
+                    255.0
+                  ],
+                  [
+                    300.0,
+                    245.0
+                  ],
+                  [
+                    350.0,
+                    225.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-24T09:37:51.320985"
+              }
+            },
+            {
+              "property_name": "tensile_strength",
+              "data": {
+                "property_name": "Предел прочности",
+                "property_unit": "МПа",
+                "property_source": "ГОСТ-1050-2013",
+                "property_subsource": "[11]",
+                "comment": "*Предел прочности записан с разницей в 40 МПа  = 570 ([11, П.1.1.]) - 530 (КП32)",
+                "temperature_value_pairs": [
+                  [
+                    20.0,
+                    530.0
+                  ],
+                  [
+                    50.0,
+                    530.0
+                  ],
+                  [
+                    100.0,
+                    519.0
+                  ],
+                  [
+                    150.0,
+                    509.0
+                  ],
+                  [
+                    200.0,
+                    500.0
+                  ],
+                  [
+                    250.0,
+                    500.0
+                  ],
+                  [
+                    300.0,
+                    500.0
+                  ],
+                  [
+                    350.0,
+                    500.0
+                  ]
+                ],
+                "property_last_updated": "2026-06-24T09:37:51.320985"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "property_type": "chemical",
+      "properties": [
+        {
+          "property_name": "composition",
+          "data": {
+            "composition_source": "ГОСТ 1050-2013",
+            "other_elements": [
+              {
+                "element": "C",
+                "unit_value": "%",
+                "min_value": 0.32,
+                "max_value": 0.4
+              },
+              {
+                "element": "Si",
+                "unit_value": "%",
+                "min_value": 0.17,
+                "max_value": 0.37
+              },
+              {
+                "element": "Mn",
+                "unit_value": "%",
+                "min_value": 0.5,
+                "max_value": 0.8
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.03
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.035
+              },
+              {
+                "element": "Cr",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.25
+              },
+              {
+                "element": "Ni",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3
+              },
+              {
+                "element": "Cu",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3
+              }
+            ],
+            "comment": "",
+            "base_element": "Fe",
+            "source_ref_id": "68ca4ead-30f4-427c-a6d6-cadf32717b79"
+          }
+        }
+      ]
+    }
+  ]
+}

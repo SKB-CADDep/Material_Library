@@ -37,7 +37,8 @@ export async function fillChemTargetRow(
   target: string,
 ): Promise<void> {
   const row = page.locator(".chem-target-table tbody tr").nth(rowIndex);
-  await row.locator("td").nth(0).locator("input").fill(element);
+  await row.locator("td").nth(0).getByRole("button", { name: "Элемент" }).click();
+  await page.locator(`[data-element="${element}"]`).click();
   await row.locator("td").nth(1).locator("input").fill(target);
 }
 

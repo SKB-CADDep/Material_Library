@@ -276,9 +276,9 @@ export function PhysicalPropertiesTab({
   return (
     <form
       className="general-form physical-properties-form"
-      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
+      <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         {PHYSICAL_PROPERTIES.map((config) => (
           <PhysicalPropertySection
@@ -299,6 +299,7 @@ export function PhysicalPropertiesTab({
           />
         ))}
       </div>
+      </fieldset>
     </form>
   );
 }

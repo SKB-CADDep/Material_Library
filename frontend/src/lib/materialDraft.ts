@@ -29,6 +29,22 @@ export function materialDisplayName(metadata: MaterialMetadata): string {
   return alts.length ? `${std} (${alts.join(", ")})` : std;
 }
 
+export function materialFilenameListStem(filename: string): string {
+  const stem = filename.replace(/\.json$/i, "");
+  const match = stem.match(/^(.+)_v(\d+)$/i);
+  return match ? match[1] : stem;
+}
+
+export function materialListLabel(
+  material: Pick<MaterialSummary, "filename" | "name">,
+): string {
+  const fromMetadata = material.name?.trim();
+  if (fromMetadata) {
+    return fromMetadata;
+  }
+  return materialFilenameListStem(material.filename);
+}
+
 export function materialSummaryFromDraft(
   draft: Record<string, unknown>,
   filename: string,
@@ -63,25 +79,54 @@ type PropertyGroup = {
   strength_groups?: Array<Record<string, unknown>>;
 };
 
+function hasNamedProperties(container: unknown): boolean {
+  if (!container || typeof container !== "object") {
+    return false;
+  }
+  const props = (container as { properties?: unknown }).properties;
+  return Array.isArray(props) && props.length > 0;
+}
+
 function editorUsesLegacyShape(material: Record<string, unknown>): boolean {
-  return (
-    material.physical_properties != null ||
-    material.mechanical_properties != null ||
-    material.chemical_properties != null
-  );
+  if (hasNamedProperties(material.physical_properties)) {
+    return true;
+  }
+  const mechanical = material.mechanical_properties as
+    | { strength_category?: unknown[] }
+    | undefined;
+  if (
+    Array.isArray(mechanical?.strength_category) &&
+    mechanical.strength_category.length > 0
+  ) {
+    return true;
+  }
+  const chemical = material.chemical_properties as
+    | { composition?: unknown[] }
+    | undefined;
+  if (Array.isArray(chemical?.composition) && chemical.composition.length > 0) {
+    return true;
+  }
+  return false;
+}
+
+function flattenGroupEntry(entry: PropertyGroupEntry): Record<string, unknown> | null {
+  const name = entry.property_name;
+  if (!name) return null;
+  const data =
+    entry.data && typeof entry.data === "object" ? entry.data : {};
+  return { ...structuredClone(data), property_name: name };
 }
 
 function physicalPropertiesFromGroups(
   groups: PropertyGroup[],
 ): Record<string, unknown> {
   const physical = groups.find((group) => group.property_type === "physical");
-  const result: Record<string, unknown> = {};
+  const properties: Record<string, unknown>[] = [];
   for (const entry of physical?.properties ?? []) {
-    const name = entry.property_name;
-    if (!name) continue;
-    result[name] = structuredClone(entry.data ?? {});
+    const item = flattenGroupEntry(entry);
+    if (item) properties.push(item);
   }
-  return result;
+  return { properties };
 }
 
 function mechanicalPropertiesFromGroups(
@@ -89,9 +134,12 @@ function mechanicalPropertiesFromGroups(
 ): Record<string, unknown> {
   const mechanical = groups.find((group) => group.property_type === "mechanical");
   const strength_category = (mechanical?.strength_groups ?? []).map((group) => {
+    const properties: Record<string, unknown>[] = [];
     const category: Record<string, unknown> = {
       value_strength_category: group.strength_category ?? "",
       comment: group.comment ?? "",
+      properties,
+      hardness: [],
     };
     if (group.source_ref_id != null) {
       category.source_ref_id = group.source_ref_id;
@@ -112,7 +160,8 @@ function mechanicalPropertiesFromGroups(
         category.hardness_unit = data.hardness_unit ?? "HB";
         continue;
       }
-      category[name] = structuredClone(data);
+      const item = flattenGroupEntry(entry);
+      if (item) properties.push(item);
     }
     return category;
   });
