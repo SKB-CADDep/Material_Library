@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   CartesianGrid,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
   Tooltip,
+  usePlotArea,
+  useXAxisScale,
+  useYAxisScale,
   XAxis,
   YAxis,
 } from "recharts";
 import type { LarsonMillerResponse } from "../types/api";
+import { formatChartTooltipLine } from "../pages/chartLabels";
 import {
   computeNiceAxisFromValues,
   computeTicksForFixedDomain,
@@ -16,12 +20,203 @@ import {
   type NiceAxisResult,
 } from "../utils/chartTicks";
 
-const CHART_MARGIN = { top: 48, right: 28, bottom: 56, left: 64 } as const;
+const CHART_MARGIN = { top: 48, right: 28, bottom: 64, left: 36 } as const;
+/** Ширина полосы тиков Y. */
+const Y_AXIS_WIDTH = 48;
+/** Высота полосы тиков X (default Recharts). */
+const X_AXIS_HEIGHT = 30;
+/** Зазор между цифрами оси и наименованием. */
+const AXIS_LABEL_GAP = 18;
+/** Расстояние подписи X от линии оси. */
+const X_AXIS_TITLE_GAP = X_AXIS_HEIGHT + AXIS_LABEL_GAP;
+/** Отступ подписи Y слева от полосы тиков. */
+const Y_LABEL_OUTSIDE_GAP = 14;
 const CURVE_COLOR = "#1f77b4";
 const CALC_COLOR = "#d62728";
 const DEFAULT_X_DOMAIN: [number, number] = [14, 18];
 const DEFAULT_Y_DOMAIN: [number, number] = [150, 300];
 const AXIS_TICK_OPTIONS = { targetTickCount: 6 } as const;
+
+const X_AXIS_LABEL = "P = (T + 273,15)(lg τ + C) / 1000";
+const Y_AXIS_LABEL = "Напряжение, МПа";
+
+type ScaleLike = ((value: number | string) => number | undefined) & {
+  invert?: (value: number) => number;
+};
+
+/**
+ * Подписи осей по центру поля (как в Эшби), с зазором от тиков.
+ */
+function LarsonMillerAxisLabels() {
+  const plotArea = usePlotArea();
+  if (!plotArea) {
+    return null;
+  }
+
+  const xTextX = plotArea.x + plotArea.width / 2;
+  const xTextY = plotArea.y + plotArea.height + X_AXIS_TITLE_GAP;
+  const yTextX = plotArea.x - Y_AXIS_WIDTH - Y_LABEL_OUTSIDE_GAP;
+  const yTextY = plotArea.y + plotArea.height / 2;
+
+  return (
+    <g className="larson-miller-axis-labels" pointerEvents="none">
+      <text
+        x={xTextX}
+        y={xTextY}
+        textAnchor="middle"
+        dominantBaseline="text-after-edge"
+        className="ashby-axis-label"
+        fill="#6b7280"
+        fontSize={14}
+      >
+        {X_AXIS_LABEL}
+      </text>
+      <text
+        x={yTextX}
+        y={yTextY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="ashby-axis-label"
+        fill="#6b7280"
+        fontSize={14}
+        transform={`rotate(-90, ${yTextX}, ${yTextY})`}
+      >
+        {Y_AXIS_LABEL}
+      </text>
+    </g>
+  );
+}
+
+/**
+ * Пунктирные мини-секции посередине между основными тиками
+ * (как в Эшби и «Сравнение материалов (свойства)»).
+ */
+function LarsonMillerMinorGridlines({
+  xTicks,
+  yTicks,
+}: {
+  xTicks: number[];
+  yTicks: number[];
+}) {
+  const plotArea = usePlotArea();
+  const xScale = useXAxisScale() as ScaleLike | undefined;
+  const yScale = useYAxisScale() as ScaleLike | undefined;
+
+  if (!plotArea || !xScale || !yScale) {
+    return null;
+  }
+
+  const xMids: number[] = [];
+  for (let i = 0; i < xTicks.length - 1; i += 1) {
+    xMids.push((xTicks[i] + xTicks[i + 1]) / 2);
+  }
+  const yMids: number[] = [];
+  for (let i = 0; i < yTicks.length - 1; i += 1) {
+    yMids.push((yTicks[i] + yTicks[i + 1]) / 2);
+  }
+
+  const { x, y, width, height } = plotArea;
+
+  return (
+    <g className="larson-miller-minor-grid" pointerEvents="none">
+      {xMids.map((value) => {
+        const px = xScale(value);
+        if (typeof px !== "number" || !Number.isFinite(px)) {
+          return null;
+        }
+        if (px < x || px > x + width) {
+          return null;
+        }
+        return (
+          <line
+            key={`lm-x-mid-${value}`}
+            x1={px}
+            y1={y}
+            x2={px}
+            y2={y + height}
+            stroke="grey"
+            strokeWidth={0.5}
+            strokeOpacity={0.7}
+            strokeDasharray="4 3"
+          />
+        );
+      })}
+      {yMids.map((value) => {
+        const py = yScale(value);
+        if (typeof py !== "number" || !Number.isFinite(py)) {
+          return null;
+        }
+        if (py < y || py > y + height) {
+          return null;
+        }
+        return (
+          <line
+            key={`lm-y-mid-${value}`}
+            x1={x}
+            y1={py}
+            x2={x + width}
+            y2={py}
+            stroke="grey"
+            strokeWidth={0.5}
+            strokeOpacity={0.7}
+            strokeDasharray="4 3"
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+function LarsonMillerPointTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{
+    color?: string;
+    fill?: string;
+    name?: string | number;
+    payload?: { p?: number; stress?: number };
+  }>;
+}) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+  const entry = payload[0];
+  const point = entry?.payload;
+  if (!point || point.p == null || point.stress == null) {
+    return null;
+  }
+
+  const accent =
+    entry.color ||
+    entry.fill ||
+    (String(entry.name) === "Расчетные данные" ? CALC_COLOR : CURVE_COLOR);
+
+  return (
+    <div
+      className="ashby-point-tooltip larson-miller-point-tooltip"
+      style={{
+        margin: 0,
+        padding: 10,
+        backgroundColor: "#fff",
+        border: "1px solid #ccc",
+        borderRadius: 4,
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+        boxShadow: "0 2px 8px rgba(36, 41, 48, 0.18)",
+        fontSize: 13,
+        lineHeight: 1.35,
+        color: accent,
+        boxSizing: "border-box",
+      }}
+    >
+      <div>{formatChartTooltipLine("σдп", point.stress, "МПа")}</div>
+      <div>{formatChartTooltipLine("P", point.p, "")}</div>
+    </div>
+  );
+}
+
 const LEGEND_PADDING = 12;
 const LEGEND_COLLISION_PAD = 10;
 const LEGEND_ITEMS = [
@@ -38,6 +233,23 @@ const LEGEND_ITEMS = [
     color: CALC_COLOR,
   },
 ] as const;
+
+const LEGEND_OVERLAY_BG = "rgba(255, 255, 255, 0.5)";
+
+const LEGEND_ITEM_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "28px auto",
+  alignItems: "center",
+  listStyle: "none",
+  width: "max-content",
+  maxWidth: "100%",
+  margin: "0 0 6px",
+  padding: 0,
+  fontSize: 13,
+  lineHeight: 1.4,
+  color: "#242930",
+  boxSizing: "border-box",
+};
 
 type LarsonMillerChartProps = {
   data: LarsonMillerResponse | null;
@@ -298,12 +510,19 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
     [yValues],
   );
   const plotArea = useMemo(
-    () => ({
-      x: CHART_MARGIN.left,
-      y: CHART_MARGIN.top,
-      width: Math.max(1, chartSize.width - CHART_MARGIN.left - CHART_MARGIN.right),
-      height: Math.max(1, chartSize.height - CHART_MARGIN.top - CHART_MARGIN.bottom),
-    }),
+    () => {
+      // Recharts 3: margin.left и YAxis.width складываются.
+      const x = CHART_MARGIN.left + Y_AXIS_WIDTH;
+      return {
+        x,
+        y: CHART_MARGIN.top,
+        width: Math.max(1, chartSize.width - x - CHART_MARGIN.right),
+        height: Math.max(
+          1,
+          chartSize.height - CHART_MARGIN.top - CHART_MARGIN.bottom,
+        ),
+      };
+    },
     [chartSize.height, chartSize.width],
   );
   const legendGeometry = useMemo((): LegendGeometry => {
@@ -371,38 +590,37 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
     <div ref={wrapRef} className="larson-miller-chart-wrap">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#d8dee6" />
+          <LarsonMillerAxisLabels />
+          {/* Основные секции — сплошная сетка по тикам (как в Эшби / сравнении свойств). */}
+          <CartesianGrid stroke="#c5cad3" strokeWidth={1} />
+          {/* Мини-секции — пунктир посередине между тиками. */}
+          <LarsonMillerMinorGridlines
+            xTicks={xAxis.ticks}
+            yTicks={yAxis.ticks}
+          />
           <XAxis
             type="number"
             dataKey="p"
             domain={xAxis.domain}
             ticks={xAxis.ticks}
+            height={X_AXIS_HEIGHT}
+            tick={{ fontSize: 13, fill: "#242930" }}
             tickFormatter={(value) => formatTickLabel(value)}
-            label={{
-              value: "P = (T + 273,15)(lg τ + C) / 1000",
-              position: "insideBottom",
-              offset: -8,
-            }}
           />
           <YAxis
             type="number"
             dataKey="stress"
+            width={Y_AXIS_WIDTH}
             domain={yAxis.domain}
             ticks={yAxis.ticks}
+            tick={{ fontSize: 13, fill: "#242930" }}
             tickFormatter={(value) => formatTickLabel(value)}
-            label={{
-              value: "Напряжение, МПа",
-              angle: -90,
-              position: "insideLeft",
-              offset: 12,
-            }}
           />
           <Tooltip
-            formatter={(value, name) => [
-              Number(value ?? 0).toFixed(2),
-              name === "stress" ? "σдп, МПа" : "P",
-            ]}
-            labelFormatter={() => ""}
+            cursor={false}
+            content={({ active, payload }) => (
+              <LarsonMillerPointTooltip active={active} payload={payload} />
+            )}
           />
           {curvePoints.length > 0 && (
             <Scatter
@@ -423,15 +641,63 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
       </ResponsiveContainer>
       <div
         ref={legendRef}
-        className="ashby-legend-panel larson-miller-legend-panel"
+        className="ashby-legend-overlay larson-miller-legend-panel"
+        aria-label="Элементы на графике"
         style={{
           left: `${legendPlacement.left}px`,
           top: `${legendPlacement.top}px`,
+          width: "max-content",
+          maxWidth: "calc(100% - 24px)",
+          display: "flex",
+          flexDirection: "column",
+          padding: "10px 10px 8px",
+          border: "1px solid #d8dce3",
+          borderRadius: 6,
+          backgroundColor: LEGEND_OVERLAY_BG,
+          boxShadow: "0 2px 10px rgba(36, 41, 48, 0.12)",
+          boxSizing: "border-box",
+          overflow: "hidden",
+          zIndex: 3,
+          pointerEvents: "none",
         }}
       >
-        <ul className="ashby-legend">
-          {LEGEND_ITEMS.map((item) => (
-            <li key={item.id} className="ashby-legend-item">
+        <div
+          className="ashby-legend-overlay-title"
+          style={{
+            margin: 0,
+            padding: "0 2px 6px",
+            fontSize: 14,
+            fontWeight: 500,
+            color: "#242930",
+            whiteSpace: "nowrap",
+            flex: "0 0 auto",
+          }}
+        >
+          Элементы на графике
+        </div>
+        <ul
+          className="ashby-legend-overlay-list"
+          aria-label="Элементы на графике"
+          style={{
+            margin: 0,
+            padding: "4px 4px 8px",
+            listStyle: "none",
+            overflow: "visible",
+            flex: "0 1 auto",
+            minHeight: 0,
+            width: "max-content",
+            maxWidth: "100%",
+          }}
+        >
+          {LEGEND_ITEMS.map((item, index) => (
+            <li
+              key={item.id}
+              className="ashby-legend-item"
+              style={{
+                ...LEGEND_ITEM_STYLE,
+                marginBottom: index === LEGEND_ITEMS.length - 1 ? 0 : 6,
+              }}
+            >
               {item.kind === "line" ? (
                 <svg
                   className="ashby-legend-marker larson-miller-legend-marker"
@@ -458,7 +724,16 @@ export function LarsonMillerChart({ data }: LarsonMillerChartProps) {
                   <circle cx="14" cy="6" r="4" fill={item.color} />
                 </svg>
               )}
-              <span className="ashby-legend-label">{item.label}</span>
+              <span
+                className="ashby-legend-label"
+                style={{
+                  paddingLeft: "0.25cm",
+                  boxSizing: "border-box",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.label}
+              </span>
             </li>
           ))}
         </ul>
