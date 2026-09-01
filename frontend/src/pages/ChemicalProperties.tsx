@@ -356,9 +356,9 @@ const handleRowClick = (index: number) => {
   return (
     <form
       className="general-form physical-properties-form"
-      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
+      <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="composition_source_select">Набор состава:</label>
@@ -796,6 +796,7 @@ const handleRowClick = (index: number) => {
       />
     </div>
       </div>
+      </fieldset>
     </form>
   );
 }

@@ -2,7 +2,7 @@ import { test, expect } from "./test";
 import { openEditorTab, selectMaterialByName } from "./helpers/editor";
 
 
-const FIXTURE_MATERIALS = ["FixtureFull", "FixtureKpOnly", "Z-FixtureBare"];
+const FIXTURE_MATERIALS = ["FixtureFull", "FixtureKpOnly", "FixtureBare"];
 
 test.describe("E2E-1: workspace + editor materials select", () => {
   test("auto-opened workspace lists fixture materials in editor select", async ({

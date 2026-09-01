@@ -6,6 +6,7 @@ from src.core.models.material import Material
 from src.core.schema_keys import Schema
 from src.infrastructure.storage_backend import LocalDirectoryStorage
 from src.services.source_service import SourceService
+from src.services.material_versioning import latest_material_filename
 
 
 class MaterialRepository:
@@ -28,16 +29,22 @@ class MaterialRepository:
         self.work_dir = str(directory)
         self.materials.clear()
         self._storage = LocalDirectoryStorage(directory)
-
         if not directory.is_dir():
             self.application_areas = []
             return
 
+        paths = self._storage.list_material_paths()
+        keep = set(latest_material_filename([p.name for p in paths]))
+
+
         for path in self._storage.list_material_paths():
-            try:
-                self.materials.append(Material(filepath=str(path)))
-            except Exception as e:
-                print(f"Ошибка чтения {path.name}: {e}")
+            if path.name not in keep:
+                continue
+            else:
+                try:
+                    self.materials.append(Material(filepath=str(path)))
+                except Exception as e:
+                    print(f"Ошибка чтения {path.name}: {e}")
 
         self.materials.sort(key=lambda m: m.get_display_name())
         self.load_application_areas()
@@ -97,13 +104,8 @@ class MaterialRepository:
             raise ValueError("Workspace не открыт")
 
         material_path = Path(material.filepath)
-        is_new_file = self._storage is None or not self._storage.exists(material_path)
         material.save()
-
-        if is_new_file:
-            self.materials.append(material)
-        self.materials.sort(key=lambda m: m.get_display_name())
-        self.load_application_areas()
+        self.load_materials_from_dir(self.work_dir)
 
     def materials_using_source(self, source_id: str) -> list[Material]:
         if not source_id:

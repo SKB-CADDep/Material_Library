@@ -26,6 +26,7 @@ import { ColumnUnitContextMenu } from "./ColumnUnitContextMenu";
 import { SelectionCellContextMenu } from "./SelectionCellContextMenu";
 import { TempCommentIndicator } from "./TempCommentIndicator";
 import { useResizableTableHeaders, syncFrozenStickyColumns } from "../hooks/useResizableTableHeaders";
+import { ALL_NTD_FILTER } from "../lib/ntdFilter";
 import type {
   TemperatureSelectionColumn,
   TemperatureSelectionRow,
@@ -90,6 +91,12 @@ type CellContextMenuState = {
   y: number;
 };
 
+type NtdHeaderFilter = {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+};
+
 type SelectionTableProps = {
   scrollColumns: TemperatureSelectionColumn[];
   rows: TemperatureSelectionRow[];
@@ -98,6 +105,8 @@ type SelectionTableProps = {
   onColumnUnitChange?: (columnKey: string, unit: string) => void;
   sortState?: SelectionSortState;
   onSortColumn?: (column: SelectionSortColumn) => void;
+  ntdFilter?: NtdHeaderFilter;
+  emptyFilterMessage?: string;
 };
 
 function frozenCellStyle(
@@ -156,6 +165,8 @@ export function SelectionTable({
   onColumnUnitChange,
   sortState,
   onSortColumn,
+  ntdFilter,
+  emptyFilterMessage,
 }: SelectionTableProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const hTrackRef = useRef<HTMLDivElement>(null);
@@ -432,6 +443,55 @@ export function SelectionTable({
                     );
                   }
 
+                  if (col.key === "source" && ntdFilter) {
+                    return (
+                      <th
+                        key={col.key}
+                        className={[
+                          "selection-table-col",
+                          "selection-table-col--frozen",
+                          "selection-table-col--ntd-filter",
+                          col.className,
+                          header.className,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        title={header.title ?? col.label}
+                        onClick={header.onClick}
+                      >
+                        <div className="selection-ntd-header">
+                          <span className="selection-ntd-header__title">
+                            {col.label}
+                            {renderSortIndicator(col.key, sortState)}
+                          </span>
+                          <select
+                            id="ntd-filter-select"
+                            className="selection-ntd-header__filter"
+                            data-tour="temp-ntd"
+                            aria-label="Фильтр по НТД"
+                            value={ntdFilter.value}
+                            onChange={(event) => ntdFilter.onChange(event.target.value)}
+                            onClick={(event) => event.stopPropagation()}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            disabled={ntdFilter.options.length === 0}
+                            title={
+                              ntdFilter.options.length === 0
+                                ? "Нет данных для фильтрации по НТД"
+                                : "Фильтр по НТД"
+                            }
+                          >
+                            <option value={ALL_NTD_FILTER}>Все</option>
+                            {ntdFilter.options.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </th>
+                    );
+                  }
+
                   return (
                     <th
                       key={col.key}
@@ -510,6 +570,16 @@ export function SelectionTable({
               </tr>
             </thead>
             <tbody>
+              {rows.length === 0 && emptyFilterMessage ? (
+                <tr>
+                  <td
+                    className="selection-table-empty"
+                    colSpan={FROZEN_COLUMNS.length + scrollColumns.length}
+                  >
+                    {emptyFilterMessage}
+                  </td>
+                </tr>
+              ) : null}
               {rows.map((row, index) => (
                 <tr key={getRowKey(row, index)}>
                   {FROZEN_COLUMNS.map((col) => (

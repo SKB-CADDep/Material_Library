@@ -207,29 +207,6 @@ export function TempSelectionTab() {
           />
         </div>
 
-        <div className="selection-control selection-control--ntd" data-tour="temp-ntd">
-          <label htmlFor="ntd-filter-select">НТД:</label>
-          <select
-            id="ntd-filter-select"
-            className="input"
-            value={selectedNtd}
-            onChange={(event) => setSelectedNtd(event.target.value)}
-            disabled={ntdOptions.length === 0}
-            title={
-              ntdOptions.length === 0
-                ? "Нет данных для фильтрации по НТД"
-                : undefined
-            }
-          >
-            <option value={ALL_NTD_FILTER}>Все</option>
-            {ntdOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <p
           className="selection-unit-hint"
           title={TABLE_SORT_HINT}
@@ -258,16 +235,7 @@ export function TempSelectionTab() {
           <p className="tab-placeholder">Нет данных для отображения</p>
         )}
 
-        {workspace &&
-          result.isSuccess &&
-          rows.length > 0 &&
-          filteredRows.length === 0 && (
-            <p className="tab-placeholder">
-              Нет строк для выбранного НТД
-            </p>
-          )}
-
-        {workspace && result.isSuccess && filteredRows.length > 0 && (
+        {workspace && result.isSuccess && rows.length > 0 && (
           <div className="selection-table-panel" data-tour="temp-table">
               <SelectionTable
                 scrollColumns={columns}
@@ -277,6 +245,16 @@ export function TempSelectionTab() {
                 onColumnUnitChange={handleColumnUnitChange}
                 sortState={sortState}
                 onSortColumn={handleSortColumn}
+                ntdFilter={{
+                  value: selectedNtd,
+                  options: ntdOptions,
+                  onChange: setSelectedNtd,
+                }}
+                emptyFilterMessage={
+                  filteredRows.length === 0
+                    ? "Нет строк для выбранного НТД"
+                    : undefined
+                }
               />
           </div>
         )}

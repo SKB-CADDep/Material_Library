@@ -13,9 +13,9 @@ class PropertiesArraySchemaTests(unittest.TestCase):
         self.assertEqual(data[Schema.MECHANICAL][Schema.STRENGTH_CAT], [])
 
     def test_load_data_08h13(self):
-        path = Path(__file__).resolve().parents[1] / "data" / "08Х13.json"
+        path = Path(__file__).resolve().parents[1] / "data" / "08Х13_v1.json"
         if not path.is_file():
-            self.skipTest("data/08Х13.json missing")
+            self.skipTest("data/08Х13_v1.json missing")
         mat = Material(filepath=str(path))
         self.assertEqual(mat.get_interpolated_property("density", 20), 7760.0)
         self.assertEqual(mat.get_interpolated_property("yield_strength", 20, 0), 392.0)
@@ -108,6 +108,53 @@ class PropertiesArraySchemaTests(unittest.TestCase):
         })
         self.assertEqual(mat.get_source_info(Schema.PHYSICAL, prop_key="density"), "Источник А")
         self.assertEqual(mat.get_source_info(Schema.PHYSICAL), "Источник А")
+
+    def test_hydrate_property_groups_into_legacy_lists(self):
+        mat = Material(data={
+            "material_id": "x",
+            Schema.METADATA: {Schema.NAME_STD: "T"},
+            "property_groups": [
+                {
+                    "property_type": "physical",
+                    "properties": [{
+                        "property_name": "density",
+                        "data": {Schema.TEMP_PAIRS: [[20.0, 7760.0]], "value_unit": "кг/м3"},
+                    }],
+                },
+                {
+                    "property_type": "mechanical",
+                    "strength_groups": [{
+                        "strength_category": "КП40",
+                        "properties": [
+                            {
+                                "property_name": "yield_strength",
+                                "data": {Schema.TEMP_PAIRS: [[20.0, 392.0]]},
+                            },
+                            {
+                                "property_name": "hardness",
+                                "data": {
+                                    "hardness_values": [{"unit_value": "HB", "min_value": 187.0}],
+                                    "hardness_unit": "HB",
+                                },
+                            },
+                        ],
+                    }],
+                },
+                {
+                    "property_type": "chemical",
+                    "properties": [{
+                        "property_name": "composition",
+                        "data": {"base_element": "Fe", "other_elements": []},
+                    }],
+                },
+            ],
+        })
+        self.assertEqual(mat.get_physical_data("density")[Schema.TEMP_PAIRS][0][1], 7760.0)
+        cats = mat.get_strength_categories()
+        self.assertEqual(Material.category_name(cats[0]), "КП40")
+        self.assertEqual(mat.get_interpolated_property("yield_strength", 20, 0), 392.0)
+        self.assertEqual(cats[0][Schema.HARDNESS][0]["min_value"], 187.0)
+        self.assertEqual(mat.data[Schema.CHEMICAL][Schema.COMPOSITION][0]["base_element"], "Fe")
 
 
 if __name__ == "__main__":

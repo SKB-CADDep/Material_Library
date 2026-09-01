@@ -267,9 +267,9 @@ export function MechanicalPropertiesTab({
   return (
     <form
       className="general-form physical-properties-form"
-      inert={readOnly ? true : undefined}
       onSubmit={(event) => event.preventDefault()}
     >
+      <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="editor-strength-category-select">Категория прочности:</label>
@@ -879,6 +879,7 @@ export function MechanicalPropertiesTab({
           );
         })}
       </div>
+      </fieldset>
     </form>
   );
 }
