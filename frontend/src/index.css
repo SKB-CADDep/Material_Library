@@ -1362,8 +1362,8 @@ select {
   }
 
   .selection-table-col--source {
-    min-width: 120px;
-    max-width: 200px;
+    min-width: 180px;
+    max-width: 280px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2956,8 +2956,7 @@ select {
   flex: 1;
   min-height: 0;
   gap: var(--space-md);
-  margin-top: calc(-1 * var(--space-md));
-  padding: 0 var(--space-lg) var(--space-md);
+  padding: var(--space-sm) var(--space-lg) var(--space-md);
   box-sizing: border-box;
 }
 
@@ -3757,7 +3756,7 @@ select {
 }
 
 .selection-table--unified .selection-table-col--temp.selection-table-col--frozen {
-  left: 444px;
+  left: 504px;
   border-right: 2px solid var(--border);
   box-shadow: 4px 0 8px -4px rgba(36, 41, 48, 0.14);
 }
@@ -3798,9 +3797,9 @@ select {
 
 .selection-table--unified .selection-table-col--source {
   left: 284px;
-  width: 160px;
-  min-width: 160px;
-  max-width: 160px;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3812,6 +3811,42 @@ select {
   text-overflow: unset;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.selection-table--unified thead .selection-table-col--ntd-filter {
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.selection-ntd-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.selection-ntd-header__title {
+  display: block;
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.selection-ntd-header__filter {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  font-size: 12px;
+  position: relative;
+  z-index: 35;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .selection-table--unified .selection-table-col--temp {
@@ -5008,7 +5043,8 @@ select {
 .data-table--resizable-headers thead th .calculation-table-header__badges,
 .data-table--resizable-headers thead th .temp-comment-indicator,
 .data-table--resizable-headers thead th .calculation-source-ref,
-.data-table--resizable-headers thead th .acceptance-indicator {
+.data-table--resizable-headers thead th .acceptance-indicator,
+.data-table--resizable-headers thead th .selection-ntd-header__filter {
   pointer-events: auto;
   position: relative;
   z-index: 32;

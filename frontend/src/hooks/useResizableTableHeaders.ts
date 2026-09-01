@@ -211,7 +211,12 @@ function installResizeHandles(
     }
 
     if (headerRowResize === "cell") {
-      if (!th.querySelector(`:scope > .${ROW_HANDLE_CLASS}`)) {
+      const skipRowHandle = th.classList.contains("selection-table-col--ntd-filter");
+      if (skipRowHandle) {
+        th.querySelectorAll(`:scope > .${ROW_HANDLE_CLASS}`).forEach((legacy) => {
+          legacy.remove();
+        });
+      } else if (!th.querySelector(`:scope > .${ROW_HANDLE_CLASS}`)) {
         const rowHandle = document.createElement("span");
         rowHandle.className = ROW_HANDLE_CLASS;
         rowHandle.setAttribute("aria-hidden", "true");
@@ -534,6 +539,13 @@ export function useResizableTableHeaders(
       }
 
       const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          "select, option, input, textarea, button, a, label, .selection-ntd-header__filter",
+        )
+      ) {
+        return;
+      }
       if (target.closest(`.${COL_HANDLE_CLASS}`)) {
         const th = target.closest("th") as HTMLTableCellElement | null;
         if (!th) {

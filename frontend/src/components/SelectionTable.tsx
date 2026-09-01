@@ -64,7 +64,7 @@ const FROZEN_COLUMNS: {
     key: "source",
     label: "Нормативно-техническая документация",
     className: "selection-table-col--source",
-    width: 160,
+    width: 220,
     stickyLeft: 284,
   },
   {
@@ -72,7 +72,7 @@ const FROZEN_COLUMNS: {
     label: "tприм ДО",
     className: "selection-table-col--temp",
     width: 100,
-    stickyLeft: 444,
+    stickyLeft: 504,
   },
 ];
 
@@ -452,15 +452,22 @@ export function SelectionTable({
                           "selection-table-col--frozen",
                           "selection-table-col--ntd-filter",
                           col.className,
-                          header.className,
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        title={header.title ?? col.label}
-                        onClick={header.onClick}
+                        title={col.label}
                       >
                         <div className="selection-ntd-header">
-                          <span className="selection-ntd-header__title">
+                          <span
+                            className={[
+                              "selection-ntd-header__title",
+                              header.className,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            title={header.title ?? col.label}
+                            onClick={header.onClick}
+                          >
                             {col.label}
                             {renderSortIndicator(col.key, sortState)}
                           </span>

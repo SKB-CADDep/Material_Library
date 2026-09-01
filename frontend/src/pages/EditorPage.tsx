@@ -11,7 +11,6 @@ import {
   versionForNew
 } from "../api/materials";
 import { syncMaterialsAfterSave, normalizeMaterialDraft, materialListLabel } from "../lib/materialDraft";
-import { syncMaterialsAfterSave, normalizeMaterialDraft } from "../lib/materialDraft";
 import { useEffect, useMemo, useRef, useCallback } from "react";
 import { EditorTabPaneProvider } from "../context/EditorTabPaneContext";
 import { EditorTabPanes } from "./EditorTabPanes";
@@ -189,8 +188,7 @@ export function EditorPage() {
   const readOnly = hasFileOnDisk && !canEdit;
   const materialLoading = selectedId !== null && !isNewMaterial && detail.isLoading;
   const materialLoadError = selectedId !== null && !isNewMaterial && detail.isError;
-  const showEmptyPanel = !draft && !materialLoading && !materialLoadError;
-  const showEditorTabs = Boolean(draft) && !materialLoadError;;
+  const showEditorTabs = Boolean(draft) && !materialLoadError;
   const queryClient = useQueryClient();
 
   useEffect(() => {
