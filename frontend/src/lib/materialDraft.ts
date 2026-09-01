@@ -29,8 +29,20 @@ export function materialDisplayName(metadata: MaterialMetadata): string {
   return alts.length ? `${std} (${alts.join(", ")})` : std;
 }
 
-export function materialListLabel(material: Pick<MaterialSummary, "filename">): string {
-  return material.filename.replace(/\.json$/i, "");
+export function materialFilenameListStem(filename: string): string {
+  const stem = filename.replace(/\.json$/i, "");
+  const match = stem.match(/^(.+)_v(\d+)$/i);
+  return match ? match[1] : stem;
+}
+
+export function materialListLabel(
+  material: Pick<MaterialSummary, "filename" | "name">,
+): string {
+  const fromMetadata = material.name?.trim();
+  if (fromMetadata) {
+    return fromMetadata;
+  }
+  return materialFilenameListStem(material.filename);
 }
 
 export function materialSummaryFromDraft(

@@ -42,7 +42,7 @@ test.describe("E2E-2: editor save survives reload", () => {
     await page.reload();
     await openEditorTab(page);
 
-    await selectMaterialByName(page, "FixtureFull_v2");
+    await selectMaterialByName(page, "FixtureFull E2E2");
     await expect(page.locator("#name-standard")).toHaveValue(SAVED_MATERIAL_NAME);
     await expect(page.locator("#comment")).toHaveValue(SAVED_COMMENT);
   });

@@ -1,0 +1,34 @@
+{
+  "backend_title": "Material Library — BACKEND (не закрывать)",
+  "backend_header": "Material Library — сервер данных",
+  "backend_hint": "Не закрывайте это окно, пока работаете с программой.",
+  "backend_api": "API: http://127.0.0.1:8000/api",
+  "backend_no_venv_title": "ОШИБКА: не найдено окружение Python (.venv)",
+  "backend_no_venv_steps": [
+    "Закройте это окно",
+    "Запустите «Запуск Material Library.bat» в корне папки программы",
+    "Дождитесь окончания подготовки (первый раз — несколько минут)"
+  ],
+  "backend_error": "ОШИБКА сервера: {0}",
+  "backend_retry": "Запустите «Остановить Material Library.bat» и попробуйте снова.",
+  "backend_exit": "Сервер завершился с кодом {0}",
+  "frontend_title": "Material Library — FRONTEND (не закрывать)",
+  "frontend_header": "Material Library — сайт программы",
+  "frontend_hint": "Не закрывайте это окно, пока работаете с программой.",
+  "frontend_url": "Адрес: http://localhost:5173",
+  "frontend_no_node_title": "ОШИБКА: не найден Node.js (npm)",
+  "frontend_no_node_steps": [
+    "Установите Node.js LTS с https://nodejs.org/",
+    "Перезагрузите компьютер",
+    "Снова запустите «Запуск Material Library.bat»"
+  ],
+  "frontend_no_modules_title": "ОШИБКА: не установлены компоненты интерфейса (node_modules)",
+  "frontend_no_modules_steps": [
+    "Закройте это окно",
+    "Запустите «Запуск Material Library.bat» — он установит всё автоматически"
+  ],
+  "frontend_exit": "Сайт остановился с кодом {0}",
+  "frontend_port_busy": "Если порт 5173 занят — запустите «Остановить Material Library.bat»",
+  "press_enter": "Нажмите Enter, чтобы закрыть",
+  "what_to_do": "Что сделать:"
+}

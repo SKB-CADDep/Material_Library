@@ -1,6 +1,6 @@
 import { api } from "./client";
 import type { MaterialSummary, MaterialSaveResponse} from "../types/api";
-import { materialForEditor } from "../lib/materialDraft";
+import { materialForEditor, materialFilenameListStem } from "../lib/materialDraft";
 import {
   categoryDisplayName,
   hasCategorySource,
@@ -165,7 +165,7 @@ export function materialDraftFilename(body: Record<string, unknown>): string {
 
 
 export function materialFilenameBaseStem(filename: string): string {
-  return parseMaterialFilename(filename)?.family
+  return materialFilenameListStem(filename);
 }
 
 

@@ -34,9 +34,18 @@ describe("nextVersionedMaterialFilename", () => {
 
 describe("materialListLabel", () => {
   it.each([
-    ["08Х13_v2.json", "08Х13_v2"],
+    ["08Х13_v2.json", "08Х13"],
     ["сталь.json", "сталь"],
-  ] as const)("%s → %s", (filename, expected) => {
-    expect(materialListLabel({ filename })).toEqual(expected);
+  ] as const)("%s → %s without metadata name", (filename, expected) => {
+    expect(materialListLabel({ filename, name: "" })).toEqual(expected);
+  });
+
+  it("prefers metadata display name over filename", () => {
+    expect(
+      materialListLabel({
+        filename: "08Х13_v2.json",
+        name: "08Х13 (0Х13, ЭИ 496)",
+      }),
+    ).toEqual("08Х13 (0Х13, ЭИ 496)");
   });
 });
