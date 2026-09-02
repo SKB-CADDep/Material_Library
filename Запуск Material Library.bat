@@ -6,6 +6,6 @@ echo.
 echo   Material Library — запуск...
 echo   Подробная инструкция: ИНСТРУКЦИЯ.txt
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-demo-local.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-web.ps1"
 echo.
 pause

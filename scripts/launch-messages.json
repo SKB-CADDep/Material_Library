@@ -1,38 +1,30 @@
 {
-  "python_missing_title": "Не найден Python 3.11 или новее",
+  "python_missing_title": "Не найден Python для запуска",
   "python_missing_steps": [
-    "Скачайте Python: https://www.python.org/downloads/",
-    "При установке отметьте: Add python.exe to PATH",
-    "После установки перезагрузите компьютер и запустите снова",
-    "Проверка в cmd: py -3.13 --version"
-  ],
-  "node_missing_title": "Не найден Node.js (npm)",
-  "node_missing_steps": [
-    "Скачайте Node.js LTS: https://nodejs.org/",
-    "Установите с настройками по умолчанию",
-    "После установки перезагрузите компьютер и запустите снова",
-    "Проверка в cmd: npm --version"
+    "В полном дистрибутиве должна быть папка runtime/python",
+    "Если вы разработчик — выполните: scripts\\prepare-portable-python.ps1",
+    "Или установите Python 3.11+ с https://www.python.org/downloads/ (Add to PATH)",
+    "После установки перезагрузите компьютер и запустите снова"
   ],
   "port_busy_title": "Порт {0} занят ({1})",
   "port_busy_steps": [
     "Возможно, программа уже запущена",
     "Запустите файл: Остановить Material Library.bat",
-    "Или закройте окна BACKEND и FRONTEND",
+    "Или закройте окно WEB SERVER",
     "Затем снова: Запуск Material Library.bat"
   ],
-  "backend_timeout_title": "Сервер не ответил за 90 секунд",
-  "backend_timeout_steps": [
-    "Посмотрите окно BACKEND — там текст ошибки",
+  "server_timeout_title": "Сервер не ответил за 90 секунд",
+  "server_timeout_steps": [
+    "Посмотрите окно WEB SERVER — там текст ошибки",
     "Часто: антивирус, нет интернета при первой установке",
-    "Попробуйте Остановить Material Library.bat и запустить снова",
-    "Если не помогло — скриншот окна BACKEND разработчикам"
+    "Попробуйте «Остановить Material Library.bat» и запустить снова",
+    "Если не помогло — скриншот окна WEB SERVER разработчикам"
   ],
-  "frontend_timeout_title": "Сайт не открылся за 90 секунд",
-  "frontend_timeout_steps": [
-    "Посмотрите окно FRONTEND — там текст ошибки",
-    "Первый запуск может занять до 10 минут",
-    "Проверка: npm --version",
-    "Если не помогло — скриншот окна FRONTEND разработчикам"
+  "ui_timeout_title": "Интерфейс не открылся за 90 секунд",
+  "ui_timeout_steps": [
+    "Посмотрите окно WEB SERVER — там текст ошибки",
+    "Проверьте, что в папке frontend/dist есть index.html",
+    "Попробуйте «Остановить Material Library.bat» и запустить снова"
   ],
   "stop_ok": "Остановлен процесс PID {0} (порт {1})",
   "stop_fail": "Не удалось остановить PID {0} (порт {1}): {2}",
@@ -55,13 +47,7 @@
     "Проверьте подключение к сети и повторите запуск",
     "См. ИНСТРУКЦИЯ.txt"
   ],
-  "setup_npm": "Установка компонентов интерфейса",
-  "setup_npm_fail_title": "Ошибка установки компонентов интерфейса (npm)",
-  "setup_npm_fail_steps": [
-    "Нужен доступ в интернет при первом запуске",
-    "Проверьте: npm --version",
-    "См. ИНСТРУКЦИЯ.txt"
-  ],
+  "portable_runtime_ok": "Встроенный Python готов (runtime/python)",
   "workspace_missing": "Папка с материалами не найдена: {0}",
   "workspace_manual": "На экране программы укажите путь к папке с JSON-файлами.",
   "workspace_load": "Загрузка базы материалов",
@@ -71,24 +57,31 @@
   "not_ready_title": "Программа ещё не подготовлена к работе",
   "not_ready_steps": [
     "Запустите «Запуск Material Library.bat»",
-    "Первый запуск сам установит всё необходимое"
+    "Первый запуск сам установит Python-пакеты"
   ],
-  "backend_start": "Запуск сервера данных (порт 8000)",
-  "backend_ok": "Сервер данных готов.",
-  "frontend_start": "Запуск сайта программы (порт 5173)",
-  "frontend_ok": "Сайт программы готов.",
+  "no_dist_title": "Не найден собранный интерфейс (frontend/dist)",
+  "no_dist_steps": [
+    "Эта версия программы должна содержать папку frontend/dist с уже собранным сайтом",
+    "Если вы разработчик — выполните: scripts\\build-frontend-web.ps1",
+    "Если вы пользователь — обратитесь к разработчикам за полным дистрибутивом"
+  ],
+  "server_start": "Запуск программы (порт 8000)",
+  "server_ok": "Сервер готов.",
+  "ui_ok": "Интерфейс программы доступен.",
   "success_title": "Программа запущена",
   "success_url": "Адрес: {0}",
-  "success_hint_backend": "Не закрывайте окна BACKEND и FRONTEND во время работы.",
+  "success_hint_window": "Не закрывайте окно WEB SERVER во время работы.",
   "success_hint_stop": "Чтобы остановить: «Остановить Material Library.bat»",
+  "browser_open": "Открытие браузера",
+  "browser_window_ok": "Браузер развернут. Контент: 1366 px (13 дюйма), по бокам поля.",
+  "browser_window_warn": "Не удалось развернуть окно браузера автоматически.",
   "unexpected_title": "Непредвиденная ошибка",
   "unexpected_steps_extra": [
     "Попробуйте «Остановить Material Library.bat» и запустить снова",
     "Сохраните текст этого окна и обратитесь к разработчикам"
   ],
-  "port_label_backend": "сервер данных",
-  "port_label_frontend": "сайт программы",
+  "port_label_server": "веб-сервер",
   "what_to_do": "Что сделать:",
   "stop_header": "Material Library — остановка",
-  "stop_done": "Готово. Если окна BACKEND/FRONTEND ещё открыты — закройте их вручную."
+  "stop_done": "Готово. Если окно WEB SERVER ещё открыто — закройте его вручную."
 }

@@ -34,7 +34,7 @@ export default defineConfig({
   },
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: "http://127.0.0.1:8000",
     trace: "on-first-retry",
   },
   projects: [
@@ -43,24 +43,15 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: [
-    {
-      command: `"${python}" -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`,
-      cwd: rootDir,
-      url: "http://127.0.0.1:8000/api/health",
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-      env: {
-        ...process.env,
-        MATERIALS_DIR: materialsDir,
-      },
+  webServer: {
+    command: `"${python}" -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`,
+    cwd: rootDir,
+    url: "http://127.0.0.1:8000/api/health",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    env: {
+      ...process.env,
+      MATERIALS_DIR: materialsDir,
     },
-    {
-      command: "npm run dev -- --host 127.0.0.1 --port 5173",
-      cwd: path.join(rootDir, "frontend"),
-      url: "http://127.0.0.1:5173",
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
-  ],
+  },
 });

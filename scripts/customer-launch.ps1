@@ -1,4 +1,4 @@
-﻿# Launch helpers for Material Library (PowerShell 5.1+, ASCII source)
+﻿# Launch helpers for Material Library
 
 try {
     chcp 65001 | Out-Null
@@ -90,6 +90,81 @@ function Wait-ForHttp([string]$Url, [int]$TimeoutSec = 90) {
     return $false
 }
 
+function Initialize-CustomerBrowserWindowApi {
+    if ($Script:CustomerBrowserWindowApiReady) { return }
+
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class NativeWindowHelper {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+}
+"@
+
+    Add-Type -AssemblyName System.Windows.Forms
+    $Script:CustomerBrowserWindowApiReady = $true
+}
+
+function Maximize-CustomerBrowserWindow {
+    param([int]$WaitSec = 15)
+
+    Initialize-CustomerBrowserWindowApi
+
+    $titlePattern = 'Material Library|Material_Lib|127\.0\.0\.1:8000|frontend'
+    $deadline = (Get-Date).AddSeconds($WaitSec)
+    while ((Get-Date) -lt $deadline) {
+        $window = Get-Process |
+            Where-Object {
+                $_.MainWindowHandle -ne [IntPtr]::Zero -and
+                $_.MainWindowTitle -match $titlePattern
+            } |
+            Sort-Object StartTime -Descending |
+            Select-Object -First 1
+
+        if ($window) {
+            # SW_MAXIMIZE = 3
+            [NativeWindowHelper]::ShowWindow($window.MainWindowHandle, 3) | Out-Null
+            [NativeWindowHelper]::SetForegroundWindow($window.MainWindowHandle) | Out-Null
+            return $true
+        }
+
+        Start-Sleep -Milliseconds 400
+    }
+
+    return $false
+}
+
+function Open-CustomerBrowser {
+    param([Parameter(Mandatory = $true)][string]$Url)
+
+    $browserPaths = @(
+        "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+        (Join-Path $env:LOCALAPPDATA "Yandex\YandexBrowser\Application\browser.exe")
+    )
+
+    $opened = $false
+    foreach ($browserExe in $browserPaths) {
+        if (-not (Test-Path -LiteralPath $browserExe)) { continue }
+        Start-Process -FilePath $browserExe -ArgumentList @($Url) | Out-Null
+        $opened = $true
+        break
+    }
+
+    if (-not $opened) {
+        Start-Process $Url | Out-Null
+    }
+
+    return (Maximize-CustomerBrowserWindow)
+}
+
 function Invoke-PythonExe {
     param([string]$PythonExe, [Parameter(ValueFromRemainingArguments = $true)][string[]]$PythonArgs)
     if ($PythonExe -match '^py\s+-') {
@@ -131,6 +206,25 @@ function Test-Python311Plus($VersionInfo) {
     return $VersionInfo -and ($VersionInfo.Major -gt 3 -or ($VersionInfo.Major -eq 3 -and $VersionInfo.Minor -ge 11))
 }
 
+function Get-PortablePythonExe {
+    param([string]$ProjectRoot)
+    Join-Path $ProjectRoot "runtime\python\python.exe"
+}
+
+function Test-PortableRuntimeReady {
+    param([string]$ProjectRoot)
+    $python = Get-PortablePythonExe -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $python)) { return $false }
+    $marker = Join-Path $ProjectRoot "runtime\python\.runtime-ready"
+    if (Test-Path -LiteralPath $marker) { return $true }
+    try {
+        & $python -c "import uvicorn" 2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    }
+}
+
 function Resolve-PythonExe {
     param([string]$ProjectRoot, [switch]$PreferVenv)
     $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
@@ -138,6 +232,12 @@ function Resolve-PythonExe {
         $venvVersion = Get-PythonVersion $VenvPython
         if (Test-Python311Plus $venvVersion) { return $VenvPython }
     }
+
+    $PortablePython = Get-PortablePythonExe -ProjectRoot $ProjectRoot
+    if (Test-PortableRuntimeReady -ProjectRoot $ProjectRoot) {
+        return $PortablePython
+    }
+
     if (Test-CommandExists "python") {
         $pythonVersion = Get-PythonVersion "python"
         if (Test-Python311Plus $pythonVersion) { return "python" }
@@ -160,12 +260,6 @@ function Fail-PythonMissing {
     exit 1
 }
 
-function Fail-NodeMissing {
-    $msg = Get-LaunchMessages
-    Show-LaunchFailure $msg.node_missing_title @($msg.node_missing_steps)
-    exit 1
-}
-
 function Fail-PortBusy([int]$Port, [string]$Label) {
     $msg = Get-LaunchMessages
     Show-LaunchFailure ($msg.port_busy_title -f $Port, $Label) @($msg.port_busy_steps)
@@ -174,12 +268,16 @@ function Fail-PortBusy([int]$Port, [string]$Label) {
 
 function Fail-BackendTimeout {
     $msg = Get-LaunchMessages
-    Show-LaunchFailure $msg.backend_timeout_title @($msg.backend_timeout_steps)
+    Show-LaunchFailure $msg.server_timeout_title @($msg.server_timeout_steps)
     exit 1
 }
 
-function Fail-FrontendTimeout {
+function Fail-ServerTimeout {
+    Fail-BackendTimeout
+}
+
+function Fail-UiTimeout {
     $msg = Get-LaunchMessages
-    Show-LaunchFailure $msg.frontend_timeout_title @($msg.frontend_timeout_steps)
+    Show-LaunchFailure $msg.ui_timeout_title @($msg.ui_timeout_steps)
     exit 1
 }

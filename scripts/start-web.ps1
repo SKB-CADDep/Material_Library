@@ -1,4 +1,4 @@
-﻿# Material Library - local launch (Windows PowerShell 5.1+)
+# Material Library — launch (Python + built frontend)
 
 param(
     [switch]$SkipSetup,
@@ -14,26 +14,22 @@ $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $DataDir = Join-Path $ProjectRoot "data"
 $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $VenvPip = Join-Path $ProjectRoot ".venv\Scripts\pip.exe"
-$FrontendDir = Join-Path $ProjectRoot "frontend"
-$RunBackend = Join-Path $PSScriptRoot "run-backend.ps1"
-$RunFrontend = Join-Path $PSScriptRoot "run-frontend.ps1"
-$BackendUrl = "http://127.0.0.1:8000"
-$FrontendUrl = "http://localhost:5173"
-$HealthUrl = "$BackendUrl/api/health"
+$RunWeb = Join-Path $PSScriptRoot "run-web.ps1"
+$DistIndex = Join-Path $ProjectRoot "frontend\dist\index.html"
+$AppUrl = "http://127.0.0.1:8000"
+$HealthUrl = "$AppUrl/api/health"
 
-function Ensure-Setup {
-    $pythonExe = Resolve-PythonExe -ProjectRoot $ProjectRoot -PreferVenv
-    if (-not $pythonExe) { Fail-PythonMissing }
-    if (-not (Test-CommandExists "npm")) { Fail-NodeMissing }
+function Ensure-DevVenv {
+    param([string]$PythonExe)
 
     Write-LaunchStep $ui.setup_venv
     if (-not (Test-Path $VenvPython)) {
         Write-Host $ui.setup_venv_first
         Push-Location -LiteralPath $ProjectRoot
-        if ($pythonExe -like "py -*") {
-            Invoke-Expression "$pythonExe -m venv .venv"
+        if ($PythonExe -like "py -*") {
+            Invoke-Expression "$PythonExe -m venv .venv"
         } else {
-            & $pythonExe -m venv .venv
+            & $PythonExe -m venv .venv
         }
         Pop-Location
         if (-not (Test-Path $VenvPython)) {
@@ -49,27 +45,22 @@ function Ensure-Setup {
         Show-LaunchFailure $ui.setup_pip_fail_title @($ui.setup_pip_fail_steps)
         exit 1
     }
+}
 
-    Write-LaunchStep $ui.setup_npm
-    Push-Location -LiteralPath $FrontendDir
-    npm install
-    if ($LASTEXITCODE -ne 0) {
-        Pop-Location
-        Show-LaunchFailure $ui.setup_npm_fail_title @($ui.setup_npm_fail_steps)
-        exit 1
+function Ensure-Setup {
+    if (Test-PortableRuntimeReady -ProjectRoot $ProjectRoot) {
+        Write-LaunchStep $ui.portable_runtime_ok
+        return
     }
-    Pop-Location
+
+    $pythonExe = Resolve-PythonExe -ProjectRoot $ProjectRoot
+    if (-not $pythonExe) { Fail-PythonMissing }
+    Ensure-DevVenv -PythonExe $pythonExe
 }
 
-function Start-BackendWindow {
+function Start-WebWindow {
     Start-Process powershell -ArgumentList @(
-        "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $RunBackend
-    ) -WindowStyle Normal
-}
-
-function Start-FrontendWindow {
-    Start-Process powershell -ArgumentList @(
-        "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $RunFrontend
+        "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $RunWeb
     ) -WindowStyle Normal
 }
 
@@ -84,7 +75,7 @@ function Open-Workspace {
     $body = @{ directory = $DataDir } | ConvertTo-Json -Compress
     try {
         Invoke-RestMethod `
-            -Uri "$BackendUrl/api/workspace/open" `
+            -Uri "$AppUrl/api/workspace/open" `
             -Method Post `
             -ContentType "application/json; charset=utf-8" `
             -Body $body | Out-Null
@@ -102,43 +93,52 @@ Write-Host $ui.start_hint -ForegroundColor DarkGray
 Write-Host ""
 
 try {
-    if (Test-PortListening 8000) { Fail-PortBusy 8000 $ui.port_label_backend }
-    if (Test-PortListening 5173) { Fail-PortBusy 5173 $ui.port_label_frontend }
-
-    if (-not $SkipSetup) {
-        Ensure-Setup
-    } elseif (-not (Test-Path -LiteralPath $VenvPython)) {
-        Show-LaunchFailure $ui.not_ready_title @($ui.not_ready_steps)
+    if (-not (Test-Path -LiteralPath $DistIndex)) {
+        Show-LaunchFailure $ui.no_dist_title @($ui.no_dist_steps)
         exit 1
     }
 
-    Write-LaunchStep $ui.backend_start
-    Start-BackendWindow
+    if (Test-PortListening 8000) { Fail-PortBusy 8000 $ui.port_label_server }
 
-    if (-not (Wait-ForHttp $HealthUrl 90)) { Fail-BackendTimeout }
-    Write-LaunchOk $ui.backend_ok
+    if (-not $SkipSetup) {
+        Ensure-Setup
+    } else {
+        $readyPython = Resolve-PythonExe -ProjectRoot $ProjectRoot -PreferVenv
+        if (-not $readyPython) {
+            Show-LaunchFailure $ui.not_ready_title @($ui.not_ready_steps)
+            exit 1
+        }
+    }
+
+    Write-LaunchStep $ui.server_start
+    Start-WebWindow
+
+    if (-not (Wait-ForHttp $HealthUrl 90)) { Fail-ServerTimeout }
+    Write-LaunchOk $ui.server_ok
+
+    if (-not (Wait-ForHttp $AppUrl 90)) { Fail-UiTimeout }
+    Write-LaunchOk $ui.ui_ok
 
     if (-not $SkipWorkspace) { Open-Workspace }
-
-    Write-LaunchStep $ui.frontend_start
-    Start-FrontendWindow
-
-    if (-not (Wait-ForHttp $FrontendUrl 90)) { Fail-FrontendTimeout }
-    Write-LaunchOk $ui.frontend_ok
 
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Green
     Write-Host "  $($ui.success_title)" -ForegroundColor Green
-    Write-Host "  $($ui.success_url -f $FrontendUrl)" -ForegroundColor Green
+    Write-Host "  $($ui.success_url -f $AppUrl)" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host $ui.success_hint_backend
+    Write-Host $ui.success_hint_window
     Write-Host $ui.success_hint_stop
     Write-Host ""
 
     if (-not $SkipBrowser) {
-        Start-Sleep -Seconds 1
-        Start-Process $FrontendUrl
+        Write-LaunchStep $ui.browser_open
+        $resized = Open-CustomerBrowser -Url $AppUrl
+        if ($resized) {
+            Write-LaunchOk $ui.browser_window_ok
+        } else {
+            Write-LaunchWarn $ui.browser_window_warn
+        }
     }
 } catch {
     $steps = @($_.Exception.Message) + @($ui.unexpected_steps_extra)
