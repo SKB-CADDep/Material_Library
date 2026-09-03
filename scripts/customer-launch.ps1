@@ -110,21 +110,55 @@ public static class NativeWindowHelper {
     $Script:CustomerBrowserWindowApiReady = $true
 }
 
+function Get-CustomerBrowserCandidates {
+    $candidates = @(
+        (Join-Path $env:LOCALAPPDATA "Yandex\YandexBrowser\Application\browser.exe"),
+        "${env:ProgramFiles}\Yandex\YandexBrowser\Application\browser.exe",
+        "${env:ProgramFiles(x86)}\Yandex\YandexBrowser\Application\browser.exe",
+        "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+        (Join-Path $env:LOCALAPPDATA "Google\Chrome\Application\chrome.exe")
+    )
+
+    $found = @()
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path -LiteralPath $path)) {
+            $found += $path
+        }
+    }
+    return $found
+}
+
 function Maximize-CustomerBrowserWindow {
-    param([int]$WaitSec = 15)
+    param(
+        [int]$WaitSec = 15,
+        [string]$ProcessNameHint = ""
+    )
 
     Initialize-CustomerBrowserWindowApi
 
-    $titlePattern = 'Material Library|Material_Lib|127\.0\.0\.1:8000|frontend'
+    $titlePattern = 'Material Library|Material_Lib|127\.0\.0\.1:8000|localhost:8000|frontend'
     $deadline = (Get-Date).AddSeconds($WaitSec)
     while ((Get-Date) -lt $deadline) {
-        $window = Get-Process |
-            Where-Object {
-                $_.MainWindowHandle -ne [IntPtr]::Zero -and
-                $_.MainWindowTitle -match $titlePattern
-            } |
+        $processes = Get-Process | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero }
+        if ($ProcessNameHint) {
+            $preferred = $processes | Where-Object { $_.ProcessName -ieq $ProcessNameHint }
+            if ($preferred) { $processes = $preferred }
+        }
+
+        $window = $processes |
+            Where-Object { $_.MainWindowTitle -match $titlePattern } |
             Sort-Object StartTime -Descending |
             Select-Object -First 1
+
+        if (-not $window -and $ProcessNameHint) {
+            $window = Get-Process -Name $ProcessNameHint -ErrorAction SilentlyContinue |
+                Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
+                Sort-Object StartTime -Descending |
+                Select-Object -First 1
+        }
 
         if ($window) {
             # SW_MAXIMIZE = 3
@@ -142,27 +176,25 @@ function Maximize-CustomerBrowserWindow {
 function Open-CustomerBrowser {
     param([Parameter(Mandatory = $true)][string]$Url)
 
-    $browserPaths = @(
-        "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
-        "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
-        "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
-        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
-        (Join-Path $env:LOCALAPPDATA "Yandex\YandexBrowser\Application\browser.exe")
-    )
 
-    $opened = $false
-    foreach ($browserExe in $browserPaths) {
-        if (-not (Test-Path -LiteralPath $browserExe)) { continue }
+    $browserExe = Get-CustomerBrowserCandidates | Select-Object -First 1
+    $processHint = ""
+
+    if ($browserExe) {
         Start-Process -FilePath $browserExe -ArgumentList @($Url) | Out-Null
-        $opened = $true
-        break
-    }
-
-    if (-not $opened) {
+        $leaf = [System.IO.Path]::GetFileNameWithoutExtension($browserExe)
+        if ($leaf -ieq "browser") {
+            $processHint = "browser"
+        } elseif ($leaf -ieq "msedge") {
+            $processHint = "msedge"
+        } elseif ($leaf -ieq "chrome") {
+            $processHint = "chrome"
+        }
+    } else {
         Start-Process $Url | Out-Null
     }
 
-    return (Maximize-CustomerBrowserWindow)
+    return (Maximize-CustomerBrowserWindow -ProcessNameHint $processHint)
 }
 
 function Invoke-PythonExe {
