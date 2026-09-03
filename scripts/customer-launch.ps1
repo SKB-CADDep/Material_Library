@@ -18,6 +18,43 @@ function Get-LaunchMessages {
     return $Script:LaunchMessages
 }
 
+function Get-NativeFilesystemPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $Path }
+
+    if ($Path -match '::(.+)$') {
+        $Path = $Matches[1]
+    }
+
+    try {
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($item.PSPath -and $item.PSPath -match '::(.+)$') {
+            return $Matches[1]
+        }
+        if ($item.FullName) { return $item.FullName }
+    } catch {}
+
+    try {
+        $resolved = Resolve-Path -LiteralPath $Path -ErrorAction Stop
+        if ($resolved.ProviderPath) { return $resolved.ProviderPath }
+        if ($resolved.Path -match '::(.+)$') { return $Matches[1] }
+        return $resolved.Path
+    } catch {
+        return $Path
+    }
+}
+
+function Get-LaunchProjectRoot {
+    param([string]$ScriptsDir = $PSScriptRoot)
+    $parent = Join-Path $ScriptsDir ".."
+    try {
+        return Get-NativeFilesystemPath ((Resolve-Path -LiteralPath $parent).ProviderPath)
+    } catch {
+        return Get-NativeFilesystemPath ([System.IO.Path]::GetFullPath($parent))
+    }
+}
+
 function Write-LaunchStep([string]$Message) {
     Write-Host ""
     Write-Host "==> $Message" -ForegroundColor Cyan

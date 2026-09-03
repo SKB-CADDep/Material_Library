@@ -1,4 +1,4 @@
-# Material Library — launch (Python + built frontend)
+
 
 param(
     [switch]$SkipSetup,
@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\customer-launch.ps1"
 $ui = Get-LaunchMessages
 
-$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$ProjectRoot = Get-LaunchProjectRoot -ScriptsDir $PSScriptRoot
 $DataDir = Join-Path $ProjectRoot "data"
 $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $VenvPip = Join-Path $ProjectRoot ".venv\Scripts\pip.exe"
@@ -23,16 +23,19 @@ function Ensure-DevVenv {
     param([string]$PythonExe)
 
     Write-LaunchStep $ui.setup_venv
-    if (-not (Test-Path $VenvPython)) {
+    if (-not (Test-Path -LiteralPath $VenvPython)) {
         Write-Host $ui.setup_venv_first
         Push-Location -LiteralPath $ProjectRoot
-        if ($PythonExe -like "py -*") {
-            Invoke-Expression "$PythonExe -m venv .venv"
-        } else {
-            & $PythonExe -m venv .venv
+        try {
+            if ($PythonExe -like "py -*") {
+                Invoke-Expression "$PythonExe -m venv .venv"
+            } else {
+                & $PythonExe -m venv .venv
+            }
+        } finally {
+            Pop-Location
         }
-        Pop-Location
-        if (-not (Test-Path $VenvPython)) {
+        if (-not (Test-Path -LiteralPath $VenvPython)) {
             Show-LaunchFailure $ui.setup_venv_fail_title @($ui.setup_venv_fail_steps)
             exit 1
         }
@@ -59,9 +62,25 @@ function Ensure-Setup {
 }
 
 function Start-WebWindow {
-    Start-Process powershell -ArgumentList @(
-        "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $RunWeb
-    ) -WindowStyle Normal
+    $argList = @(
+        "-NoProfile",
+        "-NoExit",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $RunWeb,
+        "-ProjectRoot", $ProjectRoot
+    )
+
+    $startInfo = @{
+        FilePath = "powershell.exe"
+        ArgumentList = $argList
+        WindowStyle = "Normal"
+    }
+
+    if ($ProjectRoot -match '^[A-Za-z]:\\') {
+        $startInfo["WorkingDirectory"] = $ProjectRoot
+    }
+
+    Start-Process @startInfo | Out-Null
 }
 
 function Open-Workspace {
