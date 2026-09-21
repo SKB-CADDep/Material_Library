@@ -1,4 +1,4 @@
-﻿# Launch helpers for Material Library (PowerShell 5.1+, ASCII source)
+﻿# Launch helpers for Material Library
 
 try {
     chcp 65001 | Out-Null
@@ -16,6 +16,92 @@ function Get-LaunchMessages {
     }
     $Script:LaunchMessages = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
     return $Script:LaunchMessages
+}
+
+function Get-NativeFilesystemPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $Path }
+
+    if ($Path -match '::(.+)$') {
+        $Path = $Matches[1]
+    }
+
+    try {
+        $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+        if ($item.PSPath -and $item.PSPath -match '::(.+)$') {
+            return $Matches[1]
+        }
+        if ($item.FullName) { return $item.FullName }
+    } catch {}
+
+    try {
+        $resolved = Resolve-Path -LiteralPath $Path -ErrorAction Stop
+        if ($resolved.ProviderPath) { return $resolved.ProviderPath }
+        if ($resolved.Path -match '::(.+)$') { return $Matches[1] }
+        return $resolved.Path
+    } catch {
+        return $Path
+    }
+}
+
+function Get-LaunchProjectRoot {
+    param([string]$ScriptsDir = $PSScriptRoot)
+    $parent = Join-Path $ScriptsDir ".."
+    try {
+        return Get-NativeFilesystemPath ((Resolve-Path -LiteralPath $parent).ProviderPath)
+    } catch {
+        return Get-NativeFilesystemPath ([System.IO.Path]::GetFullPath($parent))
+    }
+}
+
+function Convert-ToUncPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    # pushd maps \\server\share to Z:\...; after bat popd that letter disappears.
+    # Backend must keep a stable UNC path for MATERIALS_DIR / workspace.
+    $native = Get-NativeFilesystemPath $Path
+    if ($native -match '^\\\\') { return $native }
+    if ($native -match '^([A-Za-z]):(\\.*)?$') {
+        $letter = $Matches[1]
+        $tail = $Matches[2]
+        if (-not $tail) { $tail = "" }
+        try {
+            $mapped = Get-CimInstance -ClassName Win32_MappedLogicalDisk -Filter "DeviceID='$letter`:'" -ErrorAction SilentlyContinue
+            if ($mapped -and $mapped.ProviderName) {
+                $uncRoot = ([string]$mapped.ProviderName).TrimEnd("\")
+                if ($tail -eq "" -or $tail -eq "\") { return $uncRoot }
+                return ($uncRoot + $tail)
+            }
+        } catch {}
+    }
+    return $native
+}
+
+function Resolve-MaterialsDataDir {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    # Materials workspace is always the sibling "data" folder (UNC after pushd/popd).
+    if ($env:MATERIALS_DIR -and (Test-Path -LiteralPath $env:MATERIALS_DIR)) {
+        return (Convert-ToUncPath $env:MATERIALS_DIR)
+    }
+    return (Convert-ToUncPath (Join-Path $ProjectRoot "data"))
+}
+
+function Resolve-SourceJsonPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$MaterialsDir
+    )
+
+    # source.json lives in the same folder as materials (data\source.json).
+    if ($env:SOURCE_JSON_PATH -and (Test-Path -LiteralPath $env:SOURCE_JSON_PATH)) {
+        return (Convert-ToUncPath $env:SOURCE_JSON_PATH)
+    }
+    $target = Join-Path $MaterialsDir "source.json"
+    if (Test-Path -LiteralPath $target) {
+        return (Convert-ToUncPath $target)
+    }
+    return $null
 }
 
 function Write-LaunchStep([string]$Message) {
@@ -90,6 +176,113 @@ function Wait-ForHttp([string]$Url, [int]$TimeoutSec = 90) {
     return $false
 }
 
+function Initialize-CustomerBrowserWindowApi {
+    if ($Script:CustomerBrowserWindowApiReady) { return }
+
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class NativeWindowHelper {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+}
+"@
+
+    Add-Type -AssemblyName System.Windows.Forms
+    $Script:CustomerBrowserWindowApiReady = $true
+}
+
+function Get-CustomerBrowserCandidates {
+    $candidates = @(
+        (Join-Path $env:LOCALAPPDATA "Yandex\YandexBrowser\Application\browser.exe"),
+        "${env:ProgramFiles}\Yandex\YandexBrowser\Application\browser.exe",
+        "${env:ProgramFiles(x86)}\Yandex\YandexBrowser\Application\browser.exe",
+        "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+        (Join-Path $env:LOCALAPPDATA "Google\Chrome\Application\chrome.exe")
+    )
+
+    $found = @()
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path -LiteralPath $path)) {
+            $found += $path
+        }
+    }
+    return $found
+}
+
+function Maximize-CustomerBrowserWindow {
+    param(
+        [int]$WaitSec = 15,
+        [string]$ProcessNameHint = ""
+    )
+
+    Initialize-CustomerBrowserWindowApi
+
+    $titlePattern = 'Material Library|Material_Lib|127\.0\.0\.1:8000|localhost:8000|frontend'
+    $deadline = (Get-Date).AddSeconds($WaitSec)
+    while ((Get-Date) -lt $deadline) {
+        $processes = Get-Process | Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero }
+        if ($ProcessNameHint) {
+            $preferred = $processes | Where-Object { $_.ProcessName -ieq $ProcessNameHint }
+            if ($preferred) { $processes = $preferred }
+        }
+
+        $window = $processes |
+            Where-Object { $_.MainWindowTitle -match $titlePattern } |
+            Sort-Object StartTime -Descending |
+            Select-Object -First 1
+
+        if (-not $window -and $ProcessNameHint) {
+            $window = Get-Process -Name $ProcessNameHint -ErrorAction SilentlyContinue |
+                Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
+                Sort-Object StartTime -Descending |
+                Select-Object -First 1
+        }
+
+        if ($window) {
+            # SW_MAXIMIZE = 3
+            [NativeWindowHelper]::ShowWindow($window.MainWindowHandle, 3) | Out-Null
+            [NativeWindowHelper]::SetForegroundWindow($window.MainWindowHandle) | Out-Null
+            return $true
+        }
+
+        Start-Sleep -Milliseconds 400
+    }
+
+    return $false
+}
+
+function Open-CustomerBrowser {
+    param([Parameter(Mandatory = $true)][string]$Url)
+
+
+    $browserExe = Get-CustomerBrowserCandidates | Select-Object -First 1
+    $processHint = ""
+
+    if ($browserExe) {
+        Start-Process -FilePath $browserExe -ArgumentList @($Url) | Out-Null
+        $leaf = [System.IO.Path]::GetFileNameWithoutExtension($browserExe)
+        if ($leaf -ieq "browser") {
+            $processHint = "browser"
+        } elseif ($leaf -ieq "msedge") {
+            $processHint = "msedge"
+        } elseif ($leaf -ieq "chrome") {
+            $processHint = "chrome"
+        }
+    } else {
+        Start-Process $Url | Out-Null
+    }
+
+    return (Maximize-CustomerBrowserWindow -ProcessNameHint $processHint)
+}
+
 function Invoke-PythonExe {
     param([string]$PythonExe, [Parameter(ValueFromRemainingArguments = $true)][string[]]$PythonArgs)
     if ($PythonExe -match '^py\s+-') {
@@ -131,6 +324,25 @@ function Test-Python311Plus($VersionInfo) {
     return $VersionInfo -and ($VersionInfo.Major -gt 3 -or ($VersionInfo.Major -eq 3 -and $VersionInfo.Minor -ge 11))
 }
 
+function Get-PortablePythonExe {
+    param([string]$ProjectRoot)
+    Join-Path $ProjectRoot "runtime\python\python.exe"
+}
+
+function Test-PortableRuntimeReady {
+    param([string]$ProjectRoot)
+    $python = Get-PortablePythonExe -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $python)) { return $false }
+    $marker = Join-Path $ProjectRoot "runtime\python\.runtime-ready"
+    if (Test-Path -LiteralPath $marker) { return $true }
+    try {
+        & $python -c "import uvicorn" 2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    }
+}
+
 function Resolve-PythonExe {
     param([string]$ProjectRoot, [switch]$PreferVenv)
     $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
@@ -138,6 +350,12 @@ function Resolve-PythonExe {
         $venvVersion = Get-PythonVersion $VenvPython
         if (Test-Python311Plus $venvVersion) { return $VenvPython }
     }
+
+    $PortablePython = Get-PortablePythonExe -ProjectRoot $ProjectRoot
+    if (Test-PortableRuntimeReady -ProjectRoot $ProjectRoot) {
+        return $PortablePython
+    }
+
     if (Test-CommandExists "python") {
         $pythonVersion = Get-PythonVersion "python"
         if (Test-Python311Plus $pythonVersion) { return "python" }
@@ -160,12 +378,6 @@ function Fail-PythonMissing {
     exit 1
 }
 
-function Fail-NodeMissing {
-    $msg = Get-LaunchMessages
-    Show-LaunchFailure $msg.node_missing_title @($msg.node_missing_steps)
-    exit 1
-}
-
 function Fail-PortBusy([int]$Port, [string]$Label) {
     $msg = Get-LaunchMessages
     Show-LaunchFailure ($msg.port_busy_title -f $Port, $Label) @($msg.port_busy_steps)
@@ -174,12 +386,16 @@ function Fail-PortBusy([int]$Port, [string]$Label) {
 
 function Fail-BackendTimeout {
     $msg = Get-LaunchMessages
-    Show-LaunchFailure $msg.backend_timeout_title @($msg.backend_timeout_steps)
+    Show-LaunchFailure $msg.server_timeout_title @($msg.server_timeout_steps)
     exit 1
 }
 
-function Fail-FrontendTimeout {
+function Fail-ServerTimeout {
+    Fail-BackendTimeout
+}
+
+function Fail-UiTimeout {
     $msg = Get-LaunchMessages
-    Show-LaunchFailure $msg.frontend_timeout_title @($msg.frontend_timeout_steps)
+    Show-LaunchFailure $msg.ui_timeout_title @($msg.ui_timeout_steps)
     exit 1
 }
