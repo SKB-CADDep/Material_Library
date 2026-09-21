@@ -1,4 +1,4 @@
-import elements_catalog from "../config/elements_catalog.json";
+import { ELEMENTS_MAP } from "./elementsCatalog";
 import {
   computeChemicalLogDomain,
   formatChemicalBarLabel,
@@ -22,26 +22,14 @@ export type ElementChartPoint = {
   fill: string;
 };
 
-type CatalogElement = {
-  symbol: string;
-  display_symbol?: string;
-  color?: string | null;
-};
-
-const catalogElements = (elements_catalog as { elements: CatalogElement[] }).elements;
-
-const catalogBySymbol = new Map(
-  catalogElements.map((item) => [item.symbol, item]),
-);
-
 export function elementAxisLabel(symbol: string, fallback = "Основа"): string {
   const key = symbol.trim();
   if (!key) return fallback;
-  return catalogBySymbol.get(key)?.display_symbol?.trim() || key;
+  return ELEMENTS_MAP.get(key)?.display_symbol?.trim() || key;
 }
 
 export function elementBarColor(symbol: string): string {
-  return catalogBySymbol.get(symbol.trim())?.color ?? "#1f77b4";
+  return ELEMENTS_MAP.get(symbol.trim())?.color ?? "#1f77b4";
 }
 
 export function buildElementChartData(
@@ -76,7 +64,7 @@ export function buildElementChartData(
     symbol: baseSym,
     value: basePercent,
     displayValue: basePercent > 0 ? basePercent : 0.0001,
-    fill: catalogBySymbol.get(baseSym)?.color ?? "#444444",
+    fill: ELEMENTS_MAP.get(baseSym)?.color ?? "#444444",
   });
 
   plotData.sort((a, b) => a.value - b.value);

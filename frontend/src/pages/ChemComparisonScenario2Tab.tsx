@@ -5,6 +5,7 @@ import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { TabErrorBoundary } from "../components/TabErrorBoundary";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useElementsCatalog } from "../hooks/useElementsCatalog";
 import { PanelResizeHandle } from "../components/PanelResizeHandle";
 import { useDragResize } from "../hooks/useDragResize";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
@@ -21,7 +22,7 @@ import {
   type CandidateEvaluation,
 } from "../lib/chemTargetSelection";
 import {
-  ELEMENTS_SORTED,
+  getElementsSorted,
   elementDisplayName,
   parseElementInfluence,
 } from "../lib/elementsCatalog";
@@ -66,7 +67,7 @@ function ChemTargetElementSelect({ value, onChange }: ElementSelectProps) {
   const listboxId = useId();
 
   const options = useMemo(() => {
-    const symbols = ELEMENTS_SORTED.map((item) => item.symbol);
+    const symbols = getElementsSorted().map((item) => item.symbol);
     if (value && value !== "-" && !symbols.includes(value)) {
       return [value, ...symbols];
     }
@@ -234,6 +235,7 @@ export function ChemComparisonScenario2Tab() {
     enabled: Boolean(workspace),
   });
   const sourcesQuery = useSourcesCatalog();
+  useElementsCatalog();
   const chemicalSources = sourcesQuery.data?.chemical_sources ?? [];
 
   const compositionCache = useMemo(() => {

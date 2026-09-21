@@ -50,6 +50,20 @@ export type TabType =
 
 export type SourcesTabType = TabType;
 
+export type ElementItem = {
+  symbol: string;
+  display_symbol: string;
+  name: string;
+  color: string | null;
+  influence: string | null;
+  min?: number | null;
+};
+
+export type ElementsCatalogResponse = {
+  schema_version: string;
+  elements: ElementItem[];
+};
+
 
 export type MaterialSaveResponse = {
   ok: boolean;

@@ -1,7 +1,7 @@
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useElementsCatalog } from "../hooks/useElementsCatalog";
 import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 import { useState, useRef, useEffect } from "react";
-import elements_catalog from '../config/elements_catalog.json'
 import { UnitSelect } from "./UnitSelect";
 import { RequiredMark } from "../components/RequiredMark";
 import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
@@ -96,13 +96,6 @@ type Elements = {
   min?: number | null;
 };
 
-type ElementsCatalog = {
-  shema_version?: string;
-  elements: Elements[];
-};
-
-const elements = elements_catalog as ElementsCatalog;
-
 export function ChemicalProperties({
   material,
   onDraftChange,
@@ -111,6 +104,8 @@ export function ChemicalProperties({
   const paneActive = useKeepAlivePaneActive();
   const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
   const result = useSourcesCatalog({ enabled: paneActive });
+  const elementsQuery = useElementsCatalog({ enabled: paneActive });
+  const elementsList = elementsQuery.data?.elements ?? [];
   const [compositionSourceIndex, setCompositionSourceIndex] = useState(0);
   const [chartMode, setChartMode] = useState<ChartMode>("max");
   const [contextMenu, setContextMenu] = useState<{
@@ -634,7 +629,7 @@ const handleRowClick = (index: number) => {
       onClick={() => handleRowClick(i)}
       onContextMenu={(e) => handleRowContextMenu(e, i)}
     >
-      <td>{elements.elements.find(el => el.symbol === row.element)?.name}</td>
+      <td>{elementsList.find(el => el.symbol === row.element)?.name}</td>
                       <td>
                         <input
                           className="table-cell-input"
@@ -756,7 +751,7 @@ const handleRowClick = (index: number) => {
         ? "Добавить элемент:" 
         : "Заменить элемент:"}
     </div>
-    {elements.elements.map((element, index) => (
+    {elementsList.map((element, index) => (
       <div 
         key={index}
         className="context-menu-item"

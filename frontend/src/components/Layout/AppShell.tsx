@@ -24,6 +24,7 @@ export function AppShell() {
         <NavLink to={selectionMainPath}>Подбор материала</NavLink>
         <NavLink to={editorMainPath}>Добавление / Редактирование</NavLink>
         <NavLink to="/sources">Работа с источниками</NavLink>
+        <NavLink to="/elements">Справочник элементов</NavLink>
       </nav>
 
       <main>

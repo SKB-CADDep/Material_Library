@@ -6,6 +6,7 @@ import { WaitingWorkspaceScreen } from "./components/Layout/WaitingWorkspaceScre
 import { SelectionPage } from "./pages/SelectionPage";
 import { EditorPage } from "./pages/EditorPage";
 import { SourcesPage } from "./pages/SourcesPage";
+import { ElementsPage } from "./pages/ElementsPage";
 import { EditorProvider } from "./context/EditorContext";
 import { StickyRouteProvider } from "./context/StickyRouteContext";
 import { KeepAlivePanes } from "./components/KeepAlivePanes";
@@ -15,6 +16,7 @@ const MAIN_KEEP_ALIVE_PANES = [
   { key: "selection", node: <SelectionPage /> },
   { key: "editor", node: <EditorPage /> },
   { key: "sources", node: <SourcesPage /> },
+  { key: "elements", node: <ElementsPage /> },
 ];
 
 function KeepAliveMainPages() {

@@ -12,6 +12,7 @@ describe("keepAliveRoutes", () => {
     expect(mainPageKeyFromPath("/selection/temperature")).toBe("selection");
     expect(mainPageKeyFromPath("/editor/general")).toBe("editor");
     expect(mainPageKeyFromPath("/sources")).toBe("sources");
+    expect(mainPageKeyFromPath("/elements")).toBe("elements");
   });
 
   it("maps selection subtabs and ignores editor paths", () => {

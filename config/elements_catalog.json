@@ -345,6 +345,14 @@
             "influence": "Фосфор.\nПовышает: Прочность, коррозионная стойкость.\nСнижает: Пластичность, вязкость"
         },
         {
+            "symbol": "P+S",
+            "display_symbol": "P+S",
+            "name": "Фосфор + Сера",
+            "color": "#6B85F1",
+            "influence": null,
+            "min": 0.0
+        },
+        {
             "symbol": "F",
             "display_symbol": "F",
             "name": "Фтор",
@@ -392,16 +400,6 @@
             "name": "Цирконий",
             "color": "#C4E0B6",
             "influence": null
-        },
-
-        {
-            "symbol": "P+S",
-            "display_symbol": "P+S",
-            "name": "Фосфор + Сера",
-            "color": "#6B85F1",
-            "influence": null,
-            "min": 0
         }
-
     ]
 }

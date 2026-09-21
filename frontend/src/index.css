@@ -3094,6 +3094,25 @@ select {
   white-space: nowrap;
 }
 
+.source-page .data-table--sources .col-influence {
+  width: 42%;
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+  height: auto;
+  min-height: 2.25rem;
+  vertical-align: top;
+}
+
+.source-page .data-table--sources td.col-influence {
+  white-space: normal;
+  overflow: visible;
+  max-width: none;
+  height: auto;
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-sm);
+}
+
 .source-page .data-table--sources .col-index {
   width: 2.25rem;
   max-width: 2.25rem;
@@ -3129,6 +3148,12 @@ select {
   white-space: nowrap;
   padding-left: var(--space-xs);
   padding-right: var(--space-xs);
+  overflow: visible;
+}
+
+.source-page .data-table--sources td.col-actions {
+  overflow: visible;
+  max-width: 4.75rem;
 }
 
 .source-page .data-table--sources .source-page__actions {
@@ -3588,6 +3613,75 @@ select {
 .source-page .btn-danger:hover:not(:disabled) {
   background: var(--danger-hover);
   border-color: var(--danger-hover);
+}
+
+.source-page .element-influence {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.source-page .element-influence--empty {
+  color: var(--text-muted);
+}
+
+.source-page .element-influence__row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  line-height: 1.4;
+}
+
+.source-page .element-influence__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.source-page .element-influence__row--up .element-influence__label {
+  color: #1f6b3a;
+  background: color-mix(in srgb, #2f9e5d 16%, var(--surface));
+}
+
+.source-page .element-influence__row--down .element-influence__label {
+  color: #8a3b18;
+  background: color-mix(in srgb, #d9773a 16%, var(--surface));
+}
+
+.source-page .element-influence__value {
+  color: var(--text);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.source-page .element-influence-fieldset {
+  margin: 0;
+  padding: 0.75rem 0.9rem 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.source-page .element-influence-fieldset legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.source-page .element-influence-hint {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .source-page .btn:focus,

@@ -1,4 +1,4 @@
-import elements_catalog from "../config/elements_catalog.json";
+import { ELEMENTS_MAP } from "./elementsCatalog";
 import type { SourceItem } from "../types/api";
 import { formatChemElementValue, type ChemElementValue } from "./formatChemElementValue";
 import { resolveCompositionSourceLabel } from "./resolveCompositionSourceLabel";
@@ -40,24 +40,12 @@ export type ChemComparisonView = {
   rows: ChemPivotRow[];
 };
 
-type CatalogElement = {
-  symbol: string;
-  name?: string;
-};
-
-const catalogBySymbol = new Map<string, CatalogElement>(
-  (elements_catalog as { elements: CatalogElement[] }).elements.map((item) => [
-    item.symbol,
-    item,
-  ]),
-);
-
 export function elementCatalogName(symbol: string): string {
   const key = symbol.trim();
   if (!key) {
     return "";
   }
-  return catalogBySymbol.get(key)?.name?.trim() ?? "";
+  return ELEMENTS_MAP.get(key)?.name?.trim() ?? "";
 }
 
 function buildElementsMap(
