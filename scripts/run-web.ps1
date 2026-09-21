@@ -27,7 +27,8 @@ try {
         $env:PYTHONPATH = $ProjectRoot
     }
 
-    $DataDir = Join-Path $ProjectRoot "data"
+    # Shared DB folder (or data/) as UNC so path survives bat popd.
+    $DataDir = Resolve-MaterialsDataDir -ProjectRoot $ProjectRoot
     $DistIndex = Join-Path $ProjectRoot "frontend\dist\index.html"
     $python = Resolve-PythonExe -ProjectRoot $ProjectRoot -PreferVenv
 

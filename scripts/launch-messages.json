@@ -10,19 +10,19 @@
   "port_busy_steps": [
     "Возможно, программа уже запущена",
     "Запустите файл: Остановить Material Library.bat",
-    "Или закройте окно WEB SERVER",
+    "Или закройте окно Python/uvicorn",
     "Затем снова: Запуск Material Library.bat"
   ],
   "server_timeout_title": "Сервер не ответил за 90 секунд",
   "server_timeout_steps": [
-    "Посмотрите окно WEB SERVER — там текст ошибки",
-    "Часто: антивирус, нет интернета при первой установке",
+    "Посмотрите окно Python/uvicorn — там текст ошибки",
+    "Часто: антивирус или нет прав на папку runtime на файлсервере",
     "Попробуйте «Остановить Material Library.bat» и запустить снова",
-    "Если не помогло — скриншот окна WEB SERVER разработчикам"
+    "Если не помогло — скриншот этого окна и окна Python разработчикам"
   ],
   "ui_timeout_title": "Интерфейс не открылся за 90 секунд",
   "ui_timeout_steps": [
-    "Посмотрите окно WEB SERVER — там текст ошибки",
+    "Посмотрите окно Python/uvicorn — там текст ошибки",
     "Проверьте, что в папке frontend/dist есть index.html",
     "Попробуйте «Остановить Material Library.bat» и запустить снова"
   ],
@@ -48,6 +48,8 @@
     "См. ИНСТРУКЦИЯ.txt"
   ],
   "portable_runtime_ok": "Встроенный Python готов (runtime/python)",
+  "server_pid_hint": "Процесс сервера PID {0} (окно Python/uvicorn)",
+  "server_still_starting": "Процесс сервера ещё запущен — смотрите окно Python на ошибки",
   "workspace_missing": "Папка с материалами не найдена: {0}",
   "workspace_manual": "На экране программы укажите путь к папке с JSON-файлами.",
   "workspace_load": "Загрузка базы материалов",
@@ -70,7 +72,7 @@
   "ui_ok": "Интерфейс программы доступен.",
   "success_title": "Программа запущена",
   "success_url": "Адрес: {0}",
-  "success_hint_window": "Не закрывайте окно WEB SERVER во время работы.",
+  "success_hint_window": "Не закрывайте окно Python/uvicorn во время работы.",
   "success_hint_stop": "Чтобы остановить: «Остановить Material Library.bat»",
   "browser_open": "Открытие браузера",
   "browser_window_ok": "Браузер развернут. Контент: 1366 px (13 дюйма), по бокам поля.",
@@ -83,5 +85,5 @@
   "port_label_server": "веб-сервер",
   "what_to_do": "Что сделать:",
   "stop_header": "Material Library — остановка",
-  "stop_done": "Готово. Если окно WEB SERVER ещё открыто — закройте его вручную."
+  "stop_done": "Готово. Если окно Python/uvicorn ещё открыто — закройте его вручную."
 }

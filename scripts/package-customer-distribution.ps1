@@ -61,6 +61,8 @@ $paths = @(
     "scripts\start-web.ps1",
     "scripts\run-web.ps1",
     "scripts\stop-web.ps1",
+    "scripts\launch_customer.py",
+    "scripts\stop_customer.py",
     "requirements-runtime.txt"
 )
 foreach ($relative in $paths) { Copy-Tree $relative }

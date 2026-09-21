@@ -35,6 +35,8 @@ def configure_source_storage(
     if state.sources is None:
         return
 
+    # Prefer SOURCE_JSON_PATH from env (launch sets data/source.json).
+    # Else workspace/source.json (same folder as materials).
     source_path = resolve_source_json_path(
         workspace_dir,
         data_paths=state.data_paths,
@@ -69,6 +71,16 @@ def get_app_state() -> AppState:
         state,
         workspace_dir=data_paths.materials_dir,
     )
+    # Ensure in-memory catalog matches the resolved file (set_filepath always reloads).
+    if state.sources is not None and data_paths.source_json_path is not None:
+        state.sources.set_filepath(data_paths.source_json_path)
+        logger.info(
+            "sources loaded: property=%s strength=%s chemical=%s from %s",
+            len(state.sources.sources.get("property_sources", [])),
+            len(state.sources.sources.get("strength_sources", [])),
+            len(state.sources.sources.get("chemical_sources", [])),
+            state.sources.filepath,
+        )
     return state
 
 def get_state() -> AppState:

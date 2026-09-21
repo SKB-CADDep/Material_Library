@@ -46,22 +46,27 @@ class SourceService:
 
     def set_filepath(self, filepath: str | Path) -> None:
         """Переключить файл источников и перечитать данные."""
-        resolved = str(Path(filepath).expanduser().resolve())
-        if resolved == self.filepath:
-            return
+        path = Path(filepath).expanduser()
+        try:
+            resolved = str(path.resolve())
+        except OSError:
+            resolved = str(path)
+        # Always reload: file on fileserver may have been replaced/seeded.
         self.filepath = resolved
         self.load()
 
     def load(self):
         """Загрузка source.json"""
-        if not os.path.exists(self.filepath):
-            self.save()
+        path = Path(self.filepath)
+        if not path.is_file():
+            # Do not auto-create an empty file: on fileserver the real
+            # source.json may live next to the app (data/), not in the DB folder.
             return
         try:
-            with open(self.filepath, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
-            print(f"Ошибка загрузки source.json: {e}")
+            print(f"Ошибка загрузки source.json ({path}): {e}")
             return
 
         if isinstance(data, list):

@@ -55,6 +55,55 @@ function Get-LaunchProjectRoot {
     }
 }
 
+function Convert-ToUncPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    # pushd maps \\server\share to Z:\...; after bat popd that letter disappears.
+    # Backend must keep a stable UNC path for MATERIALS_DIR / workspace.
+    $native = Get-NativeFilesystemPath $Path
+    if ($native -match '^\\\\') { return $native }
+    if ($native -match '^([A-Za-z]):(\\.*)?$') {
+        $letter = $Matches[1]
+        $tail = $Matches[2]
+        if (-not $tail) { $tail = "" }
+        try {
+            $mapped = Get-CimInstance -ClassName Win32_MappedLogicalDisk -Filter "DeviceID='$letter`:'" -ErrorAction SilentlyContinue
+            if ($mapped -and $mapped.ProviderName) {
+                $uncRoot = ([string]$mapped.ProviderName).TrimEnd("\")
+                if ($tail -eq "" -or $tail -eq "\") { return $uncRoot }
+                return ($uncRoot + $tail)
+            }
+        } catch {}
+    }
+    return $native
+}
+
+function Resolve-MaterialsDataDir {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    # Materials workspace is always the sibling "data" folder (UNC after pushd/popd).
+    if ($env:MATERIALS_DIR -and (Test-Path -LiteralPath $env:MATERIALS_DIR)) {
+        return (Convert-ToUncPath $env:MATERIALS_DIR)
+    }
+    return (Convert-ToUncPath (Join-Path $ProjectRoot "data"))
+}
+
+function Resolve-SourceJsonPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$MaterialsDir
+    )
+
+    # source.json lives in the same folder as materials (data\source.json).
+    if ($env:SOURCE_JSON_PATH -and (Test-Path -LiteralPath $env:SOURCE_JSON_PATH)) {
+        return (Convert-ToUncPath $env:SOURCE_JSON_PATH)
+    }
+    $target = Join-Path $MaterialsDir "source.json"
+    if (Test-Path -LiteralPath $target) {
+        return (Convert-ToUncPath $target)
+    }
+    return $null
+}
+
 function Write-LaunchStep([string]$Message) {
     Write-Host ""
     Write-Host "==> $Message" -ForegroundColor Cyan

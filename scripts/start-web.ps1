@@ -1,4 +1,6 @@
-
+# Material Library - launch (Python + built frontend)
+# Runs from the folder as-is (local disk or file server via pushd drive letter).
+# Does NOT copy the app to the PC. Starts python.exe directly (no second .ps1 window).
 
 param(
     [switch]$SkipSetup,
@@ -11,16 +13,25 @@ $ErrorActionPreference = "Stop"
 $ui = Get-LaunchMessages
 
 $ProjectRoot = Get-LaunchProjectRoot -ScriptsDir $PSScriptRoot
-$DataDir = Join-Path $ProjectRoot "data"
-$VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
-$VenvPip = Join-Path $ProjectRoot ".venv\Scripts\pip.exe"
-$RunWeb = Join-Path $PSScriptRoot "run-web.ps1"
+# Materials: sibling "data" folder (UNC after pushd/popd). source.json is inside data/.
+$DataDir = Resolve-MaterialsDataDir -ProjectRoot $ProjectRoot
+$SourceJson = Resolve-SourceJsonPath -ProjectRoot $ProjectRoot -MaterialsDir $DataDir
 $DistIndex = Join-Path $ProjectRoot "frontend\dist\index.html"
+$WorkDir = $ProjectRoot
+if ($ProjectRoot -notmatch '^[A-Za-z]:\\') {
+    # Prefer a drive-letter cwd when available (Start-Process cannot use UNC WorkingDirectory).
+    $WorkDir = $ProjectRoot
+}
+
 $AppUrl = "http://127.0.0.1:8000"
 $HealthUrl = "$AppUrl/api/health"
+$ServerPidFile = Join-Path $env:TEMP "material-library-server.pid"
 
 function Ensure-DevVenv {
     param([string]$PythonExe)
+
+    $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+    $VenvPip = Join-Path $ProjectRoot ".venv\Scripts\pip.exe"
 
     Write-LaunchStep $ui.setup_venv
     if (-not (Test-Path -LiteralPath $VenvPython)) {
@@ -61,47 +72,78 @@ function Ensure-Setup {
     Ensure-DevVenv -PythonExe $pythonExe
 }
 
-function Start-WebWindow {
+function Start-WebServerProcess {
+    $python = Resolve-PythonExe -ProjectRoot $ProjectRoot -PreferVenv
+    if (-not $python) { Fail-PythonMissing }
+
+    if (Test-Path -LiteralPath $DataDir) {
+        $env:MATERIALS_DIR = $DataDir
+        Write-Host ("MATERIALS_DIR=" + $DataDir) -ForegroundColor DarkGray
+    }
+    if ($SourceJson) {
+        $env:SOURCE_JSON_PATH = $SourceJson
+        Write-Host ("SOURCE_JSON_PATH=" + $SourceJson) -ForegroundColor DarkGray
+    }
+
     $argList = @(
-        "-NoProfile",
-        "-NoExit",
-        "-ExecutionPolicy", "Bypass",
-        "-File", $RunWeb,
-        "-ProjectRoot", $ProjectRoot
+        "-m", "uvicorn",
+        "backend.main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000"
     )
 
-    $startInfo = @{
-        FilePath = "powershell.exe"
+    # Start python.exe directly — avoids a second PowerShell -File window
+    # that corporate policy often kills on network shares.
+    $startParams = @{
+        FilePath = $python
         ArgumentList = $argList
         WindowStyle = "Normal"
+        PassThru = $true
     }
 
-    if ($ProjectRoot -match '^[A-Za-z]:\\') {
-        $startInfo["WorkingDirectory"] = $ProjectRoot
+    # Start-Process -WorkingDirectory does not support raw UNC (\\server\...).
+    # After Запуск*.bat pushd, ProjectRoot is usually a drive letter (Z:\...).
+    if ($WorkDir -match '^[A-Za-z]:\\') {
+        $startParams["WorkingDirectory"] = $WorkDir
+    } else {
+        try {
+            Set-Location -LiteralPath $WorkDir
+        } catch {
+            $env:PYTHONPATH = $WorkDir
+        }
     }
 
-    Start-Process @startInfo | Out-Null
+    $proc = Start-Process @startParams
+
+    if (-not $proc) {
+        throw "Failed to start python/uvicorn process"
+    }
+
+    Set-Content -LiteralPath $ServerPidFile -Value $proc.Id -Encoding ASCII
+    return $proc
 }
 
 function Open-Workspace {
-    if (-not (Test-Path -LiteralPath $DataDir)) {
-        Write-LaunchWarn ($ui.workspace_missing -f $DataDir)
+    param([string]$Directory = $DataDir)
+
+    if (-not (Test-Path -LiteralPath $Directory)) {
+        Write-LaunchWarn ($ui.workspace_missing -f $Directory)
         Write-Host $ui.workspace_manual
         return
     }
 
     Write-LaunchStep $ui.workspace_load
-    $body = @{ directory = $DataDir } | ConvertTo-Json -Compress
+    $body = @{ directory = $Directory } | ConvertTo-Json -Compress
     try {
         Invoke-RestMethod `
             -Uri "$AppUrl/api/workspace/open" `
             -Method Post `
             -ContentType "application/json; charset=utf-8" `
             -Body $body | Out-Null
-        Write-LaunchOk ($ui.workspace_ok -f $DataDir)
+        Write-LaunchOk ($ui.workspace_ok -f $Directory)
     } catch {
         Write-LaunchWarn $ui.workspace_fail
-        Write-Host ($ui.workspace_path_hint -f $DataDir)
+        Write-Host ($ui.workspace_path_hint -f $Directory)
     }
 }
 
@@ -130,9 +172,15 @@ try {
     }
 
     Write-LaunchStep $ui.server_start
-    Start-WebWindow
+    $serverProc = Start-WebServerProcess
+    Write-Host ($ui.server_pid_hint -f $serverProc.Id) -ForegroundColor DarkGray
 
-    if (-not (Wait-ForHttp $HealthUrl 90)) { Fail-ServerTimeout }
+    if (-not (Wait-ForHttp $HealthUrl 90)) {
+        if ($serverProc -and -not $serverProc.HasExited) {
+            Write-LaunchWarn $ui.server_still_starting
+        }
+        Fail-ServerTimeout
+    }
     Write-LaunchOk $ui.server_ok
 
     if (-not (Wait-ForHttp $AppUrl 90)) { Fail-UiTimeout }
