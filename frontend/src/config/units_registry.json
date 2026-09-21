@@ -543,7 +543,8 @@
       "HRC": "table",
       "HRB": "table",
       "HV": "table",
-      "HSD": "table"
+      "HSD": "table",
+      "d10": "table"
     },
     "display_labels": {
       "HB": "HB",
@@ -551,7 +552,8 @@
       "HRC": "HRC",
       "HRB": "HRB",
       "HV": "HV",
-      "HSD": "HSD"
+      "HSD": "HSD",
+      "d10": "d10"
     }
   },
   "Декремент колебаний": {
