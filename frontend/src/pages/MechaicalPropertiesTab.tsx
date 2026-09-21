@@ -269,88 +269,91 @@ export function MechanicalPropertiesTab({
       className="general-form physical-properties-form"
       onSubmit={(event) => event.preventDefault()}
     >
-      <fieldset className="editor-readonly-scope" disabled={readOnly}>
       <div className="form-stack">
         <div className="form-row">
           <label htmlFor="editor-strength-category-select">Категория прочности:</label>
           <div className="form-row-inline">
-          <select
-            id="editor-strength-category-select"
-            className="input"
-            value={
-              (mechanical_properties.strength_category?.length ?? 0) > 0
-                ? categoryIndex
-                : ""
-            }
-            onChange={(e) => setCategoryIndex(Number(e.target.value))}
-            disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
-          >
-            {(mechanical_properties.strength_category ?? []).map(
-              (cat, index) => (
-                <option key={index} value={index}>
-                  {formatCategoryOptionLabel(cat, index, mechanicalSources)}
-                </option>
-              ),
+            <select
+              id="editor-strength-category-select"
+              className="input"
+              value={
+                (mechanical_properties.strength_category?.length ?? 0) > 0
+                  ? categoryIndex
+                  : ""
+              }
+              onChange={(e) => setCategoryIndex(Number(e.target.value))}
+              disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
+            >
+              {(mechanical_properties.strength_category ?? []).map(
+                (cat, index) => (
+                  <option key={index} value={index}>
+                    {formatCategoryOptionLabel(cat, index, mechanicalSources)}
+                  </option>
+                ),
+              )}
+            </select>
+            {(mechanical_properties.strength_category?.length ?? 0) === 0 && (
+              <p className="tab-placeholder tab-placeholder--inline">
+                Нет категорий прочности — нажмите «+», чтобы добавить КП
+              </p>
             )}
-      
-          </select>
-          {(mechanical_properties.strength_category?.length ?? 0) === 0 && (
-            <p className="tab-placeholder tab-placeholder--inline">
-              Нет категорий прочности — нажмите «+», чтобы добавить КП
-            </p>
-          )}
-          <button
-            type="button"
-            className="table-control-btn"
-            title="Добавить категорию прочности"
-            onClick={() => {
-              const prev = mechanical_properties.strength_category ?? [];
-              const newIndex = prev.length;
-              const newCat: StrengthCategory = {
-                value_strength_category: `Новая КП ${newIndex + 1}`,
-                source_strength_category: "",
-                source_ref_id: "",
-                hardness: [],
-                hardness_unit: "",
-                properties: [],
-              };
-              onDraftChange({
-                ...material,
-                mechanical_properties: {
-                  ...mechanical_properties,
-                  strength_category: [...prev, newCat],
-                },
-              });
-              setCategoryIndex(newIndex);
-            }}
-          >
-            +
-          </button>
-          <button
-            type="button"
-            className="table-control-btn"
-            title="Удалить категорию прочности"
-            disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
-            onClick={() => {
-              const prev = mechanical_properties.strength_category ?? [];
-              if (prev.length === 0) return;
-              if (!window.confirm("Удалить категорию?")) return;
-              const next = prev.filter((_, i) => i !== categoryIndex);
-              onDraftChange({
-                ...material,
-                mechanical_properties: {
-                  ...mechanical_properties,
-                  strength_category: next,
-                },
-              });
-              setCategoryIndex(0);
-            }}
-          >
-            −
-          </button>
+            <button
+              type="button"
+              className="table-control-btn"
+              title="Добавить категорию прочности"
+              disabled={readOnly}
+              onClick={() => {
+                const prev = mechanical_properties.strength_category ?? [];
+                const newIndex = prev.length;
+                const newCat: StrengthCategory = {
+                  value_strength_category: `Новая КП ${newIndex + 1}`,
+                  source_strength_category: "",
+                  source_ref_id: "",
+                  hardness: [],
+                  hardness_unit: "",
+                  properties: [],
+                };
+                onDraftChange({
+                  ...material,
+                  mechanical_properties: {
+                    ...mechanical_properties,
+                    strength_category: [...prev, newCat],
+                  },
+                });
+                setCategoryIndex(newIndex);
+              }}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="table-control-btn"
+              title="Удалить категорию прочности"
+              disabled={
+                readOnly ||
+                (mechanical_properties.strength_category?.length ?? 0) === 0
+              }
+              onClick={() => {
+                const prev = mechanical_properties.strength_category ?? [];
+                if (prev.length === 0) return;
+                if (!window.confirm("Удалить категорию?")) return;
+                const next = prev.filter((_, i) => i !== categoryIndex);
+                onDraftChange({
+                  ...material,
+                  mechanical_properties: {
+                    ...mechanical_properties,
+                    strength_category: next,
+                  },
+                });
+                setCategoryIndex(0);
+              }}
+            >
+              −
+            </button>
+          </div>
         </div>
-        </div>
-      
+
+      <fieldset className="editor-readonly-scope" disabled={readOnly}>
         <fieldset className="form-section">
           <div className="property-section-fields kp-category-fields">
             <div className="form-row">
@@ -878,8 +881,8 @@ export function MechanicalPropertiesTab({
             </fieldset>
           );
         })}
-      </div>
       </fieldset>
+      </div>
     </form>
   );
 }

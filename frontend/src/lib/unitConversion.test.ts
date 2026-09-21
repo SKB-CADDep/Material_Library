@@ -63,6 +63,15 @@ describe("convertBetweenUnits", () => {
     // Without the guard this becomes 199500/100 = 1995.
     expect(convertBetweenUnits(199500, "МПа", "-", marginConfig)).toBe(199500);
   });
+
+  it("converts hardness via table factors without NaN", () => {
+    const hardnessConfig: UnitConfig = {
+      system_unit: "HB",
+      factors: { HB: 1.0, HRC: "table", d10: "table" },
+    };
+    expect(convertBetweenUnits(653, "HB", "HRC", hardnessConfig)).toBe(62.9);
+    expect(convertBetweenUnits(653, "HB", "d10", hardnessConfig)).toBe(2.4);
+  });
 });
 
 describe("modulus elasticity display scale", () => {

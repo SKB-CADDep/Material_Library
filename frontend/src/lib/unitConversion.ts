@@ -1,6 +1,14 @@
 import type { UnitResponse } from "../types/api";
+import {
+  convertHardness,
+  usesHardnessTableConversion,
+} from "./hardnessConversion";
 
 export type UnitConfig = Pick<UnitResponse, "system_unit" | "factors">;
+
+function numericFactor(factor: number | string | undefined): number | null {
+  return typeof factor === "number" && Number.isFinite(factor) ? factor : null;
+}
 
 export function toSystem(
   value: number,
@@ -24,7 +32,12 @@ export function toSystem(
     return (value - 32) * (5 / 9);
   }
 
-  return value * factor;
+  const linear = numericFactor(factor);
+  if (linear === null) {
+    return value;
+  }
+
+  return value * linear;
 }
 
 export function fromSystem(
@@ -49,7 +62,12 @@ export function fromSystem(
     return (value * 9) / 5 + 32;
   }
 
-  return value / factor;
+  const linear = numericFactor(factor);
+  if (linear === null) {
+    return value;
+  }
+
+  return value / linear;
 }
 
 function unitKnownInConfig(unit: string, config: UnitConfig): boolean {
@@ -75,6 +93,16 @@ export function convertBetweenUnits(
   // (например МПа + factors{"-":100} → 199500/100 = 1995).
   if (!unitKnownInConfig(fromUnit, config) || !unitKnownInConfig(toUnit, config)) {
     return value;
+  }
+
+  if (usesHardnessTableConversion(config.factors)) {
+    const converted = convertHardness(value, fromUnit, toUnit);
+    if (converted === null || !Number.isFinite(converted)) {
+      throw new Error(
+        `Hardness conversion unavailable: ${fromUnit} → ${toUnit}`,
+      );
+    }
+    return converted;
   }
 
   const systemValue = toSystem(value, fromUnit, config);

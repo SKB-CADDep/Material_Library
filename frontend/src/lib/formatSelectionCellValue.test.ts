@@ -87,15 +87,47 @@ describe("formatSelectionCellValue", () => {
     ).toBe("1.05e-5");
   });
 
-  it("uses row hardness unit for min/max columns", () => {
+  it("converts hardness via table instead of NaN", () => {
+    const hardnessConfig: UnitResponse = {
+      unit_type: "Твердость",
+      system_unit: "HB",
+      units: ["HB", "HRC", "d10"],
+      factors: {
+        HB: 1,
+        HRA: "table",
+        HRC: "table",
+        d10: "table",
+      },
+      display_labels: {},
+    };
     expect(
-      formatSelectionCellValue(120, {
+      formatSelectionCellValue(653, {
         columnKey: "min_value",
         baseUnit: "HB",
-        displayUnit: "HB",
-        rowSourceUnit: "HRC",
+        displayUnit: "HRC",
+        unitConfig: hardnessConfig,
+        rowSourceUnit: "HB",
       }),
-    ).toBe("120.00");
+    ).toBe("62.90");
+  });
+
+  it("keeps source hardness when table conversion is out of range", () => {
+    const hardnessConfig: UnitResponse = {
+      unit_type: "Твердость",
+      system_unit: "HB",
+      units: ["HB", "HRC"],
+      factors: { HB: 1, HRC: "table" },
+      display_labels: {},
+    };
+    expect(
+      formatSelectionCellValue(74, {
+        columnKey: "min_value",
+        baseUnit: "HB",
+        displayUnit: "HRC",
+        unitConfig: hardnessConfig,
+        rowSourceUnit: "HB",
+      }),
+    ).toBe("74.00");
   });
 });
 

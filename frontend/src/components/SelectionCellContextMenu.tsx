@@ -67,6 +67,32 @@ export function SelectionCellContextMenu({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) {
+      return;
+    }
+
+    const rect = panel.getBoundingClientRect();
+    const pad = 8;
+    let nextTop = y;
+    let nextLeft = x;
+    if (nextTop + rect.height > window.innerHeight - pad) {
+      nextTop = Math.max(pad, window.innerHeight - rect.height - pad);
+    }
+    if (nextLeft + rect.width > window.innerWidth - pad) {
+      nextLeft = Math.max(pad, window.innerWidth - rect.width - pad);
+    }
+    if (nextTop < pad) {
+      nextTop = pad;
+    }
+    if (nextLeft < pad) {
+      nextLeft = pad;
+    }
+    panel.style.top = `${nextTop}px`;
+    panel.style.left = `${nextLeft}px`;
+  }, [x, y]);
+
   return createPortal(
     <div
       ref={panelRef}

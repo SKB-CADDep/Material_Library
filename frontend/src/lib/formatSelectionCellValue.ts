@@ -28,6 +28,9 @@ export function formatSelectionFrozenValue(
 }
 
 function formatSelectionNumericValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    return SELECTION_EMPTY;
+  }
   return formatDecimal(value, 2);
 }
 
