@@ -2,6 +2,9 @@ venv/
 .idea/
 node_modules
 .venv
+/runtime/
+.cache/
+dist-customer/
 __pycache__/
 *.py[cod]
 *.pyo
