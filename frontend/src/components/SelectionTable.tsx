@@ -403,7 +403,7 @@ export function SelectionTable({
                 <col key={col.key} style={{ width: col.width }} />
               ))}
               {scrollColumns.map((col) => (
-                <col key={col.key} style={{ width: 88 }} />
+                <col key={col.key} style={{ width: 112 }} />
               ))}
             </colgroup>
             <thead>
@@ -644,23 +644,27 @@ export function SelectionTable({
                       )}
                     </td>
                   ))}
-                  {scrollColumns.map((col) => (
-                    <td
-                      key={col.key}
-                      className="selection-table-col--value"
-                      onContextMenu={(event) =>
-                        handleCellContextMenu(event, index, col.key)
-                      }
-                    >
-                      {getSelectionCellDisplayText(
-                        row,
-                        col.key,
-                        scrollColumns,
-                        columnUnits,
-                        unitConfigs,
-                      )}
-                    </td>
-                  ))}
+                  {scrollColumns.map((col) => {
+                    const cellText = getSelectionCellDisplayText(
+                      row,
+                      col.key,
+                      scrollColumns,
+                      columnUnits,
+                      unitConfigs,
+                    );
+                    return (
+                      <td
+                        key={col.key}
+                        className="selection-table-col--value"
+                        title={cellText === "-" ? undefined : cellText}
+                        onContextMenu={(event) =>
+                          handleCellContextMenu(event, index, col.key)
+                        }
+                      >
+                        {cellText}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

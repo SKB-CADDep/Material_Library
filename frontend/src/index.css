@@ -1376,7 +1376,7 @@ select {
   }
 
   .selection-table-col--value {
-    min-width: 88px;
+    min-width: 112px;
     text-align: center;
     white-space: nowrap;
   }
@@ -3966,12 +3966,13 @@ select {
 }
 
 .selection-table--unified .selection-table-col--value {
-  min-width: 88px;
+  min-width: 112px;
   text-align: center;
 }
 
 .selection-table--unified tbody .selection-table-col--value {
   white-space: nowrap;
+  overflow: visible;
 }
 
 .selection-table--unified tbody tr:has(.temp-comment-indicator:hover),
@@ -4347,8 +4348,8 @@ select {
 }
 
 .calculation-table-col--value {
-  min-width: 104px;
-  max-width: 152px;
+  min-width: 112px;
+  max-width: 168px;
   text-align: center;
 }
 

@@ -40,6 +40,24 @@ describe("formatSelectionCellValue", () => {
     ).toBe("360.46");
   });
 
+  it("keeps full modulus of elasticity magnitude (no /100)", () => {
+    const modulusConfig: UnitResponse = {
+      unit_type: "Модуль упругости",
+      system_unit: "МПа",
+      units: ["МПа", "ГПа"],
+      factors: { МПа: 1, ГПа: 1000 },
+      display_labels: {},
+    };
+    expect(
+      formatSelectionCellValue(199500, {
+        columnKey: "modulus_elasticity",
+        baseUnit: "МПа",
+        displayUnit: "МПа",
+        unitConfig: modulusConfig,
+      }),
+    ).toBe("199500.00");
+  });
+
   it("converts units when config provided", () => {
     expect(
       formatSelectionCellValue(273.15, {

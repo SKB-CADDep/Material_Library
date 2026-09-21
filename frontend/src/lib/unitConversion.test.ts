@@ -54,6 +54,27 @@ describe("convertBetweenUnits", () => {
     const fahrenheit = convertBetweenUnits(100, "C", "F", tempConfig);
     expect(fahrenheit).toBeCloseTo(212);
   });
+
+  it("does not fake-scale when unit is missing from factors", () => {
+    const marginConfig: UnitConfig = {
+      system_unit: "%",
+      factors: { "-": 100.0, "%": 1.0 },
+    };
+    // Without the guard this becomes 199500/100 = 1995.
+    expect(convertBetweenUnits(199500, "МПа", "-", marginConfig)).toBe(199500);
+  });
+});
+
+describe("modulus elasticity display scale", () => {
+  it("keeps MPa values unchanged when units match", () => {
+    const modulusConfig: UnitConfig = {
+      system_unit: "МПа",
+      factors: { МПа: 1.0, ГПа: 1000.0 },
+    };
+    expect(
+      convertBetweenUnits(199500, "МПа", "МПа", modulusConfig),
+    ).toBe(199500);
+  });
 });
 
 const expansionConfig: UnitConfig = {

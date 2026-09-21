@@ -52,6 +52,14 @@ export function fromSystem(
   return value / factor;
 }
 
+function unitKnownInConfig(unit: string, config: UnitConfig): boolean {
+  if (unit === config.system_unit) {
+    return true;
+  }
+  const factors = config.factors ?? {};
+  return factors[unit] !== undefined;
+}
+
 export function convertBetweenUnits(
   value: number,
   fromUnit: string,
@@ -59,6 +67,13 @@ export function convertBetweenUnits(
   config: UnitConfig,
 ): number {
   if (fromUnit === toUnit) {
+    return value;
+  }
+
+  // Не конвертируем, если единица отсутствует в factors: иначе
+  // toSystem/fromSystem молча трактуют её как system_unit и дают ложный масштаб
+  // (например МПа + factors{"-":100} → 199500/100 = 1995).
+  if (!unitKnownInConfig(fromUnit, config) || !unitKnownInConfig(toUnit, config)) {
     return value;
   }
 

@@ -147,6 +147,14 @@ function CalculationCellValue({
 
   const isEmpty = !cell || cell.value === null;
   const modeClass = calculationCellModeClass(displayCell?.mode);
+  const modeTitle = isEmpty
+    ? undefined
+    : calculationCellModeTitle(displayCell?.mode);
+  const title = isEmpty
+    ? undefined
+    : modeTitle
+      ? `${text} (${modeTitle})`
+      : text;
 
   return (
     <span
@@ -157,7 +165,7 @@ function CalculationCellValue({
       ]
         .filter(Boolean)
         .join(" ")}
-      title={isEmpty ? undefined : calculationCellModeTitle(displayCell?.mode)}
+      title={title}
     >
       {text}
     </span>
