@@ -215,8 +215,18 @@ export function EditorPage() {
   }, [materialLoading, draft, hash]);
 
   const newSave = useMutation({
-    mutationFn: ({ body, filename }: { body: Record<string, unknown>; filename: string }) =>
-      saveNewMaterial(normalizeMaterialDraft(body), filename),
+    mutationFn: ({
+      body,
+      filename,
+      sourceMaterialId,
+    }: {
+      body: Record<string, unknown>;
+      filename: string;
+      sourceMaterialId?: string | null;
+    }) =>
+      saveNewMaterial(normalizeMaterialDraft(body), filename, {
+        sourceMaterialId,
+      }),
     onSuccess: async (data, variables) => {
       const normalized = normalizeMaterialDraft(variables.body);
       const id = normalized.material_id as string;
@@ -333,7 +343,11 @@ export function EditorPage() {
     const filename = pickSaveFilename();
     if (!filename) return;
     const body = hasFileOnDisk ? draftCopyAsNewFile(draft) : draft;
-    newSave.mutate({ body, filename });
+    newSave.mutate({
+      body,
+      filename,
+      sourceMaterialId: hasFileOnDisk ? selectedId : null,
+    });
   }
 
   async function handleRevertChanges() {

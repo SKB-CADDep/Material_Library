@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkSpaceContext";
 import { useStickyRoutes } from "../../context/StickyRouteContext";
-import { HelpMenu } from "../HelpMenu";
 import { auditNavFromPath } from "../../lib/auditNavLabels";
 import {
   auditNavTabSelected,
@@ -50,7 +49,6 @@ export function AppShell() {
         <p className="session-reset-hint">
           Чтобы сбросить фильтры, выбранные материалы и черновики, нажмите F5
         </p>
-        <HelpMenu />
       </div>
 
       <nav className="main-tabs">

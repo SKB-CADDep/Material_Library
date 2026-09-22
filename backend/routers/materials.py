@@ -187,7 +187,12 @@ def put_material_by_id(material_id:str, body:dict, repo= Depends(get_repository)
     return MaterialSaveResponse(ok=True, filename=material.filename)
 
 @router.post("/materials", response_model=MaterialSaveResponse)
-def post_new_material(body:dict, filename:str, repo= Depends(get_repository)):
+def post_new_material(
+    body: dict,
+    filename: str,
+    repo=Depends(get_repository),
+    source_material_id: str | None = None,
+):
     path = Path(repo.work_dir) / filename
     if path.exists():
         raise HTTPException(status_code=409, detail=f"Файл '{filename}' уже существует")
@@ -210,6 +215,20 @@ def post_new_material(body:dict, filename:str, repo= Depends(get_repository)):
         entity={"type": "Материал", "name": display_name},
     )
 
+    source = repo.get_by_id(source_material_id) if source_material_id else None
+    if source is not None:
+        changes = find_changes(copy.deepcopy(source.data), body)
+        changelog_name = (
+            f"{display_name} (сохранен из {source.get_display_name()})"
+        )
+    else:
+        changes = find_changes(Material.get_empty_structure(), body)
+        changelog_name = display_name
+    try:
+        log_changes(changelog_name, changes)
+    except Exception:
+        pass
+
     material = Material(data=body)
     material.filepath = str(path)
     try:
@@ -229,6 +248,13 @@ def post_new_material(body:dict, filename:str, repo= Depends(get_repository)):
         )
         raise
 
+    changed_fields = changes_fields_from_diff(changes)
+    tab_groups = audit_log_material_save_by_tabs(
+        op_id,
+        display_name,
+        changes,
+        data_extra={"операция": "save_as"},
+    ) or {}
     audit_log(
         event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],
         event_category="Операция",
@@ -238,6 +264,10 @@ def post_new_material(body:dict, filename:str, repo= Depends(get_repository)):
         result_status="Успех",
         duration_ms=monotonic_ms_since(t0),
         entity={"type": "Материал", "name": display_name},
-        data={"операция": "save_as"},
+        counters={"изменений": len(changed_fields)} if changed_fields else None,
+        data={
+            "операция": "save_as",
+            "вкладки_с_изменениями": list(tab_groups.keys()),
+        },
     )
     return MaterialSaveResponse(ok=True, filename=material.filename)

@@ -1545,11 +1545,6 @@ select {
     min-width: 0;
   }
 
-  .window-header .menu-button-wrapper {
-    flex: 0 0 auto;
-    margin-left: 0;
-  }
-
   /* РџР°РЅРµР»СЊ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ СЃ РєРЅРѕРїРєР°РјРё */
   .toolbar {
     display: flex;

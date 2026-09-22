@@ -139,13 +139,3 @@ export function auditMaterialCancelChanges(name?: string): void {
     entity: name ? { type: "Материал", name } : undefined,
   });
 }
-
-export function auditHelpOpen(
-  eventName: "HELP_ABOUT_OPEN" | "HELP_INSTRUCTIONS_OPEN" | "HELP_CHANGELOG_OPEN",
-): void {
-  postAuditEventSafe({
-    event_name: eventName,
-    event_category: "Навигация",
-    event_action: "Открыто",
-  });
-}

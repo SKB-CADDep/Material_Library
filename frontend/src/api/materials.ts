@@ -198,13 +198,20 @@ export function normalizeMaterialFilename(input: string): string {
 
 export async function saveNewMaterial(
   body: Record<string, unknown>,
-  filename: string
+  filename: string,
+  options?: { sourceMaterialId?: string | null },
 ): Promise<MaterialSaveResponse> {
   assertMaterialDraftForSave(body);
   const payload = stripInvalidTemperaturePairs(body);
 
+  const params: Record<string, string> = { filename };
+  const sourceId = options?.sourceMaterialId?.trim();
+  if (sourceId) {
+    params.source_material_id = sourceId;
+  }
+
   const { data } = await api.post<MaterialSaveResponse>("/materials", payload, {
-    params: { filename },
+    params,
   });
   return data;
 }

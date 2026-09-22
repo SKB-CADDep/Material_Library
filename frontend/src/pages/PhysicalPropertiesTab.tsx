@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { UnitSelect } from "./UnitSelect.tsx";
 import {
   PropertySourceSelect,
   isOrphanSource,
   resolvePropertySourceName,
 } from "./PropertySourceSelect.tsx";
-import { getUnits } from "../api/units";
 import type { SourceItem } from "../types/api";
 import { yLabelWithUnit } from "./chartLabels.ts";
 import { useUnitLabels } from "../hooks/useUnitLabels";
@@ -19,7 +17,6 @@ import {
   patchPhysicalProperty,
   type NamedProperty,
 } from "../lib/namedProperties";
-import { convertBetweenUnits } from "../lib/unitConversion";
 import { parseDecimalInput } from "../lib/formatDecimal";
 import { resolveLinearExpansionUnit } from "../lib/linearExpansionUnit";
 import { ScientificText } from "../lib/scientificNotation";
@@ -139,7 +136,6 @@ function PhysicalPropertySection({
   onRowSelect,
   onDraftChange,
   unitType,
-  layoutActive: layoutActiveProp = true,
 }: {
   config: PhysicalPropConfig;
   material: Record<string, unknown>;
@@ -149,18 +145,11 @@ function PhysicalPropertySection({
   onRowSelect: (index: number | null) => void;
   onDraftChange: (next: Record<string, unknown>) => void;
   unitType: string;
-  layoutActive?: boolean;
 }) {
-  const layoutActive = layoutActiveProp;
   const currentSource = resolvePropertySourceName(prop, sources);
   const sourceNames = sources.map((src) => src.name_source);
   const showOrphan = isOrphanSource(currentSource, sourceNames);
   const pairs = prop?.temperature_value_pairs;
-  const unitsQuery = useQuery({
-    queryKey: ["units", unitType],
-    queryFn: () => getUnits(unitType),
-    enabled: layoutActive && unitType.length > 0,
-  });
   const storedUnit = prop?.value_unit ?? "";
   const displayUnit =
     config.key === "coefficient_linear_expansion"
@@ -174,27 +163,9 @@ function PhysicalPropertySection({
     onDraftChange(patchPhysicalProperty(material, config.key, next));
   };
 
+  // Меняем только подпись ед.изм.; числа в БД не пересчитываем (пересчёт — только в расчётах).
   const handleUnitChange = (nextUnit: string) => {
-    const configUnits = unitsQuery.data;
-    if (
-      !configUnits ||
-      !nextUnit ||
-      displayUnit === nextUnit ||
-      !pairs ||
-      pairs.length === 0
-    ) {
-      patch({ value_unit: nextUnit });
-      return;
-    }
-    patch({
-      value_unit: nextUnit,
-      temperature_value_pairs: pairs.map(([temperature, value]) => [
-        temperature,
-        Number.isFinite(value)
-          ? convertBetweenUnits(value, displayUnit, nextUnit, configUnits)
-          : value,
-      ]),
-    });
+    patch({ value_unit: nextUnit });
   };
 
   return (
@@ -341,7 +312,6 @@ export function PhysicalPropertiesTab({
                 setSelectedRows((prev) => ({ ...prev, [config.key]: index }));
               }}
               onDraftChange={onDraftChange}
-              layoutActive={paneActive}
             />
           ))}
         </div>

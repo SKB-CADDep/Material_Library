@@ -131,3 +131,49 @@ def test_put_material_writes_changelog_and_jsonl(
     # restore
     detail["metadata"][Schema.NAME_STD] = original
     client.put(f"/api/materials/{material_id}", json=detail)
+
+
+def test_post_new_version_writes_changelog(
+    client,
+    material_id,
+    open_workspace,
+    audit_tmpdir,
+):
+    from uuid import uuid4
+
+    detail = client.get(f"/api/materials/{material_id}").json()
+    original = detail["metadata"][Schema.NAME_STD]
+    materials = client.get("/api/materials").json()
+    original_item = next(item for item in materials if item["id"] == material_id)
+    stem = Path(original_item["filename"]).stem
+    new_filename = f"{stem}_changelog_vtest_{uuid4().hex[:6]}.json"
+
+    new_body = json.loads(json.dumps(detail))
+    new_body["material_id"] = str(uuid4())
+    new_body["metadata"][Schema.NAME_STD] = f"{original} NewVersion"
+
+    response = client.post(
+        "/api/materials",
+        json=new_body,
+        params={
+            "filename": new_filename,
+            "source_material_id": material_id,
+        },
+    )
+    assert response.status_code == 200, response.text
+
+    changelog: Path = audit_tmpdir["changelog"]
+    deadline = time.monotonic() + 2.0
+    while time.monotonic() < deadline and (
+        not changelog.is_file() or "NewVersion" not in changelog.read_text(encoding="utf-8")
+    ):
+        time.sleep(0.05)
+    assert changelog.is_file()
+    text = changelog.read_text(encoding="utf-8")
+    assert "сохранен из" in text
+    assert "[БЫЛО]" in text
+    assert "[СТАЛО]" in text
+    assert "NewVersion" in text
+
+    new_path = Path(open_workspace["directory"]) / new_filename
+    new_path.unlink(missing_ok=True)
