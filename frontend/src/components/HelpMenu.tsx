@@ -1,6 +1,16 @@
 import { useCallback, useRef, useState } from "react";
 import { getHelpDocument, type HelpDocumentId } from "../api/help";
+import { auditHelpOpen } from "../lib/auditSession";
 import { HelpDialog, HELP_MENU } from "./HelpDialog";
+
+const HELP_AUDIT_EVENT: Record<
+  HelpDocumentId,
+  "HELP_ABOUT_OPEN" | "HELP_INSTRUCTIONS_OPEN" | "HELP_CHANGELOG_OPEN"
+> = {
+  about: "HELP_ABOUT_OPEN",
+  instruction: "HELP_INSTRUCTIONS_OPEN",
+  changelog: "HELP_CHANGELOG_OPEN",
+};
 
 export function HelpMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,6 +25,7 @@ export function HelpMenu() {
 
   const openDocument = async (id: HelpDocumentId, docTitle: string) => {
     closeMenu();
+    auditHelpOpen(HELP_AUDIT_EVENT[id]);
     setDialogOpen(true);
     setTitle(docTitle);
     setContent("");

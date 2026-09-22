@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.dependencies import get_app_state, try_auto_open_workspace
-from backend.routers import catalogs, health, help, materials, selection, sources
+from backend.routers import audit, catalogs, health, help, materials, selection, sources
 from backend.static_frontend import mount_frontend_dist
 
 
@@ -32,5 +32,6 @@ app.include_router(catalogs.router, prefix="/api")
 app.include_router(sources.router, prefix="/api")
 app.include_router(selection.router, prefix="/api")
 app.include_router(help.router, prefix="/api")
+app.include_router(audit.router, prefix="/api")
 
 mount_frontend_dist(app)

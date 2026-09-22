@@ -10,7 +10,12 @@ import {
   validateMaterialDraftForSave,
   versionForNew
 } from "../api/materials";
-import { syncMaterialsAfterSave, normalizeMaterialDraft, materialListLabel } from "../lib/materialDraft";
+import {
+  syncMaterialsAfterSave,
+  normalizeMaterialDraft,
+  materialListLabel,
+  materialDisplayName,
+} from "../lib/materialDraft";
 import { useEffect, useMemo, useRef, useCallback } from "react";
 import { EditorTabPaneProvider } from "../context/EditorTabPaneContext";
 import { EditorTabPanes } from "./EditorTabPanes";
@@ -22,6 +27,12 @@ import { useRememberStickyEditorTab } from "../context/StickyRouteContext";
 import { editorTabKeyFromPath, isEditorIndexPath, editorTabPathFromKey } from "../lib/keepAliveRoutes";
 import { readEditorMaterialSearchParams } from "../lib/editorNavigation";
 import { showToastWithOK } from "../lib/toast";
+import {
+  auditMaterialCancelChanges,
+  auditMaterialCreateDraft,
+  auditMaterialResetCreate,
+  auditMaterialSelected,
+} from "../lib/auditSession";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -279,7 +290,10 @@ export function EditorPage() {
     setSelectedId(null);
     setIsNewMaterial(true);
     setIsEditing(true);
-    setDraft(createEmptyMaterialDraft());
+    const next = createEmptyMaterialDraft();
+    setDraft(next);
+    const meta = (next.metadata ?? {}) as { name_material_standard?: string };
+    auditMaterialCreateDraft(materialDisplayName(meta));
   }
 
   function handleStartEditing() {
@@ -331,6 +345,7 @@ export function EditorPage() {
       ) {
         return;
       }
+      auditMaterialResetCreate();
       handleCreateNew();
       return;
     }
@@ -342,6 +357,14 @@ export function EditorPage() {
     ) {
       return;
     }
+
+    const name =
+      materials.find((material) => material.id === selectedId)?.name ??
+      materialListLabel({
+        filename: materials.find((m) => m.id === selectedId)?.filename ?? "",
+        name: "",
+      });
+    auditMaterialCancelChanges(name);
 
     await queryClient.refetchQueries({ queryKey: ["material", selectedId] });
     const fresh = queryClient.getQueryData<Record<string, unknown>>([
@@ -372,6 +395,11 @@ export function EditorPage() {
               setSelectedId(nextId);
               if (!nextId) {
                 setDraft(null);
+                return;
+              }
+              const material = materials.find((item) => item.id === nextId);
+              if (material) {
+                auditMaterialSelected(materialListLabel(material));
               }
             }}
           >
