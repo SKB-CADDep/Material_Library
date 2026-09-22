@@ -127,13 +127,13 @@ const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
   },
   {
     key: "fatigue_limit_for_smooth_specimen",
-    legend: "Предел выносливости (гладкий образец, N=10e7) (σ_-1_smooth)",
-    yLabel: "σ_-1_smooth, МПа",
+    legend: "Предел выносливости (σ_{-1 гладкий, N=10e7})",
+    yLabel: "σ_{-1 гладкий, N=10e7}, МПа",
   },
   {
     key: "fatigue_limit_for_notched_specimen",
-    legend: "Предел выносливости (образец с надрезом, N=10e7) (σ_-1_notched)",
-    yLabel: "σ_-1_notched, МПа",
+    legend: "Предел выносливости (σ_{-1 с надрезом, N=10e7})",
+    yLabel: "σ_{-1 с надрезом, N=10e7}, МПа",
   },
 ];
 

@@ -59,6 +59,17 @@ describe("tokenizeScientificText", () => {
     ]);
   });
 
+  it("parses braced fatigue subscript", () => {
+    expect(tokenizeScientificText("σ_{-1 гладкий, N=10e7}")).toEqual([
+      { type: "text", value: "σ" },
+      { type: "sub", value: "-1 гладкий, N=10e7" },
+    ]);
+    expect(tokenizeScientificText("σ_{-1 с надрезом, N=10e7}")).toEqual([
+      { type: "text", value: "σ" },
+      { type: "sub", value: "-1 с надрезом, N=10e7" },
+    ]);
+  });
+
   it("raises trailing 2/3 in raw unit keys", () => {
     expect(tokenizeScientificText("кг/м3")).toEqual([
       { type: "text", value: "кг/м" },
@@ -82,6 +93,8 @@ describe("toLatex", () => {
     expect(toLatex("10^-6")).toBe("10^{-6}");
     expect(toLatex("N=10e7")).toBe("\\text{N}=10^{7}");
     expect(toLatex("10⁻⁶/°C")).toBe("10^{-6}/\\text{°C}");
+    expect(toLatex("σ_{-1 гладкий, N=10e7}")).toContain("\\sigma_{");
+    expect(toLatex("σ_{-1 гладкий, N=10e7}")).toContain("10^{7}");
   });
 
   it("renders KaTeX HTML for catalog symbols", () => {
