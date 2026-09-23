@@ -444,6 +444,62 @@ class Material:
         self._normalize_physical()
         self._normalize_mechanical()
         self._hydrate_from_property_groups()
+        self._normalize_chemical()
+
+    def _normalize_chemical(self):
+        """
+        Хим. состав: None / пустое для min/max и допусков → 0.0.
+        Оба вида допусков (abs/rel) всегда присутствуют в JSON.
+        """
+        chemical = self.data.get(Schema.CHEMICAL)
+        if not isinstance(chemical, dict):
+            return
+        compositions = chemical.get(Schema.COMPOSITION)
+        if not isinstance(compositions, list):
+            return
+
+        numeric_keys = (
+            "min_value",
+            "max_value",
+            "min_value_tolerance",
+            "max_value_tolerance",
+            "min_value_tolerance_relative",
+            "max_value_tolerance_relative",
+        )
+
+        for comp in compositions:
+            if not isinstance(comp, dict):
+                continue
+            elements = comp.get("other_elements")
+            if not isinstance(elements, list):
+                continue
+            for el in elements:
+                if not isinstance(el, dict):
+                    continue
+                for key in numeric_keys:
+                    el[key] = self._coerce_chem_number(el.get(key))
+
+    @staticmethod
+    def _coerce_chem_number(value):
+        if value is None or value == "":
+            return 0.0
+        if isinstance(value, bool):
+            return 0.0
+        if isinstance(value, (int, float)):
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                return 0.0
+            if number != number:  # NaN
+                return 0.0
+            return number
+        try:
+            text = str(value).strip().replace(",", ".")
+            if not text:
+                return 0.0
+            return float(text)
+        except (TypeError, ValueError):
+            return 0.0
 
     def _hydrate_from_property_groups(self):
         groups = self.data.get("property_groups")

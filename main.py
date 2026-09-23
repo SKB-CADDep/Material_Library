@@ -102,26 +102,35 @@ def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
 
     min_tol = safe_float(elem_info.get("min_value_tolerance"))
     max_tol = safe_float(elem_info.get("max_value_tolerance"))
+    # 0.0 хранится явно, но не подменяет номинальные min/max
+    has_min_tol = min_tol is not None and min_tol > 0
+    has_max_tol = max_tol is not None and max_tol > 0
 
-    if min_v is not None and min_tol is not None:
+    if min_v is not None and has_min_tol:
         lower = min_tol
     elif min_v is not None:
         lower = min_v
-    elif min_tol is not None:
+    elif has_min_tol:
         lower = min_tol
     else:
         lower = float("-inf")
 
-    if max_v is not None and max_tol is not None:
+    if max_v is not None and has_max_tol:
         upper = max_tol
     elif max_v is not None:
         upper = max_v
-    elif max_tol is not None:
+    elif has_max_tol:
         upper = max_tol
     else:
         upper = float("inf")
 
     return lower, upper, min_tol, max_tol
+
+
+def coerce_chem_number(value):
+    """Пустое / None → 0.0; иначе число. None как отсутствие значения не используем."""
+    parsed = safe_float(value)
+    return 0.0 if parsed is None else float(parsed)
 
 
 class ScrollableMixin:
@@ -1847,32 +1856,39 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
     def _format_chem_value(self, elem_data):
         """
         Форматирование значения хим. элемента в диапазон/неравенство.
-        Повторяет старую логику.
+        0.0 — валидная граница; допуск 0.0 в компактной строке не показываем.
         """
         if not elem_data:
             return "-"
 
-        min_v, max_v = elem_data.get("min_value"), elem_data.get("max_value")
+        min_v = safe_float(elem_data.get("min_value"))
+        max_v = safe_float(elem_data.get("max_value"))
         min_tol = elem_data.get("min_value_tolerance")
         max_tol = elem_data.get("max_value_tolerance")
+        min_tol_n = safe_float(min_tol)
+        max_tol_n = safe_float(max_tol)
 
-        if min_v == 0:
-            min_v = None
-        if max_v == 0:
-            max_v = None
+        if min_v is None and max_v is None:
+            return "-"
+
+        def _tol_prefix(tol, tol_n):
+            if tol_n is None or tol_n == 0:
+                return ""
+            return f"({tol}) "
+
+        def _tol_suffix(tol, tol_n):
+            if tol_n is None or tol_n == 0:
+                return ""
+            return f" ({tol})"
 
         if min_v is not None and max_v is not None:
-            min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
-            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            return f"{min_tol_str}{min_v} - {max_v}{max_tol_str}"
-        elif max_v is not None:
-            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            return f"≤ {max_v}{max_tol_str}"
-        elif min_v is not None:
-            min_tol_str = f" ({min_tol})" if min_tol not in (None, '') else ""
-            return f"≥ {min_v}{min_tol_str}"
-        else:
-            return "-"
+            return (
+                f"{_tol_prefix(min_tol, min_tol_n)}{min_v} - {max_v}"
+                f"{_tol_suffix(max_tol, max_tol_n)}"
+            )
+        if max_v is not None:
+            return f"≤ {max_v}{_tol_suffix(max_tol, max_tol_n)}"
+        return f"≥ {min_v}{_tol_suffix(min_tol, min_tol_n)}"
 
     def _s1_refresh_pivot_table(self):
         """Перестраивает pivot-таблицу по элементам (строки) и источникам (столбцы)."""
@@ -4400,12 +4416,12 @@ class ChemicalCompositionTab(ttk.Frame):
                 values=[
                     name,
                     symbol,
-                    elem.get("min_value", ""),
-                    elem.get("max_value", ""),
-                    elem.get("min_value_tolerance", ""),
-                    elem.get("max_value_tolerance", ""),
-                    elem.get("min_value_tolerance_relative", ""),
-                    elem.get("max_value_tolerance_relative", ""),
+                    coerce_chem_number(elem.get("min_value")),
+                    coerce_chem_number(elem.get("max_value")),
+                    coerce_chem_number(elem.get("min_value_tolerance")),
+                    coerce_chem_number(elem.get("max_value_tolerance")),
+                    coerce_chem_number(elem.get("min_value_tolerance_relative")),
+                    coerce_chem_number(elem.get("max_value_tolerance_relative")),
                 ]
             )
 
@@ -4480,20 +4496,18 @@ class ChemicalCompositionTab(ttk.Frame):
 
             elem_data = {
                 "element": values["elem"],
-                "unit_value": common_unit
+                "unit_value": common_unit,
+                "min_value": coerce_chem_number(values.get("min")),
+                "max_value": coerce_chem_number(values.get("max")),
+                "min_value_tolerance": coerce_chem_number(values.get("min_tol")),
+                "max_value_tolerance": coerce_chem_number(values.get("max_tol")),
+                "min_value_tolerance_relative": coerce_chem_number(
+                    values.get("min_tol_rel")
+                ),
+                "max_value_tolerance_relative": coerce_chem_number(
+                    values.get("max_tol_rel")
+                ),
             }
-
-            elem_data["min_value"] = safe_float(values["min"])
-            elem_data["max_value"] = safe_float(values["max"])
-
-            if values["min_tol"]:
-                elem_data["min_value_tolerance"] = values["min_tol"]
-            if values["max_tol"]:
-                elem_data["max_value_tolerance"] = values["max_tol"]
-            if values.get("min_tol_rel"):
-                elem_data["min_value_tolerance_relative"] = values["min_tol_rel"]
-            if values.get("max_tol_rel"):
-                elem_data["max_value_tolerance_relative"] = values["max_tol_rel"]
 
             elements_list.append(elem_data)
 
