@@ -58,24 +58,27 @@ export function chemicalEffectiveBounds(
 
   const minTol = safeFloat(elemInfo.min_value_tolerance);
   const maxTol = safeFloat(elemInfo.max_value_tolerance);
+  // 0.0 хранится явно, но не подменяет номинальные min/max
+  const hasMinTol = minTol !== null && minTol > 0;
+  const hasMaxTol = maxTol !== null && maxTol > 0;
 
   let lower: number;
-  if (minV !== null && minTol !== null) {
+  if (minV !== null && hasMinTol) {
     lower = minTol;
   } else if (minV !== null) {
     lower = minV;
-  } else if (minTol !== null) {
+  } else if (hasMinTol) {
     lower = minTol;
   } else {
     lower = Number.NEGATIVE_INFINITY;
   }
 
   let upper: number;
-  if (maxV !== null && maxTol !== null) {
+  if (maxV !== null && hasMaxTol) {
     upper = maxTol;
   } else if (maxV !== null) {
     upper = maxV;
-  } else if (maxTol !== null) {
+  } else if (hasMaxTol) {
     upper = maxTol;
   } else {
     upper = Number.POSITIVE_INFINITY;

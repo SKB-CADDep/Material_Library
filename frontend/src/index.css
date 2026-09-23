@@ -1787,6 +1787,25 @@ select {
     min-height: 0;
   }
 
+  /* Шапка КП под вкладками редактора — не уезжает при скролле свойств */
+  .mech-kp-sticky {
+    position: sticky;
+    top: calc(-1 * var(--space-lg));
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin: calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg)) 0;
+    padding: var(--space-lg) var(--space-lg) var(--space-md);
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.18);
+  }
+
+  .mech-kp-sticky__meta {
+    margin: 0;
+  }
+
   /* B5v: состояния внутри panel (loading / error / empty) */
   .editor-panel-state {
     display: flex;
@@ -2154,8 +2173,9 @@ select {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  max-width: 100%;
   width: 100%;
-  padding: 5px;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -2443,8 +2463,26 @@ select {
 .property-section-layout:has(.chemical-composition-chart):not(:has(.table-wrapper--temperature-pairs)) > .property-section-fields,
 .property-section-layout:has(.chemical-composition-chart):not(:has(.table-wrapper--temperature-pairs)) > .chemical-composition-chart {
   flex: 1 1 0;
-  max-width: calc(50% - 12px);
+  max-width: none;
   min-width: 0;
+}
+
+/* Лишний горизонтальный скролл ~5px на вкладке «Хим. состав» */
+.property-section-layout:has(.chemical-composition-chart) {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.physical-properties-form:has(.chemical-composition-chart),
+.physical-properties-form:has(.table-wrapper--chemical-elements) {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+fieldset.property-section-fields {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .property-section-fields .table-wrapper:not(.table-wrapper--temperature-pairs):not(.table-wrapper--chemical-elements) {

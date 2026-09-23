@@ -13,6 +13,11 @@ import {
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import { parseDecimalInput } from "../lib/formatDecimal";
+import {
+  coerceChemNumber,
+  coerceChemToleranceInput,
+  chemToleranceDisplay,
+} from "../lib/chemElementNormalize";
 
 type ChemicalPropertiesProps = {
   material: Record<string, unknown> | undefined;
@@ -22,6 +27,7 @@ type ChemicalPropertiesProps = {
 
 type ToleranceType = "absolute" | "relative";
 
+/** Поля формы (допуски — строки в инпутах). */
 type ChemicalElement = {
   element: string;
   unit_value: string;
@@ -33,9 +39,21 @@ type ChemicalElement = {
   max_value_tolerance_relative: string;
 };
 
+/** Запись в JSON: все границы и допуски — числа, без null. */
+type StoredChemicalElement = {
+  element: string;
+  unit_value: string;
+  min_value: number;
+  max_value: number;
+  min_value_tolerance: number;
+  max_value_tolerance: number;
+  min_value_tolerance_relative: number;
+  max_value_tolerance_relative: number;
+};
+
 type CompositionEntry = {
   composition_source?: string;
-  other_elements?: ChemicalElement[];
+  other_elements?: Array<Partial<ChemicalElement> | StoredChemicalElement>;
   composition_subsource?: string;
   comment?: string;
   base_element?: string;
@@ -48,39 +66,47 @@ const EMPTY_ELEMENT: ChemicalElement = {
   unit_value: "%",
   min_value: 0,
   max_value: 0,
-  min_value_tolerance: "",
-  max_value_tolerance: "",
-  min_value_tolerance_relative: "",
-  max_value_tolerance_relative: "",
+  min_value_tolerance: "0.0",
+  max_value_tolerance: "0.0",
+  min_value_tolerance_relative: "0.0",
+  max_value_tolerance_relative: "0.0",
 };
 
-function normalizeElement(raw: Partial<ChemicalElement>): ChemicalElement {
+function normalizeElement(
+  raw: Partial<ChemicalElement> | StoredChemicalElement,
+): ChemicalElement {
   return {
-    ...EMPTY_ELEMENT,
-    ...raw,
-    min_value_tolerance: raw.min_value_tolerance ?? "",
-    max_value_tolerance: raw.max_value_tolerance ?? "",
-    min_value_tolerance_relative: raw.min_value_tolerance_relative ?? "",
-    max_value_tolerance_relative: raw.max_value_tolerance_relative ?? "",
+    element: raw.element ?? "",
+    unit_value: raw.unit_value ?? "%",
+    min_value: coerceChemNumber(raw.min_value),
+    max_value: coerceChemNumber(raw.max_value),
+    min_value_tolerance: chemToleranceDisplay(raw.min_value_tolerance),
+    max_value_tolerance: chemToleranceDisplay(raw.max_value_tolerance),
+    min_value_tolerance_relative: chemToleranceDisplay(
+      raw.min_value_tolerance_relative,
+    ),
+    max_value_tolerance_relative: chemToleranceDisplay(
+      raw.max_value_tolerance_relative,
+    ),
   };
 }
 
-function toStoredElement(el: ChemicalElement): ChemicalElement {
-  const stored: Record<string, unknown> = {
+/** В JSON всегда числа; None / пустое → 0.0; оба вида допусков всегда присутствуют. */
+function toStoredElement(el: ChemicalElement): StoredChemicalElement {
+  return {
     element: el.element,
     unit_value: el.unit_value,
-    min_value: el.min_value,
-    max_value: el.max_value,
+    min_value: coerceChemNumber(el.min_value),
+    max_value: coerceChemNumber(el.max_value),
+    min_value_tolerance: coerceChemNumber(el.min_value_tolerance),
+    max_value_tolerance: coerceChemNumber(el.max_value_tolerance),
+    min_value_tolerance_relative: coerceChemNumber(
+      el.min_value_tolerance_relative,
+    ),
+    max_value_tolerance_relative: coerceChemNumber(
+      el.max_value_tolerance_relative,
+    ),
   };
-  if (el.min_value_tolerance) stored.min_value_tolerance = el.min_value_tolerance;
-  if (el.max_value_tolerance) stored.max_value_tolerance = el.max_value_tolerance;
-  if (el.min_value_tolerance_relative) {
-    stored.min_value_tolerance_relative = el.min_value_tolerance_relative;
-  }
-  if (el.max_value_tolerance_relative) {
-    stored.max_value_tolerance_relative = el.max_value_tolerance_relative;
-  }
-  return stored as ChemicalElement;
 }
 
 type ChemicalPropertiesData = {
@@ -238,11 +264,22 @@ export function ChemicalProperties({
   const updateElementAt = (rowIndex: number, patch: Partial<ChemicalElement>) => {
     updateCompositionAt((entry) => ({
       ...entry,
-      other_elements: (entry.other_elements ?? []).map((el, elIndex) =>
-        elIndex !== rowIndex
-          ? toStoredElement(normalizeElement(el))
-          : toStoredElement({ ...normalizeElement(el), ...patch }),
-      ),
+      other_elements: (entry.other_elements ?? []).map((el, elIndex) => {
+        const base = normalizeElement(el);
+        if (elIndex !== rowIndex) {
+          return toStoredElement(base);
+        }
+        // Редактируемая строка: оставляем строковые допуски для удобного ввода;
+        // min/max и пустые допуски нормализуем, в JSON при сохранении добьёт backend.
+        const next = { ...base, ...patch };
+        return {
+          ...toStoredElement(next),
+          min_value_tolerance: next.min_value_tolerance,
+          max_value_tolerance: next.max_value_tolerance,
+          min_value_tolerance_relative: next.min_value_tolerance_relative,
+          max_value_tolerance_relative: next.max_value_tolerance_relative,
+        };
+      }),
     }));
   };
   const chartUnit = otherElements[0]?.unit_value ?? "%";
@@ -314,7 +351,10 @@ const handleElementSelect = (element: Elements) => {
           : toStoredElement({
               ...normalizeElement(el),
               element: element.symbol,
-              min_value: element.symbol === "P+S" ? 0 : el.min_value,
+              min_value:
+                element.symbol === "P+S"
+                  ? 0
+                  : coerceChemNumber(el.min_value),
             }),
       ),
     }));
@@ -590,7 +630,7 @@ const handleRowClick = (index: number) => {
                               ...entry,
                               other_elements: (entry.other_elements ?? []).map(
                                 (el) => ({
-                                  ...el,
+                                  ...toStoredElement(normalizeElement(el)),
                                   unit_value: nextUnit,
                                 }),
                               ),
@@ -641,11 +681,12 @@ const handleRowClick = (index: number) => {
                       <td>
                         <input
                           className="table-cell-input"
-                        
-                          value={row.min_value ?? ""}
+                          value={row.min_value}
                           onChange={(e) =>
                             updateElementAt(i, {
-                              min_value: parseDecimalInput(e.target.value) ?? Number.NaN,
+                              min_value: coerceChemNumber(
+                                parseDecimalInput(e.target.value),
+                              ),
                             })
                           }
                         />
@@ -653,10 +694,12 @@ const handleRowClick = (index: number) => {
                       <td>
                         <input
                           className="table-cell-input"
-                          value={row.max_value ?? ""}
+                          value={row.max_value}
                           onChange={(e) =>
                             updateElementAt(i, {
-                              max_value: parseDecimalInput(e.target.value) ?? Number.NaN,
+                              max_value: coerceChemNumber(
+                                parseDecimalInput(e.target.value),
+                              ),
                             })
                           }
                         />
@@ -667,8 +710,19 @@ const handleRowClick = (index: number) => {
                           type="text"
                           value={row.min_value_tolerance}
                           title="Абсолютный нижний предел допуска"
-                          onChange={(e) =>
-                            updateElementAt(i, { min_value_tolerance: e.target.value })
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            updateElementAt(i, {
+                              min_value_tolerance:
+                                raw.trim() === "" ? "0.0" : raw,
+                            });
+                          }}
+                          onBlur={(e) =>
+                            updateElementAt(i, {
+                              min_value_tolerance: coerceChemToleranceInput(
+                                e.target.value,
+                              ),
+                            })
                           }
                         />
                       </td>
@@ -678,8 +732,19 @@ const handleRowClick = (index: number) => {
                           type="text"
                           value={row.max_value_tolerance}
                           title="Абсолютный верхний предел допуска"
-                          onChange={(e) =>
-                            updateElementAt(i, { max_value_tolerance: e.target.value })
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            updateElementAt(i, {
+                              max_value_tolerance:
+                                raw.trim() === "" ? "0.0" : raw,
+                            });
+                          }}
+                          onBlur={(e) =>
+                            updateElementAt(i, {
+                              max_value_tolerance: coerceChemToleranceInput(
+                                e.target.value,
+                              ),
+                            })
                           }
                         />
                       </td>
@@ -689,9 +754,17 @@ const handleRowClick = (index: number) => {
                           type="text"
                           value={row.min_value_tolerance_relative}
                           title="Относительный допуск к Min, %"
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const raw = e.target.value;
                             updateElementAt(i, {
-                              min_value_tolerance_relative: e.target.value,
+                              min_value_tolerance_relative:
+                                raw.trim() === "" ? "0.0" : raw,
+                            });
+                          }}
+                          onBlur={(e) =>
+                            updateElementAt(i, {
+                              min_value_tolerance_relative:
+                                coerceChemToleranceInput(e.target.value),
                             })
                           }
                         />
@@ -702,9 +775,17 @@ const handleRowClick = (index: number) => {
                           type="text"
                           value={row.max_value_tolerance_relative}
                           title="Относительный допуск к Max, %"
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const raw = e.target.value;
                             updateElementAt(i, {
-                              max_value_tolerance_relative: e.target.value,
+                              max_value_tolerance_relative:
+                                raw.trim() === "" ? "0.0" : raw,
+                            });
+                          }}
+                          onBlur={(e) =>
+                            updateElementAt(i, {
+                              max_value_tolerance_relative:
+                                coerceChemToleranceInput(e.target.value),
                             })
                           }
                         />

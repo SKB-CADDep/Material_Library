@@ -23,9 +23,20 @@ describe("formatChemElementValue", () => {
     expect(formatChemElementValue({ min_value: 0.1 })).toBe("≥ 0.1");
   });
 
-  it("treats zero bounds as empty", () => {
+  it("keeps zero bounds as real values", () => {
     expect(formatChemElementValue({ min_value: 0, max_value: 0.2 })).toBe(
-      "≤ 0.2",
+      "0 - 0.2",
     );
+  });
+
+  it("omits zero tolerances from compact display", () => {
+    expect(
+      formatChemElementValue({
+        min_value: 0,
+        max_value: 0.08,
+        min_value_tolerance: 0,
+        max_value_tolerance: 0.09,
+      }),
+    ).toBe("0 - 0.08 (0.09)");
   });
 });

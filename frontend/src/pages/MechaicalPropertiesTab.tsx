@@ -270,182 +270,187 @@ export function MechanicalPropertiesTab({
       onSubmit={(event) => event.preventDefault()}
     >
       <div className="form-stack">
-        <div className="form-row">
-          <label htmlFor="editor-strength-category-select">Категория прочности:</label>
-          <div className="form-row-inline">
-            <select
-              id="editor-strength-category-select"
-              className="input"
-              value={
-                (mechanical_properties.strength_category?.length ?? 0) > 0
-                  ? categoryIndex
-                  : ""
-              }
-              onChange={(e) => setCategoryIndex(Number(e.target.value))}
-              disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
-            >
-              {(mechanical_properties.strength_category ?? []).map(
-                (cat, index) => (
-                  <option key={index} value={index}>
-                    {formatCategoryOptionLabel(cat, index, mechanicalSources)}
-                  </option>
-                ),
+        <div className="mech-kp-sticky">
+          <div className="form-row">
+            <label htmlFor="editor-strength-category-select">Категория прочности:</label>
+            <div className="form-row-inline">
+              <select
+                id="editor-strength-category-select"
+                className="input"
+                value={
+                  (mechanical_properties.strength_category?.length ?? 0) > 0
+                    ? categoryIndex
+                    : ""
+                }
+                onChange={(e) => setCategoryIndex(Number(e.target.value))}
+                disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
+              >
+                {(mechanical_properties.strength_category ?? []).map(
+                  (cat, index) => (
+                    <option key={index} value={index}>
+                      {formatCategoryOptionLabel(cat, index, mechanicalSources)}
+                    </option>
+                  ),
+                )}
+              </select>
+              {(mechanical_properties.strength_category?.length ?? 0) === 0 && (
+                <p className="tab-placeholder tab-placeholder--inline">
+                  Нет категорий прочности — нажмите «+», чтобы добавить КП
+                </p>
               )}
-            </select>
-            {(mechanical_properties.strength_category?.length ?? 0) === 0 && (
-              <p className="tab-placeholder tab-placeholder--inline">
-                Нет категорий прочности — нажмите «+», чтобы добавить КП
-              </p>
-            )}
-            <button
-              type="button"
-              className="table-control-btn"
-              title="Добавить категорию прочности"
-              disabled={readOnly}
-              onClick={() => {
-                const prev = mechanical_properties.strength_category ?? [];
-                const newIndex = prev.length;
-                const newCat: StrengthCategory = {
-                  value_strength_category: `Новая КП ${newIndex + 1}`,
-                  source_strength_category: "",
-                  source_ref_id: "",
-                  hardness: [],
-                  hardness_unit: "",
-                  properties: [],
-                };
-                onDraftChange({
-                  ...material,
-                  mechanical_properties: {
-                    ...mechanical_properties,
-                    strength_category: [...prev, newCat],
-                  },
-                });
-                setCategoryIndex(newIndex);
-              }}
-            >
-              +
-            </button>
-            <button
-              type="button"
-              className="table-control-btn"
-              title="Удалить категорию прочности"
-              disabled={
-                readOnly ||
-                (mechanical_properties.strength_category?.length ?? 0) === 0
-              }
-              onClick={() => {
-                const prev = mechanical_properties.strength_category ?? [];
-                if (prev.length === 0) return;
-                if (!window.confirm("Удалить категорию?")) return;
-                const next = prev.filter((_, i) => i !== categoryIndex);
-                onDraftChange({
-                  ...material,
-                  mechanical_properties: {
-                    ...mechanical_properties,
-                    strength_category: next,
-                  },
-                });
-                setCategoryIndex(0);
-              }}
-            >
-              −
-            </button>
+              <button
+                type="button"
+                className="table-control-btn"
+                title="Добавить категорию прочности"
+                disabled={readOnly}
+                onClick={() => {
+                  const prev = mechanical_properties.strength_category ?? [];
+                  const newIndex = prev.length;
+                  const newCat: StrengthCategory = {
+                    value_strength_category: `Новая КП ${newIndex + 1}`,
+                    source_strength_category: "",
+                    source_ref_id: "",
+                    hardness: [],
+                    hardness_unit: "",
+                    properties: [],
+                  };
+                  onDraftChange({
+                    ...material,
+                    mechanical_properties: {
+                      ...mechanical_properties,
+                      strength_category: [...prev, newCat],
+                    },
+                  });
+                  setCategoryIndex(newIndex);
+                }}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="table-control-btn"
+                title="Удалить категорию прочности"
+                disabled={
+                  readOnly ||
+                  (mechanical_properties.strength_category?.length ?? 0) === 0
+                }
+                onClick={() => {
+                  const prev = mechanical_properties.strength_category ?? [];
+                  if (prev.length === 0) return;
+                  if (!window.confirm("Удалить категорию?")) return;
+                  const next = prev.filter((_, i) => i !== categoryIndex);
+                  onDraftChange({
+                    ...material,
+                    mechanical_properties: {
+                      ...mechanical_properties,
+                      strength_category: next,
+                    },
+                  });
+                  setCategoryIndex(0);
+                }}
+              >
+                −
+              </button>
+            </div>
           </div>
+
+          <fieldset className="editor-readonly-scope" disabled={readOnly}>
+            <fieldset className="form-section mech-kp-sticky__meta">
+              <div className="property-section-fields kp-category-fields">
+                <div className="form-row">
+                  <label htmlFor="name_strength_select" className="form-label--fixed">
+                    Название КП:
+                  </label>
+                  <input
+                    id="name_strength_select"
+                    type="text"
+                    value={
+                      mechanical_properties?.strength_category?.[categoryIndex]
+                        ?.value_strength_category ?? ""
+                    }
+                    className="input"
+                    onChange={(event) => {
+                      const text = event.target.value;
+                      onDraftChange({
+                        ...material,
+                        mechanical_properties: {
+                          ...mechanical_properties,
+                          strength_category:
+                            mechanical_properties.strength_category?.map(
+                              (cat, idx) =>
+                                idx === categoryIndex
+                                  ? { ...cat, value_strength_category: text }
+                                  : cat,
+                            ) ?? [{ value_strength_category: text }],
+                        },
+                      });
+                    }}
+                  />
+                </div>
+                <div className="form-row">
+                  <label htmlFor="source_strength_select" className="form-label--fixed">
+                    Источник КП
+                    <RequiredMark />:
+                  </label>
+                  <select
+                    id="source_strength_select"
+                    className="input"
+                    value={currentSource}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const matched = mechanicalSources.find(
+                        (src) => src.name_source === name,
+                      );
+                      const source_strength_category = name;
+                      const source_ref_id = matched?.id_source ?? "";
+                      onDraftChange({
+                        ...material,
+                        mechanical_properties: {
+                          ...mechanical_properties,
+                          strength_category:
+                            mechanical_properties.strength_category?.map(
+                              (cat, idx) =>
+                                idx === categoryIndex
+                                  ? {
+                                      ...cat,
+                                      source_strength_category,
+                                      source_ref_id,
+                                    }
+                                  : cat,
+                            ) ?? [
+                              {
+                                source_strength_category,
+                                source_ref_id,
+                                hardness_unit: "",
+                              },
+                            ],
+                        },
+                      });
+                    }}
+                  >
+                    <option value="">— не выбран —</option>
+                    {showOrphan && (
+                      <option key={`orphan-${currentSource}`} value={currentSource}>
+                        {currentSource}
+                      </option>
+                    )}
+                    {mechanicalSources.map((src) => (
+                      <option
+                        key={src.id_source ?? src.name_source}
+                        value={src.name_source}
+                      >
+                        {src.name_source}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <RequiredFieldsFootnote />
+              </div>
+            </fieldset>
+          </fieldset>
         </div>
 
       <fieldset className="editor-readonly-scope" disabled={readOnly}>
-        <fieldset className="form-section">
-          <div className="property-section-fields kp-category-fields">
-            <div className="form-row">
-              <label htmlFor="name_strength_select" className="form-label--fixed">
-                Название КП:
-              </label>
-              <input
-                id="name_strength_select"
-                type="text"
-                value={
-                  mechanical_properties?.strength_category?.[categoryIndex]
-                    ?.value_strength_category ?? ""
-                }
-                className="input"
-                onChange={(event) => {
-                  const text = event.target.value;
-                  onDraftChange({
-                    ...material,
-                    mechanical_properties: {
-                      ...mechanical_properties,
-                      strength_category:
-                        mechanical_properties.strength_category?.map(
-                          (cat, idx) =>
-                            idx === categoryIndex
-                              ? { ...cat, value_strength_category: text }
-                              : cat,
-                        ) ?? [{ value_strength_category: text }],
-                    },
-                  });
-                }}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="source_strength_select" className="form-label--fixed">
-                Источник КП
-                <RequiredMark />:
-              </label>
-              <select
-                id="source_strength_select"
-                className="input"
-                value={currentSource}
-                onChange={(e) => {
-                  const name = e.target.value;
-                  const matched = mechanicalSources.find(
-                    (src) => src.name_source === name,
-                  );
-                  const source_strength_category = name;
-                  const source_ref_id = matched?.id_source ?? "";
-                  onDraftChange({
-                    ...material,
-                    mechanical_properties: {
-                      ...mechanical_properties,
-                      strength_category:
-                        mechanical_properties.strength_category?.map(
-                          (cat, idx) =>
-                            idx === categoryIndex
-                              ? {
-                                  ...cat,
-                                  source_strength_category,
-                                  source_ref_id,
-                                }
-                              : cat,
-                        ) ?? [
-                          {
-                            source_strength_category,
-                            source_ref_id,
-                            hardness_unit: "",
-                          },
-                        ],
-                    },
-                  });
-                }}
-              >
-                <option value="">— не выбран —</option>
-                {showOrphan && (
-                  <option key={`orphan-${currentSource}`} value={currentSource}>
-                    {currentSource}
-                  </option>
-                )}
-                {mechanicalSources.map((src) => (
-                  <option
-                    key={src.id_source ?? src.name_source}
-                    value={src.name_source}
-                  >
-                    {src.name_source}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <RequiredFieldsFootnote />
-          </div>
-        </fieldset>
         {TEMPERATURE_MECH_PROPERTIES.map((prop) => {
           const data = getPropertyData(category, prop.key);
           const unitId = `${prop.key}_value_unit`;
