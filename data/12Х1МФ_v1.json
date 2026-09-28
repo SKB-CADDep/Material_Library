@@ -702,68 +702,90 @@
                 "unit_value": "%",
                 "min_value": 0.1,
                 "max_value": 0.15,
-                "min_value_tolerance": "0.09",
-                "max_value_tolerance": "0.16"
+                "min_value_tolerance": 0.09,
+                "max_value_tolerance": 0.16,
+                "min_value_tolerance_relative": 0.01,
+                "max_value_tolerance_relative": 0.01
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.17,
                 "max_value": 0.37,
-                "min_value_tolerance": "0.15",
-                "max_value_tolerance": "0.39"
+                "min_value_tolerance": 0.15,
+                "max_value_tolerance": 0.39,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.4,
                 "max_value": 0.7,
-                "min_value_tolerance": "0.38",
-                "max_value_tolerance": "0.72"
+                "min_value_tolerance": 0.38,
+                "max_value_tolerance": 0.72,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Cr",
                 "unit_value": "%",
                 "min_value": 0.9,
                 "max_value": 1.2,
-                "min_value_tolerance": "0.88",
-                "max_value_tolerance": "1.25"
+                "min_value_tolerance": 0.88,
+                "max_value_tolerance": 1.25,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.05
               },
               {
                 "element": "Ni",
                 "unit_value": "%",
-                "min_value": null,
-                "max_value": 0.3
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Mo",
                 "unit_value": "%",
                 "min_value": 0.25,
                 "max_value": 0.35,
-                "min_value_tolerance": "0.23",
-                "max_value_tolerance": "0.37"
+                "min_value_tolerance": 0.23,
+                "max_value_tolerance": 0.37,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "V",
                 "unit_value": "%",
                 "min_value": 0.15,
                 "max_value": 0.3,
-                "min_value_tolerance": "0,13",
-                "max_value_tolerance": "0,32"
+                "min_value_tolerance": 0.13,
+                "max_value_tolerance": 0.32,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "S",
                 "unit_value": "%",
-                "min_value": null,
+                "min_value": 0.0,
                 "max_value": 0.025,
-                "max_value_tolerance": "0.03"
+                "max_value_tolerance": 0.03,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "P",
                 "unit_value": "%",
-                "min_value": null,
+                "min_value": 0.0,
                 "max_value": 0.03,
-                "max_value_tolerance": "0.035"
+                "max_value_tolerance": 0.035,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
               }
             ],
             "composition_subsource": "",

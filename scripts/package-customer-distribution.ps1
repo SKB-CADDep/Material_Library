@@ -24,7 +24,20 @@ function Copy-Tree([string]$RelativePath) {
     $target = Join-Path $Staging $RelativePath
     $parent = Split-Path -Parent $target
     if ($parent) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }
-    Copy-Item -LiteralPath $source -Destination $target -Recurse -Force
+
+    # Exclude __pycache__ / *.pyc — часто залочены процессом python и ломают Copy-Item.
+    if ((Get-Item -LiteralPath $source).PSIsContainer) {
+        robocopy $source $target /E /NFL /NDL /NJH /NJS /nc /ns /np `
+            /XD "__pycache__" `
+            /XF "*.pyc" | Out-Null
+        # robocopy: 0–7 = успех/частичный успех
+        if ($LASTEXITCODE -ge 8) {
+            throw "robocopy failed for $RelativePath (exit $LASTEXITCODE)"
+        }
+        $global:LASTEXITCODE = 0
+    } else {
+        Copy-Item -LiteralPath $source -Destination $target -Force
+    }
 }
 
 Write-Host "Material Library - customer package" -ForegroundColor White
@@ -84,11 +97,23 @@ Write-Host "Approx size: $sizeMb MB" -ForegroundColor DarkGray
 
 if ($OutputZip) {
     Write-Step "Create zip"
-    if (Test-Path -LiteralPath $OutputZip) {
-        Remove-Item -LiteralPath $OutputZip -Force
+    $zipPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputZip)
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
     }
-    Compress-Archive -LiteralPath $Staging -DestinationPath $OutputZip -Force
-    Write-Host "Zip: $OutputZip" -ForegroundColor Green
+    $stagingParent = Split-Path -Parent $Staging
+    $stagingName = Split-Path -Leaf $Staging
+    # tar быстрее и надёжнее Compress-Archive на больших деревьях (runtime/).
+    Push-Location $stagingParent
+    try {
+        & tar.exe -a -c -f $zipPath $stagingName
+        if ($LASTEXITCODE -ne 0) {
+            throw "tar failed to create zip (exit $LASTEXITCODE)"
+        }
+    } finally {
+        Pop-Location
+    }
+    Write-Host "Zip: $zipPath" -ForegroundColor Green
 }
 
 Write-Host ""

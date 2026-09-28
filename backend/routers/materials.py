@@ -3,6 +3,7 @@ from backend.dependencies import AppState, get_state, get_repository, open_works
 from backend.schemas import WorkspaceResponse, WorkspaceOpenRequest, MaterialSummary, MaterialSaveResponse
 from pathlib import Path
 import copy
+import logging
 import time
 
 from src.core.models.material import Material
@@ -18,6 +19,9 @@ from src.services.material_changelog import (
     find_changes,
     log_changes,
 )
+from src.services.material_repository import DuplicateMaterialIdError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Materials"])
 
@@ -142,11 +146,28 @@ def put_material_by_id(material_id:str, body:dict, repo= Depends(get_repository)
     try:
         log_changes(display_name, changes)
     except Exception:
-        pass
+        logger.exception(
+            "Не удалось записать material_changelog для «%s»",
+            display_name,
+        )
 
     material.data = body
     try:
         repo.save_material(material)
+    except DuplicateMaterialIdError as e:
+        audit_log(
+            event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE"],
+            event_category="Операция",
+            event_action="Финиш",
+            operation_id=op_id,
+            result_ok=False,
+            result_status="Ошибка",
+            result_error_kind="duplicate_id",
+            duration_ms=monotonic_ms_since(t0),
+            entity={"type": "Материал", "name": display_name},
+            data={"операция": "save"},
+        )
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception:
         audit_log(
             event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE"],
@@ -227,12 +248,29 @@ def post_new_material(
     try:
         log_changes(changelog_name, changes)
     except Exception:
-        pass
+        logger.exception(
+            "Не удалось записать material_changelog для «%s»",
+            changelog_name,
+        )
 
     material = Material(data=body)
     material.filepath = str(path)
     try:
         repo.save_material(material)
+    except DuplicateMaterialIdError as e:
+        audit_log(
+            event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],
+            event_category="Операция",
+            event_action="Финиш",
+            operation_id=op_id,
+            result_ok=False,
+            result_status="Ошибка",
+            result_error_kind="duplicate_id",
+            duration_ms=monotonic_ms_since(t0),
+            entity={"type": "Материал", "name": display_name},
+            data={"операция": "save_as"},
+        )
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception:
         audit_log(
             event_name=AUDIT_EVENT_NAMES["MATERIAL_SAVE_AS"],

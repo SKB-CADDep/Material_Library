@@ -10,7 +10,7 @@ import {
 const MAIN_LABELS: Record<MainPageKey, string> = {
   selection: "Подбор материала",
   editor: "Добавление / Редактирование",
-  sources: "Работа с источниками",
+  sources: "Список литературы",
   elements: "Справочник элементов",
 };
 

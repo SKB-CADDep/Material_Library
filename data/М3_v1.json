@@ -34,55 +34,91 @@
                 "element": "Fe",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Ni",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.2
+                "max_value": 0.2,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "S",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.01
+                "max_value": 0.01,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "As",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.01
+                "max_value": 0.01,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Pb",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "O",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.08
+                "max_value": 0.08,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Sb",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Bi",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.003
+                "max_value": 0.003,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Sn",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "comment": "",

@@ -242,12 +242,30 @@ def post_source(body: SourceCreateRequest, state: AppState = Depends(get_state))
         event_action="Старт",
         operation_id=op_id,
     )
-    id_source = state.sources.add_source(
-        name=body.name,
-        description=body.description,
-        hyperlink=body.hyperlink,
-        group=body.group,
-    )
+    try:
+        id_source = state.sources.add_source(
+            name=body.name,
+            description=body.description,
+            hyperlink=body.hyperlink,
+            group=body.group,
+        )
+    except OSError as exc:
+        audit_log(
+            event_name=AUDIT_EVENT_NAMES["SOURCE_CREATE"],
+            event_category="Операция",
+            event_action="Финиш",
+            operation_id=op_id,
+            result_ok=False,
+            result_status="Ошибка",
+            result_error_kind="io_error",
+            duration_ms=monotonic_ms_since(t0),
+            entity={"type": "Источник", "name": body.name},
+            data={"группа": body.group},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Не удалось сохранить источники: {exc}",
+        ) from exc
     created = state.sources.get_source_by_id(id_source)
     if created is None:
         audit_log(
@@ -295,12 +313,30 @@ def put_source(source_id: str, body: SourceUpdateRequest, state: AppState = Depe
         entity={"type": "Источник", "id": source_id},
     )
 
-    updated = state.sources.update_source(
-        source_id=source_id,
-        name=body.name,
-        description=body.description,
-        hyperlink=body.hyperlink,
-    )
+    try:
+        updated = state.sources.update_source(
+            source_id=source_id,
+            name=body.name,
+            description=body.description,
+            hyperlink=body.hyperlink,
+        )
+    except OSError as exc:
+        audit_log(
+            event_name=AUDIT_EVENT_NAMES["SOURCE_UPDATE"],
+            event_category="Операция",
+            event_action="Финиш",
+            operation_id=op_id,
+            result_ok=False,
+            result_status="Ошибка",
+            result_error_kind="io_error",
+            duration_ms=monotonic_ms_since(t0),
+            entity={"type": "Источник", "name": body.name, "id": source_id},
+            data={"группа": group},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Не удалось сохранить источники: {exc}",
+        ) from exc
     if not updated:
         audit_log(
             event_name=AUDIT_EVENT_NAMES["SOURCE_UPDATE"],
@@ -380,7 +416,25 @@ def delete_by_id(source_id: str, state: AppState = Depends(get_state)):
             detail=format_source_in_use_detail(used_in),
         )
 
-    state.sources.delete_source(source_id)
+    try:
+        state.sources.delete_source(source_id)
+    except OSError as exc:
+        audit_log(
+            event_name=AUDIT_EVENT_NAMES["SOURCE_DELETE"],
+            event_category="Операция",
+            event_action="Финиш",
+            operation_id=op_id,
+            result_ok=False,
+            result_status="Ошибка",
+            result_error_kind="io_error",
+            duration_ms=monotonic_ms_since(t0),
+            entity=entity,
+            data={"группа": group},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Не удалось сохранить источники: {exc}",
+        ) from exc
     audit_log(
         event_name=AUDIT_EVENT_NAMES["SOURCE_DELETE"],
         event_category="Операция",

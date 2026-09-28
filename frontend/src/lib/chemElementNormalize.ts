@@ -13,7 +13,7 @@ export function coerceChemNumber(value: unknown): number {
 }
 
 /**
- * Нормализация допуска после ввода (blur) / из JSON:
+ * Нормализация после blur / перед записью в JSON:
  * пустое или 0 → "0.0", иначе сохраняем введённую запись.
  */
 export function coerceChemToleranceInput(value: unknown): string {
@@ -36,13 +36,23 @@ export function coerceChemToleranceInput(value: unknown): string {
  * Отображение в инпуте: null/пустое/числовой 0 → "0.0",
  * строку при редактировании не трогаем.
  */
-export function chemToleranceDisplay(value: unknown): string {
+export function chemFieldDisplay(value: unknown): string {
   if (value === null || value === undefined) {
     return "0.0";
   }
+  if (typeof value === "string") {
+    return value;
+  }
   if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      return "0.0";
+    }
     return value === 0 ? "0.0" : String(value);
   }
-  const text = String(value);
-  return text.trim() === "" ? "0.0" : text;
+  return String(value);
+}
+
+/** @deprecated alias — см. chemFieldDisplay */
+export function chemToleranceDisplay(value: unknown): string {
+  return chemFieldDisplay(value);
 }

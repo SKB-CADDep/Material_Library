@@ -154,49 +154,81 @@
                 "element": "Cu",
                 "unit_value": "%",
                 "min_value": 67.0,
-                "max_value": 70.0
+                "max_value": 70.0,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Pb",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.03
+                "max_value": 0.03,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Fe",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.1
+                "max_value": 0.1,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Sb",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.005
+                "max_value": 0.005,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Bi",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.002
+                "max_value": 0.002,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "P",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.01
+                "max_value": 0.01,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Zn",
                 "unit_value": "%",
                 "min_value": 32.853,
-                "max_value": null
+                "max_value": 0.0,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Ni",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.3
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "composition_subsource": "1",

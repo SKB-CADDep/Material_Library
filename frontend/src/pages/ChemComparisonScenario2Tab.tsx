@@ -14,6 +14,7 @@ import type { CompositionEntry } from "../lib/chemComparisonPivot";
 import {
   buildChemCompositionCache,
   candidateRowClass,
+  candidateSelectionKey,
   collectTargets,
   DETAIL_STATE_LABELS,
   detailRowClass,
@@ -219,7 +220,9 @@ export function ChemComparisonScenario2Tab() {
   const [selectedTargetRowId, setSelectedTargetRowId] = useState<string | null>(
     null,
   );
-  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState(0);
+  const [selectedCandidateKey, setSelectedCandidateKey] = useState<string | null>(
+    null,
+  );
   const targetTableRef = useRef<HTMLTableElement>(null);
   const resultsTableRef = useRef<HTMLTableElement>(null);
   const detailsTableRef = useRef<HTMLTableElement>(null);
@@ -263,16 +266,20 @@ export function ChemComparisonScenario2Tab() {
 
   useEffect(() => {
     if (candidates.length === 0) {
-      setSelectedCandidateIndex(0);
+      setSelectedCandidateKey(null);
       return;
     }
-    setSelectedCandidateIndex((prev) =>
-      prev < candidates.length ? prev : 0,
-    );
-  }, [candidates.length]);
+    setSelectedCandidateKey((prev) => {
+      if (prev && candidates.some((c) => candidateSelectionKey(c) === prev)) {
+        return prev;
+      }
+      return candidateSelectionKey(candidates[0]!);
+    });
+  }, [candidates]);
 
   const selectedCandidate: CandidateEvaluation | null =
-    candidates[selectedCandidateIndex] ?? null;
+    candidates.find((c) => candidateSelectionKey(c) === selectedCandidateKey) ??
+    null;
 
   const sidebarResize = useDragResize({
     axis: "x",
@@ -487,15 +494,15 @@ export function ChemComparisonScenario2Tab() {
                             </td>
                           </tr>
                         )}
-                      {candidates.map((candidate, index) => (
+                      {candidates.map((candidate) => {
+                        const key = candidateSelectionKey(candidate);
+                        return (
                         <tr
-                          key={`${candidate.materialId}-${candidate.sourceLabel}-${index}`}
+                          key={key}
                           className={`${candidateRowClass(candidate.status)}${
-                            index === selectedCandidateIndex
-                              ? " is-selected"
-                              : ""
+                            key === selectedCandidateKey ? " is-selected" : ""
                           }`}
-                          onClick={() => setSelectedCandidateIndex(index)}
+                          onClick={() => setSelectedCandidateKey(key)}
                         >
                           <td>{candidate.materialName}</td>
                           <td>{candidate.sourceLabel}</td>
@@ -504,7 +511,8 @@ export function ChemComparisonScenario2Tab() {
                           <td>{candidate.totalTargets}</td>
                           <td>{candidate.status}</td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

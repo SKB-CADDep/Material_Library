@@ -7,7 +7,7 @@ import re
 from copy import deepcopy
 from pathlib import Path
 
-from src.infrastructure.paths import config_dir, project_root
+from src.infrastructure.paths import config_dir
 
 SCHEMA_VERSION = "1.0"
 COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
@@ -20,11 +20,6 @@ class ElementsCatalogError(ValueError):
 
 def _catalog_path() -> Path:
     return config_dir() / "elements_catalog.json"
-
-
-def _frontend_catalog_path() -> Path | None:
-    path = project_root() / "frontend" / "src" / "config" / "elements_catalog.json"
-    return path if path.parent.is_dir() else None
 
 
 def _normalize_element(raw: dict) -> dict:
@@ -161,9 +156,6 @@ class ElementsCatalog:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(payload, ensure_ascii=False, indent=4) + "\n"
         self._path.write_text(text, encoding="utf-8")
-        frontend_path = _frontend_catalog_path()
-        if frontend_path is not None:
-            frontend_path.write_text(text, encoding="utf-8")
 
 
 _catalog: ElementsCatalog | None = None

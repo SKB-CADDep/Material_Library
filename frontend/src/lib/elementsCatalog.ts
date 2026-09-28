@@ -1,4 +1,4 @@
-import elements_catalog from "../config/elements_catalog.json";
+import elements_catalog from "../../../config/elements_catalog.json";
 import type { ElementItem, ElementsCatalogResponse } from "../types/api";
 
 export type CatalogElement = {

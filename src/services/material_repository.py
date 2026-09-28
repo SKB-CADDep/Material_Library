@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from src.core.models.material import Material
@@ -7,6 +8,12 @@ from src.core.schema_keys import Schema
 from src.infrastructure.storage_backend import LocalDirectoryStorage
 from src.services.source_service import SourceService
 from src.services.material_versioning import latest_material_filename
+
+logger = logging.getLogger(__name__)
+
+
+class DuplicateMaterialIdError(ValueError):
+    """material_id уже занят другим файлом в workspace."""
 
 
 class MaterialRepository:
@@ -36,15 +43,30 @@ class MaterialRepository:
         paths = self._storage.list_material_paths()
         keep = set(latest_material_filename([p.name for p in paths]))
 
-
+        seen_ids: dict[str, str] = {}
         for path in self._storage.list_material_paths():
             if path.name not in keep:
                 continue
-            else:
-                try:
-                    self.materials.append(Material(filepath=str(path)))
-                except Exception as e:
-                    print(f"Ошибка чтения {path.name}: {e}")
+            try:
+                material = Material(filepath=str(path))
+            except Exception as e:
+                print(f"Ошибка чтения {path.name}: {e}")
+                continue
+
+            material_id = str(material.data.get("material_id") or "").strip()
+            if material_id:
+                existing = seen_ids.get(material_id)
+                if existing is not None:
+                    logger.warning(
+                        "Пропуск %s: дубликат material_id=%s (уже загружен %s)",
+                        path.name,
+                        material_id,
+                        existing,
+                    )
+                    continue
+                seen_ids[material_id] = path.name
+
+            self.materials.append(material)
 
         self.materials.sort(key=lambda m: m.get_display_name())
         self.load_application_areas()
@@ -59,6 +81,34 @@ class MaterialRepository:
         for m in self.materials:
             if m.data.get("material_id") == material_id:
                 return m
+        return None
+
+    def find_material_id_conflict(
+        self,
+        material_id: str,
+        *,
+        exclude_filepath: str | Path | None = None,
+    ) -> Material | None:
+        """Другой материал с тем же id (не тот же файл)."""
+        mid = (material_id or "").strip()
+        if not mid:
+            return None
+        exclude = (
+            Path(exclude_filepath).resolve()
+            if exclude_filepath
+            else None
+        )
+        for m in self.materials:
+            if str(m.data.get("material_id") or "").strip() != mid:
+                continue
+            if exclude is not None and m.filepath:
+                try:
+                    if Path(m.filepath).resolve() == exclude:
+                        continue
+                except OSError:
+                    if Path(m.filepath) == Path(exclude_filepath or ""):
+                        continue
+            return m
         return None
 
     def list_summary(self) -> list[dict]:
@@ -103,7 +153,17 @@ class MaterialRepository:
         if not self.work_dir:
             raise ValueError("Workspace не открыт")
 
-        material_path = Path(material.filepath)
+        material_id = str(material.data.get("material_id") or "").strip()
+        conflict = self.find_material_id_conflict(
+            material_id,
+            exclude_filepath=material.filepath,
+        )
+        if conflict is not None:
+            raise DuplicateMaterialIdError(
+                f"material_id «{material_id}» уже используется в файле "
+                f"«{conflict.filename}»"
+            )
+
         material.save()
         self.load_materials_from_dir(self.work_dir)
 

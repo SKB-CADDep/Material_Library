@@ -41,7 +41,7 @@ test.describe("E2E-4: separate calculation — material, KP, table, custom T", (
     await expect(yieldCell.locator(".calculation-cell--interp")).toHaveText("218.5");
     await expect(yieldCell.locator(".calculation-cell--interp")).toHaveAttribute(
       "title",
-      "Рассчитано интерполяцией между точками",
+      "218.5 (Рассчитано интерполяцией между точками)",
     );
   });
 });

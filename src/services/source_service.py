@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import uuid
 from datetime import datetime
 from pathlib import Path
 
+from src.infrastructure.atomic_io import atomic_write_json
 from src.infrastructure.paths import get_app_directory
 from src.infrastructure.storage_backend import SOURCE_JSON_NAME
 
@@ -83,15 +85,9 @@ class SourceService:
                 "chemical_sources": [],
             }
 
-    def save(self):
-        """Сохранение в новом формате"""
-        try:
-            path = Path(self.filepath)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(self.sources, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"Ошибка сохранения source.json: {e}")
+    def save(self) -> None:
+        """Сохранить source.json атомарно. При ошибке — исключение (не silent)."""
+        atomic_write_json(self.filepath, self.sources)
 
     def get_all(self, group=None):
         if group is not None:
@@ -127,14 +123,20 @@ class SourceService:
             "user_name_change": "",
             "data_change": "",
         }
-        self.sources.setdefault(group, []).append(new_source)
-        self.save()
+        bucket = self.sources.setdefault(group, [])
+        bucket.append(new_source)
+        try:
+            self.save()
+        except Exception:
+            bucket.pop()
+            raise
         return new_id
 
     def update_source(self, source_id, name, description, hyperlink):
         for lst in self.sources.values():
             for src in lst:
                 if src.get("id_source") == source_id:
+                    previous = copy.deepcopy(src)
                     src.update({
                         "name_source": name,
                         "description": description,
@@ -142,19 +144,31 @@ class SourceService:
                         "user_name_change": _get_username(),
                         "data_change": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     })
-                    self.save()
+                    try:
+                        self.save()
+                    except Exception:
+                        src.clear()
+                        src.update(previous)
+                        raise
                     return True
         return False
 
     def delete_source(self, source_id):
-        removed = False
+        snapshot = None
         for group, lst in self.sources.items():
             new_lst = [s for s in lst if s.get("id_source") != source_id]
             if len(new_lst) != len(lst):
+                snapshot = (group, list(lst))
                 self.sources[group] = new_lst
-                removed = True
-        if removed:
+                break
+        if snapshot is None:
+            return
+        try:
             self.save()
+        except Exception:
+            group, previous_list = snapshot
+            self.sources[group] = previous_list
+            raise
 
     def list_all(self) -> list[dict]:
         return self.get_all()

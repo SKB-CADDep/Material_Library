@@ -758,32 +758,40 @@
                 "unit_value": "%",
                 "min_value": 0.36,
                 "max_value": 0.44,
-                "min_value_tolerance": "0.35",
-                "max_value_tolerance": "0.45"
+                "min_value_tolerance": 0.35,
+                "max_value_tolerance": 0.45,
+                "min_value_tolerance_relative": 0.01,
+                "max_value_tolerance_relative": 0.01
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.17,
                 "max_value": 0.37,
-                "min_value_tolerance": "0.15",
-                "max_value_tolerance": "0.39"
+                "min_value_tolerance": 0.15,
+                "max_value_tolerance": 0.39,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.5,
                 "max_value": 0.8,
-                "min_value_tolerance": "0.48",
-                "max_value_tolerance": "0.82"
+                "min_value_tolerance": 0.48,
+                "max_value_tolerance": 0.82,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Cr",
                 "unit_value": "%",
                 "min_value": 0.8,
                 "max_value": 1.1,
-                "min_value_tolerance": "0.78",
-                "max_value_tolerance": "1.15"
+                "min_value_tolerance": 0.78,
+                "max_value_tolerance": 1.15,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.05
               }
             ],
             "composition_subsource": "",

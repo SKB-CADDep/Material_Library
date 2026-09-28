@@ -76,6 +76,7 @@ def safe_float(value, default=None):
 def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
     """
     Возвращает (lower, upper, min_tol_display, max_tol_display).
+    REL — дельта в тех же единицах.
     """
     min_v = safe_float(elem_info.get("min_value"))
     max_v = safe_float(elem_info.get("max_value"))
@@ -83,16 +84,18 @@ def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
     if tolerance_type == "relative":
         min_rel = safe_float(elem_info.get("min_value_tolerance_relative"))
         max_rel = safe_float(elem_info.get("max_value_tolerance_relative"))
+        has_min_rel = min_rel is not None and min_rel != 0
+        has_max_rel = max_rel is not None and max_rel != 0
 
-        if min_v is not None and min_rel is not None:
-            lower = min_v * (1 - min_rel / 100.0)
+        if min_v is not None and has_min_rel:
+            lower = min_v - min_rel
         elif min_v is not None:
             lower = min_v
         else:
             lower = float("-inf")
 
-        if max_v is not None and max_rel is not None:
-            upper = max_v * (1 + max_rel / 100.0)
+        if max_v is not None and has_max_rel:
+            upper = max_v + max_rel
         elif max_v is not None:
             upper = max_v
         else:
@@ -103,8 +106,8 @@ def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
     min_tol = safe_float(elem_info.get("min_value_tolerance"))
     max_tol = safe_float(elem_info.get("max_value_tolerance"))
     # 0.0 хранится явно, но не подменяет номинальные min/max
-    has_min_tol = min_tol is not None and min_tol > 0
-    has_max_tol = max_tol is not None and max_tol > 0
+    has_min_tol = min_tol is not None and min_tol != 0
+    has_max_tol = max_tol is not None and max_tol != 0
 
     if min_v is not None and has_min_tol:
         lower = min_tol
@@ -131,6 +134,36 @@ def coerce_chem_number(value):
     """Пустое / None → 0.0; иначе число. None как отсутствие значения не используем."""
     parsed = safe_float(value)
     return 0.0 if parsed is None else float(parsed)
+
+
+def format_chem_tol_number(n):
+    if n is None or not isinstance(n, (int, float)) or n != n:
+        return 0.0
+    if n == 0:
+        return 0.0
+    return float(f"{n:.12g}")
+
+
+def sync_chem_abs_from_rel(min_v, max_v, rel_min, rel_max):
+    """ABS min = min − REL min; ABS max = max + REL max.
+    REL = 0 → ABS = 0 (нет допуска, не подставляем min/max)."""
+    abs_min = 0.0 if rel_min == 0 else (min_v - rel_min)
+    abs_max = 0.0 if rel_max == 0 else (max_v + rel_max)
+    return (
+        format_chem_tol_number(abs_min),
+        format_chem_tol_number(abs_max),
+    )
+
+
+def sync_chem_rel_from_abs(min_v, max_v, abs_min, abs_max):
+    """REL min = min − ABS min; REL max = ABS max − max.
+    ABS = 0 → REL = 0 (нет допуска, не получаем min − 0 = min)."""
+    rel_min = 0.0 if abs_min == 0 else (min_v - abs_min)
+    rel_max = 0.0 if abs_max == 0 else (abs_max - max_v)
+    return (
+        format_chem_tol_number(rel_min),
+        format_chem_tol_number(rel_max),
+    )
 
 
 class ScrollableMixin:
@@ -235,7 +268,11 @@ def create_editable_treeview(parent_frame, on_update_callback=None):
         def on_focus_out(event):
             tree.set(item_id, column, entry_var.get())
             entry.destroy()
-            if on_update_callback: on_update_callback()
+            if on_update_callback:
+                try:
+                    on_update_callback(item_id, column)
+                except TypeError:
+                    on_update_callback()
         entry.bind("<FocusOut>", on_focus_out)
         entry.bind("<Return>", lambda e: on_focus_out(e))
     tree.bind("<Double-1>", on_tree_double_click)
@@ -4084,7 +4121,7 @@ class ChemicalCompositionTab(ttk.Frame):
         table_frame.pack(fill="both", expand=True)
         table_frame.columnconfigure(0, weight=1)
 
-        tree = create_editable_treeview(table_frame, on_update_callback=self._update_chart)
+        tree = create_editable_treeview(table_frame, on_update_callback=self._on_chem_elements_edited)
         tree.configure(show="headings")
         tree["columns"] = ("name", "elem", "min", "max", "min_tol", "max_tol", "min_tol_rel", "max_tol_rel")
 
@@ -4100,9 +4137,9 @@ class ChemicalCompositionTab(ttk.Frame):
         tree.column("min_tol", width=90, anchor="center")
         tree.heading("max_tol", text="Допуск Max (абс.)")
         tree.column("max_tol", width=90, anchor="center")
-        tree.heading("min_tol_rel", text="Допуск Min (отн., %)")
+        tree.heading("min_tol_rel", text="Допуск Min (отн.)")
         tree.column("min_tol_rel", width=110, anchor="center")
-        tree.heading("max_tol_rel", text="Допуск Max (отн., %)")
+        tree.heading("max_tol_rel", text="Допуск Max (отн.)")
         tree.column("max_tol_rel", width=110, anchor="center")
 
         tree.pack(side="left", fill="both", expand=True)
@@ -4111,7 +4148,7 @@ class ChemicalCompositionTab(ttk.Frame):
         btn_frame.pack(side="left", fill="y", padx=5)
 
         def add_row():
-            tree.insert("", "end", values=["", "", "", "", "", "", "", ""])
+            tree.insert("", "end", values=["", "", "0.0", "0.0", "0.0", "0.0", "0.0", "0.0"])
             self._update_chart()
 
         def del_row():
@@ -4125,6 +4162,51 @@ class ChemicalCompositionTab(ttk.Frame):
 
         tree.bind("<Button-3>", self._on_tree_right_click)
         return tree
+
+    def _on_chem_elements_edited(self, item_id=None, column=None):
+        if item_id is not None and column is not None:
+            self._sync_chem_row_tolerances(item_id, column)
+        self._update_chart()
+
+    def _sync_chem_row_tolerances(self, item_id, column):
+        """П.39: ABS ↔ REL. column — '#n' из Treeview."""
+        cols = self.elements_tree["columns"]
+        try:
+            col_index = int(str(column).replace("#", "")) - 1
+            col_name = cols[col_index]
+        except (ValueError, IndexError, TypeError):
+            return
+
+        values = self.elements_tree.set(item_id)
+        min_v = coerce_chem_number(values.get("min"))
+        max_v = coerce_chem_number(values.get("max"))
+        abs_min = coerce_chem_number(values.get("min_tol"))
+        abs_max = coerce_chem_number(values.get("max_tol"))
+        rel_min = coerce_chem_number(values.get("min_tol_rel"))
+        rel_max = coerce_chem_number(values.get("max_tol_rel"))
+
+        if col_name in ("min_tol_rel", "max_tol_rel"):
+            abs_min, abs_max = sync_chem_abs_from_rel(min_v, max_v, rel_min, rel_max)
+            self.elements_tree.set(item_id, "min_tol", abs_min)
+            self.elements_tree.set(item_id, "max_tol", abs_max)
+        elif col_name in ("min_tol", "max_tol"):
+            rel_min, rel_max = sync_chem_rel_from_abs(min_v, max_v, abs_min, abs_max)
+            self.elements_tree.set(item_id, "min_tol_rel", rel_min)
+            self.elements_tree.set(item_id, "max_tol_rel", rel_max)
+        elif col_name in ("min", "max"):
+            # Старые строки часто только с ABS: при смене min/max пересчитываем REL.
+            if rel_min != 0 or rel_max != 0:
+                abs_min, abs_max = sync_chem_abs_from_rel(
+                    min_v, max_v, rel_min, rel_max
+                )
+                self.elements_tree.set(item_id, "min_tol", abs_min)
+                self.elements_tree.set(item_id, "max_tol", abs_max)
+            elif abs_min != 0 or abs_max != 0:
+                rel_min, rel_max = sync_chem_rel_from_abs(
+                    min_v, max_v, abs_min, abs_max
+                )
+                self.elements_tree.set(item_id, "min_tol_rel", rel_min)
+                self.elements_tree.set(item_id, "max_tol_rel", rel_max)
 
     def _create_chart_panel(self, parent):
         parent.columnconfigure(0, weight=1)
@@ -4411,17 +4493,35 @@ class ChemicalCompositionTab(ttk.Frame):
             symbol = elem.get("element", "")
             name = self.ELEMENTS_MAP.get(symbol, {}).get("name", "")
 
+            min_v = coerce_chem_number(elem.get("min_value"))
+            max_v = coerce_chem_number(elem.get("max_value"))
+            abs_min = coerce_chem_number(elem.get("min_value_tolerance"))
+            abs_max = coerce_chem_number(elem.get("max_value_tolerance"))
+            rel_min = coerce_chem_number(elem.get("min_value_tolerance_relative"))
+            rel_max = coerce_chem_number(elem.get("max_value_tolerance_relative"))
+            # Старые строки без REL: дополняем из ABS (и наоборот).
+            has_abs = abs_min != 0 or abs_max != 0
+            has_rel = rel_min != 0 or rel_max != 0
+            if has_abs and not has_rel:
+                rel_min, rel_max = sync_chem_rel_from_abs(
+                    min_v, max_v, abs_min, abs_max
+                )
+            elif has_rel and not has_abs:
+                abs_min, abs_max = sync_chem_abs_from_rel(
+                    min_v, max_v, rel_min, rel_max
+                )
+
             self.elements_tree.insert(
                 "", "end",
                 values=[
                     name,
                     symbol,
-                    coerce_chem_number(elem.get("min_value")),
-                    coerce_chem_number(elem.get("max_value")),
-                    coerce_chem_number(elem.get("min_value_tolerance")),
-                    coerce_chem_number(elem.get("max_value_tolerance")),
-                    coerce_chem_number(elem.get("min_value_tolerance_relative")),
-                    coerce_chem_number(elem.get("max_value_tolerance_relative")),
+                    min_v,
+                    max_v,
+                    abs_min,
+                    abs_max,
+                    rel_min,
+                    rel_max,
                 ]
             )
 
@@ -4453,7 +4553,7 @@ class ChemicalCompositionTab(ttk.Frame):
         except IndexError:
             return
 
-        # Обновляем кэш источников (на случай изменений во вкладке 'Работа с источниками')
+        # Обновляем кэш источников (на случай изменений во вкладке «Список литературы»)
         self._refresh_source_list()
 
         source_name = (self.source_entry.get() or "").strip()
@@ -5875,7 +5975,7 @@ class MainApplication(tk.Tk):
 
         self.main_notebook.add(self.viewer_frame, text="Подбор материала")
         self.main_notebook.add(self.editor_frame, text="Добавление / Редактирование материала")
-        self.main_notebook.add(self.sources_frame, text="Работа с источниками")
+        self.main_notebook.add(self.sources_frame, text="Список литературы")
 
     def open_directory(self, directory=None, show_success_message=True):
         # AUDIT: операция импорта (без путей)

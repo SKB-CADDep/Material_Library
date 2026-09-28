@@ -1,6 +1,11 @@
 import { api } from "./client";
 import type { MaterialSummary, MaterialSaveResponse} from "../types/api";
 import { materialForEditor, materialFilenameListStem } from "../lib/materialDraft";
+import { commitChemicalCompositionInMaterial } from "../lib/chemCompositionCommit";
+import {
+  commitHardnessInMaterial,
+  validateHardnessRanges,
+} from "../lib/hardnessCommit";
 import {
   categoryDisplayName,
   hasCategorySource,
@@ -43,6 +48,11 @@ export function validateMaterialDraftForSave(
     if (!(entry.composition_source ?? "").trim()) {
       return `Укажите источник для набора состава #${i + 1}`;
     }
+  }
+
+  const hardnessError = validateHardnessRanges(body);
+  if (hardnessError) {
+    return hardnessError;
   }
   return null;
 }
@@ -102,6 +112,15 @@ function stripInvalidTemperaturePairs(
   return next;
 }
 
+/** T–value cleanup + химсостав + твёрдость: перед записью на диск. */
+export function prepareMaterialPayloadForSave(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = stripInvalidTemperaturePairs(body);
+  commitChemicalCompositionInMaterial(next);
+  return commitHardnessInMaterial(next);
+}
+
 export async function listMaterials(): Promise<MaterialSummary[]> {
   const { data } = await api.get<MaterialSummary[]>("/materials");
   return data;
@@ -116,7 +135,7 @@ export async function saveMaterial(
   body: Record<string, unknown>
 ): Promise<MaterialSaveResponse> {
   assertMaterialDraftForSave(body);
-  const payload = stripInvalidTemperaturePairs(body);
+  const payload = prepareMaterialPayloadForSave(body);
 
   const { data } = await api.put<MaterialSaveResponse>(`/materials/${id}`, payload);
   return data;
@@ -202,7 +221,7 @@ export async function saveNewMaterial(
   options?: { sourceMaterialId?: string | null },
 ): Promise<MaterialSaveResponse> {
   assertMaterialDraftForSave(body);
-  const payload = stripInvalidTemperaturePairs(body);
+  const payload = prepareMaterialPayloadForSave(body);
 
   const params: Record<string, string> = { filename };
   const sourceId = options?.sourceMaterialId?.trim();

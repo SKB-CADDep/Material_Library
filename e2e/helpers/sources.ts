@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 export async function openSourcesPage(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator(".workspace-info")).toContainText("материалов");
-  await page.getByRole("link", { name: "Работа с источниками" }).click();
+  await page.getByRole("link", { name: "Список литературы" }).click();
   await expect(page).toHaveURL(/\/sources/);
   await expect(page.locator(".data-table--sources")).toBeVisible({
     timeout: 15_000,

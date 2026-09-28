@@ -310,61 +310,101 @@
                 "element": "Fe",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.3
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "C",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.1
+                "max_value": 0.1,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.12
+                "max_value": 0.12,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Mo",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.8
+                "max_value": 0.8,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "V",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 1.2
+                "max_value": 1.2,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "N",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Al",
                 "unit_value": "%",
                 "min_value": 4.5,
-                "max_value": 6.2
+                "max_value": 6.2,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Zr",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.3
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "O",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.2
+                "max_value": 0.2,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "H",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.015
+                "max_value": 0.015,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "comment": "",

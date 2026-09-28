@@ -1228,44 +1228,60 @@
                 "unit_value": "%",
                 "min_value": 0.09,
                 "max_value": 0.15,
-                "min_value_tolerance": "0.08",
-                "max_value_tolerance": "0.16"
+                "min_value_tolerance": 0.08,
+                "max_value_tolerance": 0.16,
+                "min_value_tolerance_relative": 0.01,
+                "max_value_tolerance_relative": 0.01
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.8,
-                "max_value_tolerance": "0.85"
+                "max_value_tolerance": 0.85,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.05
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.8,
-                "max_value_tolerance": "0.84"
+                "max_value_tolerance": 0.84,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.04
               },
               {
                 "element": "S",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.025,
-                "max_value_tolerance": "0.03"
+                "max_value_tolerance": 0.03,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "P",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.03,
-                "max_value_tolerance": "0.035"
+                "max_value_tolerance": 0.035,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "Cr",
                 "unit_value": "%",
                 "min_value": 12.0,
                 "max_value": 14.0,
-                "min_value_tolerance": "11.85",
-                "max_value_tolerance": "14.15"
+                "min_value_tolerance": 11.85,
+                "max_value_tolerance": 14.15,
+                "min_value_tolerance_relative": 0.15,
+                "max_value_tolerance_relative": 0.15
               }
             ],
             "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"

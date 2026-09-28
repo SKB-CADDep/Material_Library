@@ -34,7 +34,8 @@ export function TemperatureValueTable({
   return (
     <div className="table-wrapper table-wrapper--temperature-pairs">
       <div className="data-table-container">
-        <table ref={tableRef} className={tableClassName}>          <colgroup>
+        <table ref={tableRef} className={tableClassName}>
+          <colgroup>
             <col className="data-table__col-temperature" />
             <col className="data-table__col-value" />
           </colgroup>
@@ -55,12 +56,20 @@ export function TemperatureValueTable({
               (pairs ?? []).map(([temperature, value], index) => (
                 <tr
                   key={index}
-                  className={selectedRowIndex === index ? "table-row-selected" : ""}
+                  className={
+                    selectedRowIndex === index ? "table-row-selected" : ""
+                  }
                 >
                   <td
-                    className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                    className={
+                      isRowSelectionEnabled
+                        ? "data-table-select-cell"
+                        : undefined
+                    }
                     onClick={
-                      isRowSelectionEnabled ? () => onRowSelect?.(index) : undefined
+                      isRowSelectionEnabled
+                        ? () => onRowSelect?.(index)
+                        : undefined
                     }
                   >
                     <input
@@ -71,15 +80,26 @@ export function TemperatureValueTable({
                           ? (e) => onChangeTemperature(index, e.target.value)
                           : undefined
                       }
-                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => {
+                        if (isRowSelectionEnabled) {
+                          onRowSelect?.(index);
+                        }
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => e.stopPropagation()}
                       className="table-cell-input"
                     />
                   </td>
                   <td
-                    className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                    className={
+                      isRowSelectionEnabled
+                        ? "data-table-select-cell"
+                        : undefined
+                    }
                     onClick={
-                      isRowSelectionEnabled ? () => onRowSelect?.(index) : undefined
+                      isRowSelectionEnabled
+                        ? () => onRowSelect?.(index)
+                        : undefined
                     }
                   >
                     <input
@@ -91,7 +111,12 @@ export function TemperatureValueTable({
                       }
                       value={formatPairNumber(value)}
                       className="table-cell-input"
-                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => {
+                        if (isRowSelectionEnabled) {
+                          onRowSelect?.(index);
+                        }
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>

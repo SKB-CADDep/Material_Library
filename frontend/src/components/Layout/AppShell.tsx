@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useWorkspace } from "../../context/WorkSpaceContext";
 import { useStickyRoutes } from "../../context/StickyRouteContext";
+import { useEditor } from "../../context/EditorContext";
 import { auditNavFromPath } from "../../lib/auditNavLabels";
 import {
   auditNavTabSelected,
@@ -13,19 +14,29 @@ export function AppShell() {
   const { workspace, isOpen } = useWorkspace();
   const { selectionMainPath, editorMainPath } = useStickyRoutes();
   const { pathname } = useLocation();
+  const { hasUnsavedChanges } = useEditor();
   const lastNavKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     void startAuditSession();
-    const onHide = () => endAuditSession(true);
-    window.addEventListener("pagehide", onHide);
-    window.addEventListener("beforeunload", onHide);
+    const onPageHide = () => endAuditSession(true);
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      endAuditSession(true);
+      // Предупреждение только при закрытии/обновлении окна — черновик на других вкладках сохраняем.
+      if (!hasUnsavedChanges) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("beforeunload", onHide);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
       endAuditSession(true);
     };
-  }, []);
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     const { container, tab } = auditNavFromPath(pathname);
@@ -54,7 +65,7 @@ export function AppShell() {
       <nav className="main-tabs">
         <NavLink to={selectionMainPath}>Подбор материала</NavLink>
         <NavLink to={editorMainPath}>Добавление / Редактирование</NavLink>
-        <NavLink to="/sources">Работа с источниками</NavLink>
+        <NavLink to="/sources">Список литературы</NavLink>
         <NavLink to="/elements">Справочник элементов</NavLink>
       </nav>
 

@@ -1497,8 +1497,11 @@ select {
   .app-shell > main {
     flex: 1;
     min-height: 0;
+    min-width: 0;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
+    overflow-x: clip;
   }
 
   .keep-alive-pane {
@@ -1698,6 +1701,7 @@ select {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-width: 0;
     min-height: 0;
     background-color: var(--bg);
   }
@@ -1713,6 +1717,7 @@ select {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-width: 0;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
@@ -1778,10 +1783,13 @@ select {
 
   .editor-tab-panel {
     flex: 1;
+    min-width: 0;
+    max-width: 100%;
     padding: var(--space-lg);
     background-color: var(--surface);
     border-top: none;
-    overflow: auto;
+    overflow-x: clip;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -1940,7 +1948,9 @@ select {
 
   .general-form {
     width: 100%;
-    max-width: none;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .general-form .form-row > select,
@@ -1974,6 +1984,8 @@ select {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
+    max-width: 100%;
+    min-width: 0;
   }
 
   .form-section {
@@ -1982,6 +1994,9 @@ select {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--bg);
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .form-section legend {
@@ -2146,6 +2161,10 @@ select {
   margin-bottom: var(--space-xl);
   align-items: stretch;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: clip;
 }
 
 .property-section-chart {
@@ -2427,11 +2446,10 @@ select {
 
 .physical-properties-form {
   width: 100%;
-  max-width: none;
-}
-
-.property-section-layout {
-  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: clip;
 }
 
 .property-section-fields {
@@ -2465,19 +2483,6 @@ select {
   flex: 1 1 0;
   max-width: none;
   min-width: 0;
-}
-
-/* Лишний горизонтальный скролл ~5px на вкладке «Хим. состав» */
-.property-section-layout:has(.chemical-composition-chart) {
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: clip;
-}
-
-.physical-properties-form:has(.chemical-composition-chart),
-.physical-properties-form:has(.table-wrapper--chemical-elements) {
-  max-width: 100%;
-  overflow-x: clip;
 }
 
 fieldset.property-section-fields {
@@ -2704,13 +2709,16 @@ fieldset.property-section-fields {
   transform: scale(0.95);
 }
 
-/* РћР±РµСЂС‚РєР° РґР»СЏ С‚Р°Р±Р»РёС†С‹ Рё РєРЅРѕРїРѕРє */
+/* Обёртка для таблицы и кнопок */
 .table-wrapper {
   display: flex;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin-top: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-sizing: border-box;
   overflow: hidden;
 }
 
@@ -2730,6 +2738,8 @@ fieldset.property-section-fields {
 
 .note-textarea {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -3040,10 +3050,13 @@ fieldset.property-section-fields {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
   min-height: 0;
+  max-width: 100%;
   gap: var(--space-md);
   padding: var(--space-sm) var(--space-lg) var(--space-md);
   box-sizing: border-box;
+  overflow-x: clip;
 }
 
 .source-page__toolbar {

@@ -226,24 +226,42 @@ export function MechanicalPropertiesTab({
   const propertySources = result.data?.property_sources ?? [];
   const propertySourceNames = propertySources.map((src) => src.name_source);
   const [categoryIndex, setCategoryIndex] = useState(0);
+  const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
+    number | null
+  >(null);
+  const [hardnessSelectedRowIndex, setHardnessSelectedRowIndex] = useState<
+    number | null
+  >(null);
+
   const materialKey =
-    (material as { id?: string } | undefined)?.id ??
-    (material as { metadata?: { name_material_standard?: string } } | undefined)
-      ?.metadata?.name_material_standard ??
-    null;
-  useEffect(() => {
-    setCategoryIndex(0);
-  }, [materialKey]);
+    typeof material?.material_id === "string" && material.material_id.trim()
+      ? material.material_id
+      : null;
+
   const mechanical_properties = (material?.mechanical_properties ??
     {}) as MechanicalProperties;
-  const category = mechanical_properties.strength_category?.[categoryIndex];
+  const strengthCategories = mechanical_properties.strength_category ?? [];
+
+  useEffect(() => {
+    setCategoryIndex(0);
+    setHardnessSelectedRowIndex(null);
+    setModulusSelectedRowIndex(null);
+  }, [materialKey]);
+
+  useEffect(() => {
+    setCategoryIndex((index) => {
+      if (strengthCategories.length === 0) {
+        return 0;
+      }
+      return Math.min(index, strengthCategories.length - 1);
+    });
+  }, [strengthCategories.length]);
+
+  const category = strengthCategories[categoryIndex];
   const currentSource = resolveCategorySourceName(category, mechanicalSources);
   const sourceNames = mechanicalSources.map((src) => src.name_source);
   const showOrphan =
     currentSource !== "" && !sourceNames.includes(currentSource);
-  const [modulusSelectedRowIndex, setModulusSelectedRowIndex] = useState<
-    number | null
-  >(null);
   const hardnessTableRef = useRef<HTMLTableElement>(null);
   const scalarHardnessTableRef = useRef<HTMLTableElement>(null);
   useResizableTableHeaders(hardnessTableRef, { disabled: !paneActive });
@@ -264,6 +282,56 @@ export function MechanicalPropertiesTab({
         }>
       | undefined) ?? [];
 
+  const hardnessUnit =
+    (category?.hardness_unit as string | undefined) ??
+    hardnessRows[0]?.unit_value ??
+    "";
+
+  const updateHardnessRows = (
+    updater: (
+      rows: Array<{
+        unit_value?: string;
+        min_value?: number;
+        max_value?: number;
+      }>,
+    ) => Array<{
+      unit_value?: string;
+      min_value?: number;
+      max_value?: number;
+    }>,
+  ) => {
+    const categories = mechanical_properties.strength_category ?? [];
+    onDraftChange({
+      ...material,
+      mechanical_properties: {
+        ...mechanical_properties,
+        strength_category: categories.map((cat, i) => {
+          if (i !== categoryIndex) return cat;
+          const rows =
+            (cat.hardness as typeof hardnessRows | undefined) ?? [];
+          const nextRows = updater(rows);
+          return {
+            ...cat,
+            hardness: nextRows,
+            hardness_unit:
+              (cat.hardness_unit as string | undefined) ||
+              nextRows[0]?.unit_value ||
+              hardnessUnit ||
+              "",
+          };
+        }),
+      },
+    });
+  };
+
+  const updateHardnessAt = (
+    rowIndex: number,
+    patch: { min_value?: number; max_value?: number },
+  ) => {
+    updateHardnessRows((rows) =>
+      rows.map((row, i) => (i === rowIndex ? { ...row, ...patch } : row)),
+    );
+  };
   return (
     <form
       className="general-form physical-properties-form"
@@ -282,7 +350,11 @@ export function MechanicalPropertiesTab({
                     ? categoryIndex
                     : ""
                 }
-                onChange={(e) => setCategoryIndex(Number(e.target.value))}
+                onChange={(e) => {
+                  setCategoryIndex(Number(e.target.value));
+                  setHardnessSelectedRowIndex(null);
+                  setModulusSelectedRowIndex(null);
+                }}
                 disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
               >
                 {(mechanical_properties.strength_category ?? []).map(
@@ -715,7 +787,7 @@ export function MechanicalPropertiesTab({
             </div>
           </div>
           <div className="table-wrapper">
-            <table ref={hardnessTableRef} className="data-table">
+            <table ref={hardnessTableRef} className="data-table data-table--selectable-rows">
               <thead>
                 <tr>
                   <th>Min</th>
@@ -723,22 +795,128 @@ export function MechanicalPropertiesTab({
                 </tr>
               </thead>
               <tbody>
-                {hardnessRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={2} className="table-empty">
-                      Нет данных о твердости
-                    </td>
-                  </tr>
-                ) : (
-                  hardnessRows.map((row, i) => (
-                  <tr key={i}>
-                    <td>{row.min_value ?? ""}</td>
-                    <td>{row.max_value ?? ""}</td>
-                  </tr>
-                ))
-                )}
+                {(hardnessRows.length === 0
+                  ? [
+                      {
+                        unit_value: hardnessUnit || "HB",
+                        min_value: undefined as number | undefined,
+                        max_value: undefined as number | undefined,
+                      },
+                    ]
+                  : hardnessRows
+                ).map((row, i) => {
+                  const isPlaceholder = hardnessRows.length === 0;
+                  return (
+                    <tr
+                      key={isPlaceholder ? "hardness-placeholder" : i}
+                      className={
+                        !isPlaceholder && hardnessSelectedRowIndex === i
+                          ? "table-row-selected"
+                          : ""
+                      }
+                      onClick={() => {
+                        if (!isPlaceholder) setHardnessSelectedRowIndex(i);
+                      }}
+                    >
+                      <td>
+                        <input
+                          className="table-cell-input"
+                          type="text"
+                          placeholder="—"
+                          value={row.min_value ?? ""}
+                          onChange={(event) => {
+                            const raw = event.target.value;
+                            const min_value =
+                              raw === ""
+                                ? undefined
+                                : (parseDecimalInput(raw) ?? undefined);
+                            if (isPlaceholder) {
+                              updateHardnessRows(() => [
+                                {
+                                  unit_value: hardnessUnit || "HB",
+                                  min_value,
+                                  max_value: undefined,
+                                },
+                              ]);
+                              setHardnessSelectedRowIndex(0);
+                              return;
+                            }
+                            updateHardnessAt(i, { min_value });
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="table-cell-input"
+                          type="text"
+                          placeholder="—"
+                          value={row.max_value ?? ""}
+                          onChange={(event) => {
+                            const raw = event.target.value;
+                            const max_value =
+                              raw === ""
+                                ? undefined
+                                : (parseDecimalInput(raw) ?? undefined);
+                            if (isPlaceholder) {
+                              updateHardnessRows(() => [
+                                {
+                                  unit_value: hardnessUnit || "HB",
+                                  min_value: undefined,
+                                  max_value,
+                                },
+                              ]);
+                              setHardnessSelectedRowIndex(0);
+                              return;
+                            }
+                            updateHardnessAt(i, { max_value });
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            <div className="table-controls">
+              <button
+                type="button"
+                className="table-control-btn"
+                title="Добавить строку твёрдости"
+                onClick={() => {
+                  updateHardnessRows((rows) => [
+                    ...rows,
+                    {
+                      unit_value: hardnessUnit || "HB",
+                      min_value: undefined,
+                      max_value: undefined,
+                    },
+                  ]);
+                  setHardnessSelectedRowIndex(hardnessRows.length);
+                }}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="table-control-btn"
+                title={
+                  hardnessSelectedRowIndex === null
+                    ? "Сначала выберите строку"
+                    : "Удалить выбранную строку"
+                }
+                disabled={hardnessSelectedRowIndex === null}
+                onClick={() => {
+                  if (hardnessSelectedRowIndex === null) return;
+                  const removeIndex = hardnessSelectedRowIndex;
+                  updateHardnessRows((rows) =>
+                    rows.filter((_, i) => i !== removeIndex),
+                  );
+                  setHardnessSelectedRowIndex(null);
+                }}
+              >
+                −
+              </button>
+            </div>
           </div>
         </fieldset>
         {UNDEPEND_MECH_PROPERTIES.map((prop) => {

@@ -48,11 +48,11 @@ describe("chemicalEffectiveBounds", () => {
     expect(upper).toBe(0.3);
   });
 
-  it("expands bounds with relative tolerance percent", () => {
+  it("expands bounds with relative tolerance delta", () => {
     const elem: ChemElementValueEntry = {
       ...baseElem,
-      min_value_tolerance_relative: 10,
-      max_value_tolerance_relative: 10,
+      min_value_tolerance_relative: 0.02,
+      max_value_tolerance_relative: 0.03,
     };
     const [lower, upper] = chemicalEffectiveBounds(elem, "relative");
     expect(lower).toBeCloseTo(0.18);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UnitSelect } from "./UnitSelect.tsx";
 import {
   PropertySourceSelect,
@@ -280,6 +280,15 @@ export function PhysicalPropertiesTab({
   const [selectedRows, setSelectedRows] = useState<
     Partial<Record<PhysicalPropKey, number | null>>
   >({});
+
+  const materialKey =
+    typeof material?.material_id === "string" && material.material_id.trim()
+      ? material.material_id
+      : null;
+
+  useEffect(() => {
+    setSelectedRows({});
+  }, [materialKey]);
 
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;

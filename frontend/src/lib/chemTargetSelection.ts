@@ -293,6 +293,25 @@ export const DETAIL_STATE_LABELS: Record<string, string> = {
   "": "нет данных",
 };
 
+export function candidateSelectionKey(
+  candidate: Pick<
+    CandidateEvaluation,
+    "materialId" | "sourceLabel" | "baseElement"
+  > & {
+    composition?: Pick<CompositionEntry, "composition_source"> | null;
+  },
+): string {
+  const compositionSource = String(
+    candidate.composition?.composition_source ?? "",
+  ).trim();
+  return [
+    candidate.materialId,
+    candidate.sourceLabel,
+    candidate.baseElement,
+    compositionSource,
+  ].join("\u0000");
+}
+
 export function candidateRowClass(status: CandidateStatus): string {
   if (status === "Полное совпадение") {
     return "chem-target-row--full";

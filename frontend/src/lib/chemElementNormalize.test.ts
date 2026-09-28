@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   coerceChemNumber,
   coerceChemToleranceInput,
-  chemToleranceDisplay,
+  chemFieldDisplay,
 } from "./chemElementNormalize";
 
 describe("coerceChemNumber", () => {
@@ -38,14 +38,14 @@ describe("coerceChemToleranceInput", () => {
   });
 });
 
-describe("chemToleranceDisplay", () => {
-  it("keeps in-progress decimal strings", () => {
-    expect(chemToleranceDisplay("0.")).toBe("0.");
-    expect(chemToleranceDisplay("0.0")).toBe("0.0");
+describe("chemFieldDisplay", () => {
+  it("allows empty string while editing", () => {
+    expect(chemFieldDisplay("")).toBe("");
+    expect(chemFieldDisplay("0.")).toBe("0.");
   });
 
   it("maps null and numeric zero to 0.0", () => {
-    expect(chemToleranceDisplay(null)).toBe("0.0");
-    expect(chemToleranceDisplay(0)).toBe("0.0");
+    expect(chemFieldDisplay(null)).toBe("0.0");
+    expect(chemFieldDisplay(0)).toBe("0.0");
   });
 });

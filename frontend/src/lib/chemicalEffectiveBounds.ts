@@ -24,6 +24,11 @@ export function safeFloat(
 
 export type ToleranceType = "absolute" | "relative";
 
+/**
+ * Эффективные границы для подбора.
+ * ABS: нижняя/верхняя граница = значения ABS-допуска (если заданы и ≠ 0), иначе min/max.
+ * REL: дельта в тех же единицах (п.39): lower = min − REL min, upper = max + REL max.
+ */
 export function chemicalEffectiveBounds(
   elemInfo: ChemElementValueEntry,
   toleranceType: ToleranceType = "absolute",
@@ -34,10 +39,12 @@ export function chemicalEffectiveBounds(
   if (toleranceType === "relative") {
     const minRel = safeFloat(elemInfo.min_value_tolerance_relative);
     const maxRel = safeFloat(elemInfo.max_value_tolerance_relative);
+    const hasMinRel = minRel !== null && minRel !== 0;
+    const hasMaxRel = maxRel !== null && maxRel !== 0;
 
     let lower: number;
-    if (minV !== null && minRel !== null) {
-      lower = minV * (1 - minRel / 100);
+    if (minV !== null && hasMinRel) {
+      lower = minV - minRel;
     } else if (minV !== null) {
       lower = minV;
     } else {
@@ -45,8 +52,8 @@ export function chemicalEffectiveBounds(
     }
 
     let upper: number;
-    if (maxV !== null && maxRel !== null) {
-      upper = maxV * (1 + maxRel / 100);
+    if (maxV !== null && hasMaxRel) {
+      upper = maxV + maxRel;
     } else if (maxV !== null) {
       upper = maxV;
     } else {
@@ -59,8 +66,8 @@ export function chemicalEffectiveBounds(
   const minTol = safeFloat(elemInfo.min_value_tolerance);
   const maxTol = safeFloat(elemInfo.max_value_tolerance);
   // 0.0 хранится явно, но не подменяет номинальные min/max
-  const hasMinTol = minTol !== null && minTol > 0;
-  const hasMaxTol = maxTol !== null && maxTol > 0;
+  const hasMinTol = minTol !== null && minTol !== 0;
+  const hasMaxTol = maxTol !== null && maxTol !== 0;
 
   let lower: number;
   if (minV !== null && hasMinTol) {
@@ -68,7 +75,7 @@ export function chemicalEffectiveBounds(
   } else if (minV !== null) {
     lower = minV;
   } else if (hasMinTol) {
-    lower = minTol;
+    lower = minTol as number;
   } else {
     lower = Number.NEGATIVE_INFINITY;
   }
@@ -79,7 +86,7 @@ export function chemicalEffectiveBounds(
   } else if (maxV !== null) {
     upper = maxV;
   } else if (hasMaxTol) {
-    upper = maxTol;
+    upper = maxTol as number;
   } else {
     upper = Number.POSITIVE_INFINITY;
   }

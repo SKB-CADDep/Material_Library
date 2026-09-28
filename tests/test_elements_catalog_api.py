@@ -35,7 +35,6 @@ def elements_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClie
     )
 
     monkeypatch.setattr(elements_catalog_mod, "_catalog_path", lambda: catalog_path)
-    monkeypatch.setattr(elements_catalog_mod, "_frontend_catalog_path", lambda: None)
     elements_catalog_mod._catalog = None
 
     with TestClient(app) as client:

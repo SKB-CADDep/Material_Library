@@ -5,6 +5,7 @@ import uuid
 
 from src.core.schema_keys import Schema
 from src.core.math.interpolation import MathUtils
+from src.infrastructure.atomic_io import atomic_write_json
 
 
 class Material:
@@ -448,59 +449,18 @@ class Material:
 
     def _normalize_chemical(self):
         """
-        Хим. состав: None / пустое для min/max и допусков → 0.0.
-        Оба вида допусков (abs/rel) всегда присутствуют в JSON.
+        Хим. состав: None / пустое → 0.0; досчёт ABS↔REL;
+        оба вида допусков всегда присутствуют в JSON.
         """
-        chemical = self.data.get(Schema.CHEMICAL)
-        if not isinstance(chemical, dict):
-            return
-        compositions = chemical.get(Schema.COMPOSITION)
-        if not isinstance(compositions, list):
-            return
+        from src.core.chem_element_tolerances import migrate_material_data
 
-        numeric_keys = (
-            "min_value",
-            "max_value",
-            "min_value_tolerance",
-            "max_value_tolerance",
-            "min_value_tolerance_relative",
-            "max_value_tolerance_relative",
-        )
-
-        for comp in compositions:
-            if not isinstance(comp, dict):
-                continue
-            elements = comp.get("other_elements")
-            if not isinstance(elements, list):
-                continue
-            for el in elements:
-                if not isinstance(el, dict):
-                    continue
-                for key in numeric_keys:
-                    el[key] = self._coerce_chem_number(el.get(key))
+        migrate_material_data(self.data)
 
     @staticmethod
     def _coerce_chem_number(value):
-        if value is None or value == "":
-            return 0.0
-        if isinstance(value, bool):
-            return 0.0
-        if isinstance(value, (int, float)):
-            try:
-                number = float(value)
-            except (TypeError, ValueError):
-                return 0.0
-            if number != number:  # NaN
-                return 0.0
-            return number
-        try:
-            text = str(value).strip().replace(",", ".")
-            if not text:
-                return 0.0
-            return float(text)
-        except (TypeError, ValueError):
-            return 0.0
+        from src.core.chem_element_tolerances import coerce_chem_number
 
+        return coerce_chem_number(value)
     def _hydrate_from_property_groups(self):
         groups = self.data.get("property_groups")
         if not isinstance(groups, list):
@@ -698,5 +658,4 @@ class Material:
                 if isinstance(prop, dict):
                     prop["property_last_updated"] = now
 
-        with open(save_path, 'w', encoding='utf-8') as f:
-            json.dump(self.data, f, ensure_ascii=False, indent=2)
+        atomic_write_json(save_path, self.data)

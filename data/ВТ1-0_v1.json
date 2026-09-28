@@ -271,37 +271,61 @@
                 "element": "Fe",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.25
+                "max_value": 0.25,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "C",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.07
+                "max_value": 0.07,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.1
+                "max_value": 0.1,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "N",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.04
+                "max_value": 0.04,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "O",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.2
+                "max_value": 0.2,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "H",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.01
+                "max_value": 0.01,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "comment": "",

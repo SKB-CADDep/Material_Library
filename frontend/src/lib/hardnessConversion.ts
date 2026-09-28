@@ -1,4 +1,4 @@
-import hardnessTable from "../config/hardness_table.json";
+import hardnessTable from "../../../config/hardness_table.json";
 
 type HardnessTableJson = {
   columns: string[];
