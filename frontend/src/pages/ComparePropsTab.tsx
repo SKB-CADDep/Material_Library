@@ -314,27 +314,28 @@ export function ComparePropsTab() {
                 )}
               </ul>
             </div>
+          </div>
 
-            <div className="ashby-selection-stack-spacer" aria-hidden />
-
-            <div className="ashby-actions" data-tour="compare-props-actions">
-              <button
-                type="button"
-                className="ashby-action-btn"
-                disabled={!canPlot}
-                onClick={() => requestPlot()}
-              >
-                Построить график
-              </button>
-              <button
-                type="button"
-                className="ashby-action-btn button-secondary"
-                disabled={!workspace}
-                onClick={handleReset}
-              >
-                Сбросить
-              </button>
-            </div>
+          <div
+            className="ashby-actions compare-props-actions"
+            data-tour="compare-props-actions"
+          >
+            <button
+              type="button"
+              className="ashby-action-btn"
+              disabled={!canPlot}
+              onClick={() => requestPlot()}
+            >
+              Построить график
+            </button>
+            <button
+              type="button"
+              className="ashby-action-btn button-secondary"
+              disabled={!workspace}
+              onClick={handleReset}
+            >
+              Сбросить
+            </button>
           </div>
         </aside>
 

@@ -50,9 +50,16 @@ def _store_number(n: float) -> float:
     return float(f"{n:.12g}")
 
 
+def _non_negative(n: float) -> float:
+    if n != n or n <= 0:  # NaN or ≤ 0
+        return 0.0
+    return n
+
+
 def sync_element_tolerances(el: dict) -> bool:
     """
     Досчитывает недостающие ABS/REL и нормализует числовые поля (без null).
+    ABS/REL не бывают отрицательными (при min/max = 0 обрезаем недопустимое).
     Возвращает True, если словарь изменился.
     """
     if not isinstance(el, dict):
@@ -62,22 +69,49 @@ def sync_element_tolerances(el: dict) -> bool:
 
     min_v = coerce_chem_number(el.get("min_value"))
     max_v = coerce_chem_number(el.get("max_value"))
-    abs_min = coerce_chem_number(el.get("min_value_tolerance"))
-    abs_max = coerce_chem_number(el.get("max_value_tolerance"))
-    rel_min = coerce_chem_number(el.get("min_value_tolerance_relative"))
-    rel_max = coerce_chem_number(el.get("max_value_tolerance_relative"))
+    abs_min = _non_negative(coerce_chem_number(el.get("min_value_tolerance")))
+    abs_max = _non_negative(coerce_chem_number(el.get("max_value_tolerance")))
+    rel_min = _non_negative(
+        coerce_chem_number(el.get("min_value_tolerance_relative"))
+    )
+    rel_max = _non_negative(
+        coerce_chem_number(el.get("max_value_tolerance_relative"))
+    )
 
     # ABS задан, REL нет → считаем REL
     if abs_min != 0 and rel_min == 0:
-        rel_min = min_v - abs_min
+        if abs_min > min_v:
+            abs_min = _non_negative(min_v)
+        rel_min = 0.0 if abs_min == 0 else _non_negative(min_v - abs_min)
     if abs_max != 0 and rel_max == 0:
-        rel_max = abs_max - max_v
+        if abs_max < max_v:
+            abs_max = _non_negative(max_v)
+        rel_max = 0.0 if abs_max == 0 else _non_negative(abs_max - max_v)
 
     # REL задан, ABS нет → считаем ABS
     if rel_min != 0 and abs_min == 0:
-        abs_min = min_v - rel_min
+        max_rel_min = max(min_v, 0.0)
+        if rel_min > max_rel_min:
+            rel_min = max_rel_min
+        abs_min = 0.0 if rel_min == 0 else _non_negative(min_v - rel_min)
     if rel_max != 0 and abs_max == 0:
-        abs_max = max_v + rel_max
+        abs_max = 0.0 if rel_max == 0 else _non_negative(max_v + rel_max)
+
+    # Финальный clamp на случай уже заполненных обеих сторон с отрицательными
+    abs_min = _non_negative(abs_min)
+    abs_max = _non_negative(abs_max)
+    rel_min = _non_negative(rel_min)
+    rel_max = _non_negative(rel_max)
+    if abs_min != 0 and abs_min > min_v:
+        abs_min = _non_negative(min_v)
+        rel_min = 0.0 if abs_min == 0 else _non_negative(min_v - abs_min)
+    if abs_max != 0 and abs_max < max_v:
+        abs_max = _non_negative(max_v)
+        rel_max = 0.0 if abs_max == 0 else _non_negative(abs_max - max_v)
+    max_rel_min = max(min_v, 0.0)
+    if rel_min > max_rel_min:
+        rel_min = max_rel_min
+        abs_min = 0.0 if rel_min == 0 else _non_negative(min_v - rel_min)
 
     el["min_value"] = _store_number(min_v)
     el["max_value"] = _store_number(max_v)

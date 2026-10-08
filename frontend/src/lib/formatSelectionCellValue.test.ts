@@ -3,7 +3,9 @@ import type { UnitResponse } from "../types/api";
 import {
   formatSelectionCellValue,
   formatSelectionFrozenValue,
+  getSelectionCellMode,
   syncHardnessColumnUnits,
+  unwrapSelectionCellValue,
 } from "./formatSelectionCellValue";
 
 const tempConfig: UnitResponse = {
@@ -128,6 +130,27 @@ describe("formatSelectionCellValue", () => {
         rowSourceUnit: "HB",
       }),
     ).toBe("74.00");
+  });
+  it("unwraps {value, mode} cells like calculation tab", () => {
+    expect(
+      formatSelectionCellValue(
+        { value: 360.456, mode: "interp" },
+        {
+          columnKey: "yield_strength",
+          baseUnit: "МПа",
+          displayUnit: "МПа",
+        },
+      ),
+    ).toBe("360.46");
+  });
+});
+
+describe("unwrapSelectionCellValue / getSelectionCellMode", () => {
+  it("reads plain and calculation-shaped cells", () => {
+    expect(unwrapSelectionCellValue(12)).toBe(12);
+    expect(unwrapSelectionCellValue({ value: 12, mode: "exact" })).toBe(12);
+    expect(getSelectionCellMode(12)).toBeNull();
+    expect(getSelectionCellMode({ value: 12, mode: "interp" })).toBe("interp");
   });
 });
 

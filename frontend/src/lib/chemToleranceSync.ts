@@ -16,6 +16,14 @@ export function formatChemTolNumber(n: number): string {
   return String(rounded);
 }
 
+/** Допуски и производные ABS/REL не бывают отрицательными. */
+export function nonNegativeTol(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) {
+    return 0;
+  }
+  return n;
+}
+
 export type ChemToleranceFields = {
   min_value: number | string;
   max_value: number | string;
@@ -44,16 +52,33 @@ export function hasChemRelTolerance(el: ChemToleranceFields): boolean {
  * ABS min = min − REL min
  * ABS max = max + REL max
  * REL = 0.0 → ABS = 0.0 (нет допуска, не подставляем min/max).
+ * REL не может «выходить» за min (иначе ABS < 0) — обрезаем.
  */
 export function syncAbsFromRel<T extends ChemToleranceFields>(el: T): T {
   const min = coerceChemNumber(el.min_value);
   const max = coerceChemNumber(el.max_value);
-  const relMin = coerceChemNumber(el.min_value_tolerance_relative);
-  const relMax = coerceChemNumber(el.max_value_tolerance_relative);
+  let relMin = nonNegativeTol(
+    coerceChemNumber(el.min_value_tolerance_relative),
+  );
+  let relMax = nonNegativeTol(
+    coerceChemNumber(el.max_value_tolerance_relative),
+  );
+
+  // ABS min ≥ 0 ⇒ REL min ≤ max(min, 0)
+  const maxRelMin = Math.max(min, 0);
+  if (relMin > maxRelMin) {
+    relMin = maxRelMin;
+  }
+
+  const absMin = relMin === 0 ? 0 : nonNegativeTol(min - relMin);
+  const absMax = relMax === 0 ? 0 : nonNegativeTol(max + relMax);
+
   return {
     ...el,
-    min_value_tolerance: formatChemTolNumber(relMin === 0 ? 0 : min - relMin),
-    max_value_tolerance: formatChemTolNumber(relMax === 0 ? 0 : max + relMax),
+    min_value_tolerance: formatChemTolNumber(absMin),
+    max_value_tolerance: formatChemTolNumber(absMax),
+    min_value_tolerance_relative: formatChemTolNumber(relMin),
+    max_value_tolerance_relative: formatChemTolNumber(relMax),
   };
 }
 
@@ -62,20 +87,32 @@ export function syncAbsFromRel<T extends ChemToleranceFields>(el: T): T {
  * REL min = min − ABS min
  * REL max = ABS max − max
  * ABS = 0.0 → REL = 0.0 (нет допуска, не получаем min − 0 = min).
+ * ABS min не выше min и не ниже 0 — иначе REL отрицательный.
  */
 export function syncRelFromAbs<T extends ChemToleranceFields>(el: T): T {
   const min = coerceChemNumber(el.min_value);
   const max = coerceChemNumber(el.max_value);
-  const absMin = coerceChemNumber(el.min_value_tolerance);
-  const absMax = coerceChemNumber(el.max_value_tolerance);
+  let absMin = nonNegativeTol(coerceChemNumber(el.min_value_tolerance));
+  let absMax = nonNegativeTol(coerceChemNumber(el.max_value_tolerance));
+
+  // ABS min ≤ min (и ≥ 0), иначе REL min < 0
+  if (absMin !== 0 && absMin > min) {
+    absMin = nonNegativeTol(min);
+  }
+  // ABS max ≥ max, иначе REL max < 0; 0 = «нет допуска»
+  if (absMax !== 0 && absMax < max) {
+    absMax = nonNegativeTol(max);
+  }
+
+  const relMin = absMin === 0 ? 0 : nonNegativeTol(min - absMin);
+  const relMax = absMax === 0 ? 0 : nonNegativeTol(absMax - max);
+
   return {
     ...el,
-    min_value_tolerance_relative: formatChemTolNumber(
-      absMin === 0 ? 0 : min - absMin,
-    ),
-    max_value_tolerance_relative: formatChemTolNumber(
-      absMax === 0 ? 0 : absMax - max,
-    ),
+    min_value_tolerance: formatChemTolNumber(absMin),
+    max_value_tolerance: formatChemTolNumber(absMax),
+    min_value_tolerance_relative: formatChemTolNumber(relMin),
+    max_value_tolerance_relative: formatChemTolNumber(relMax),
   };
 }
 
@@ -171,4 +208,119 @@ export function isChemPatchReadyToSync(
     }
   }
   return true;
+}
+
+const TOLERANCE_FIELD_KEYS = [
+  "min_value_tolerance",
+  "max_value_tolerance",
+  "min_value_tolerance_relative",
+  "max_value_tolerance_relative",
+] as const;
+
+/**
+ * Не даём отрицательным допускам остаться в форме/JSON.
+ * Незавершённый ввод («-», «-.») не трогаем.
+ */
+export function clampNegativeChemTolerances<T extends ChemToleranceFields>(
+  el: T,
+): T {
+  const next = { ...el };
+  for (const key of TOLERANCE_FIELD_KEYS) {
+    const raw = next[key];
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (
+        trimmed === "" ||
+        trimmed === "-" ||
+        trimmed === "-." ||
+        !isChemInputReadyToSync(raw)
+      ) {
+        continue;
+      }
+    }
+    const n = coerceChemNumber(raw);
+    if (n < 0) {
+      (next as ChemToleranceFields)[key] = formatChemTolNumber(0);
+    }
+  }
+  return next;
+}
+
+/** Убрать отрицательные из patch до merge (готовые числа → 0.0). */
+export function sanitizeChemTolerancePatch<
+  T extends Partial<ChemToleranceFields>,
+>(patch: T): T {
+  const next = { ...patch };
+  for (const key of TOLERANCE_FIELD_KEYS) {
+    if (!(key in next)) continue;
+    const raw = next[key];
+    if (typeof raw !== "string") {
+      if (typeof raw === "number" && raw < 0) {
+        (next as ChemToleranceFields)[key] = 0 as never;
+      }
+      continue;
+    }
+    if (!isChemInputReadyToSync(raw)) continue;
+    if (coerceChemNumber(raw) < 0) {
+      (next as ChemToleranceFields)[key] = formatChemTolNumber(0);
+    }
+  }
+  return next;
+}
+
+/**
+ * Текст предупреждения, если ввод/синхронизация дали бы отрицательный допуск.
+ * Возвращает null, если всё в допустимых пределах.
+ * Логика веток совпадает с applyChemToleranceSync.
+ */
+export function chemToleranceNegativeWarning(
+  el: ChemToleranceFields,
+  source: ChemToleranceSyncSource,
+): string | null {
+  for (const key of TOLERANCE_FIELD_KEYS) {
+    const raw = el[key];
+    if (typeof raw === "string" && !isChemInputReadyToSync(raw)) {
+      continue;
+    }
+    if (coerceChemNumber(raw) < 0) {
+      return "Допуск не может быть отрицательным — значение скорректировано до 0.";
+    }
+  }
+
+  const min = coerceChemNumber(el.min_value);
+  const max = coerceChemNumber(el.max_value);
+  const absMin = coerceChemNumber(el.min_value_tolerance);
+  const absMax = coerceChemNumber(el.max_value_tolerance);
+  const relMin = coerceChemNumber(el.min_value_tolerance_relative);
+
+  let syncSide: "abs" | "rel" | null = null;
+  if (source === "abs") {
+    syncSide = "abs";
+  } else if (source === "rel") {
+    syncSide = "rel";
+  } else if (source === "bounds") {
+    if (hasChemRelTolerance(el)) {
+      syncSide = "rel";
+    } else if (hasChemAbsTolerance(el)) {
+      syncSide = "abs";
+    }
+  }
+
+  if (syncSide === "abs") {
+    if (absMin !== 0 && absMin > min) {
+      return `ABS Min (${formatChemTolNumber(absMin)}) выше Min (${formatChemTolNumber(min)}) — относительный допуск был бы отрицательным. Значение скорректировано.`;
+    }
+    if (absMax !== 0 && absMax < max) {
+      return `ABS Max (${formatChemTolNumber(absMax)}) ниже Max (${formatChemTolNumber(max)}) — относительный допуск был бы отрицательным. Значение скорректировано.`;
+    }
+  }
+
+  if (syncSide === "rel") {
+    const maxRelMin = Math.max(min, 0);
+    if (relMin > maxRelMin) {
+      return `REL Min (${formatChemTolNumber(relMin)}) слишком большой при Min = ${formatChemTolNumber(min)} — абсолютный допуск был бы отрицательным. Значение скорректировано.`;
+    }
+  }
+
+  return null;
 }

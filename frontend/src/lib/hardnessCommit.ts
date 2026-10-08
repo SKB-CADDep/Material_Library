@@ -5,8 +5,9 @@ import {
 
 export type HardnessRow = {
   unit_value?: string;
-  min_value?: number | null;
-  max_value?: number | null;
+  /** number в JSON; string — незавершённый ввод в UI («2.»). */
+  min_value?: number | string | null;
+  max_value?: number | string | null;
 };
 
 type MechanicalPropsSlice = {

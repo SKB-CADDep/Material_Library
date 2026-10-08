@@ -12,7 +12,14 @@ import {
   TEMPERATURE_UNIT_TYPE,
 } from "../lib/calculationColumnHeader";
 import { copyToClipboard } from "../lib/copyToClipboard";
-import { getSelectionCellDisplayText } from "../lib/formatSelectionCellValue";
+import {
+  getSelectionCellDisplayText,
+  getSelectionCellMode,
+} from "../lib/formatSelectionCellValue";
+import {
+  calculationCellModeClass,
+  calculationCellModeTitle,
+} from "../lib/formatCalculationCell";
 import type {
   SelectionSortColumn,
   SelectionSortState,
@@ -652,16 +659,37 @@ export function SelectionTable({
                       columnUnits,
                       unitConfigs,
                     );
+                    const mode = getSelectionCellMode(row.values[col.key]);
+                    const isEmpty = cellText === "-";
+                    const modeClass = calculationCellModeClass(mode ?? undefined);
+                    const modeTitle = isEmpty
+                      ? undefined
+                      : calculationCellModeTitle(mode ?? undefined);
+                    const title = isEmpty
+                      ? undefined
+                      : modeTitle
+                        ? `${cellText} (${modeTitle})`
+                        : cellText;
                     return (
                       <td
                         key={col.key}
                         className="selection-table-col--value"
-                        title={cellText === "-" ? undefined : cellText}
+                        title={title}
                         onContextMenu={(event) =>
                           handleCellContextMenu(event, index, col.key)
                         }
                       >
-                        {cellText}
+                        <span
+                          className={[
+                            "calculation-cell",
+                            modeClass,
+                            isEmpty ? "calculation-cell--empty" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {cellText}
+                        </span>
                       </td>
                     );
                   })}

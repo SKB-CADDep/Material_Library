@@ -1,4 +1,5 @@
 import type { TemperatureSelectionRow } from "../types/api";
+import { unwrapSelectionCellValue } from "./formatSelectionCellValue";
 
 export type SelectionSortColumn =
   | "material_name"
@@ -17,16 +18,19 @@ export type SelectionSortState = {
 type SortKey = [group: number, value: string | number | null];
 
 function buildSortKey(raw: unknown): SortKey {
-  if (raw === null || raw === undefined) {
+  const unwrapped = unwrapSelectionCellValue(
+    raw as Parameters<typeof unwrapSelectionCellValue>[0],
+  );
+  if (unwrapped === null || unwrapped === undefined) {
     return [2, null];
   }
 
-  if (typeof raw === "number" && !Number.isNaN(raw)) {
-    return [0, raw];
+  if (typeof unwrapped === "number" && !Number.isNaN(unwrapped)) {
+    return [0, unwrapped];
   }
 
-  if (typeof raw === "string") {
-    const trimmed = raw.trim();
+  if (typeof unwrapped === "string") {
+    const trimmed = unwrapped.trim();
     if (trimmed === "" || trimmed === "—") {
       return [2, null];
     }
@@ -39,7 +43,7 @@ function buildSortKey(raw: unknown): SortKey {
     return [1, trimmed.toLowerCase()];
   }
 
-  return [1, String(raw).toLowerCase()];
+  return [1, String(unwrapped).toLowerCase()];
 }
 
 function compareSortKeys(a: SortKey, b: SortKey): number {

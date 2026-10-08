@@ -30,6 +30,36 @@ def test_sync_abs_from_rel_min_max():
     assert el["max_value_tolerance"] == 10.25
 
 
+def test_zero_min_does_not_produce_negative_tolerances():
+    el = {
+        "element": "P",
+        "min_value": 0.0,
+        "max_value": 0.03,
+        "min_value_tolerance_relative": 0.25,
+        "max_value_tolerance_relative": 0.01,
+    }
+    assert sync_element_tolerances(el) is True
+    assert el["min_value_tolerance"] >= 0
+    assert el["min_value_tolerance_relative"] == 0.0
+    assert el["max_value_tolerance"] >= 0
+    assert el["max_value_tolerance_relative"] >= 0
+
+
+def test_zero_min_abs_above_min_clamped():
+    el = {
+        "element": "S",
+        "min_value": 0.0,
+        "max_value": 0.035,
+        "min_value_tolerance": 0.05,
+        "max_value_tolerance": 0.01,
+    }
+    assert sync_element_tolerances(el) is True
+    assert el["min_value_tolerance"] == 0.0
+    assert el["min_value_tolerance_relative"] >= 0
+    assert el["max_value_tolerance"] >= 0
+    assert el["max_value_tolerance_relative"] >= 0
+
+
 def test_partial_abs_only_max():
     el = {
         "element": "Si",

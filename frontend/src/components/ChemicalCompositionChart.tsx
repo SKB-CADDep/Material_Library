@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useDeferredValue, useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -149,14 +149,15 @@ export type ChemicalCompositionChartProps = {
   onModeChange: (mode: ChartMode) => void;
 };
 
-export function ChemicalCompositionChart({
+export const ChemicalCompositionChart = memo(function ChemicalCompositionChart({
   data,
   unit,
   mode,
   onModeChange,
 }: ChemicalCompositionChartProps) {
-  const height = chemicalChartHeight(data.length, CHEM_CHART_ROW_HEIGHT);
-  const domain = useMemo(() => chemicalChartLogDomain(data), [data]);
+  const deferredData = useDeferredValue(data);
+  const height = chemicalChartHeight(deferredData.length, CHEM_CHART_ROW_HEIGHT);
+  const domain = useMemo(() => chemicalChartLogDomain(deferredData), [deferredData]);
   const { majorTicks, minorTicks } = useMemo(
     () => buildLogAxisTicks(domain),
     [domain],
@@ -189,13 +190,13 @@ export function ChemicalCompositionChart({
           Распределение элементов в составе
         </legend>
         <div className="chemical-composition-chart__plot">
-          {data.length === 0 ? (
+          {deferredData.length === 0 ? (
             <p className="chemical-composition-chart__empty">Нет данных</p>
           ) : (
             <ResponsiveContainer width="100%" height={height}>
               <BarChart
                 layout="vertical"
-                data={data}
+                data={deferredData}
                 margin={{ left: 8, right: 112, top: 12, bottom: 44 }}
                 barCategoryGap="20%"
               >
@@ -253,7 +254,7 @@ export function ChemicalCompositionChart({
                   }}
                 />
                 <Bar dataKey="displayValue" name="value" maxBarSize={22} radius={0}>
-                  {data.map((entry) => (
+                  {deferredData.map((entry) => (
                     <Cell key={entry.symbol} fill={entry.fill} stroke={entry.fill} />
                   ))}
                   <LabelList
@@ -298,4 +299,4 @@ export function ChemicalCompositionChart({
       </div>
     </div>
   );
-}
+});

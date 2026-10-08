@@ -1,5 +1,9 @@
 import { formatDecimal } from "./formatDecimal";
-import type { TemperatureSelectionRow, UnitResponse } from "../types/api";
+import type {
+  CalculationCell,
+  TemperatureSelectionRow,
+  UnitResponse,
+} from "../types/api";
 import type { SelectionSortColumn } from "./sortSelectionRows";
 import { convertBetweenUnits } from "./unitConversion";
 
@@ -18,6 +22,36 @@ type ScrollColumnMeta = {
   unit_type?: string | null;
 };
 
+export type SelectionCellRaw =
+  | number
+  | string
+  | null
+  | undefined
+  | CalculationCell;
+
+/** Достаёт число/строку из ячейки подбора (plain или {value, mode}). */
+export function unwrapSelectionCellValue(
+  raw: SelectionCellRaw,
+): number | string | null | undefined {
+  if (raw === null || raw === undefined) {
+    return raw;
+  }
+  if (typeof raw === "object" && "value" in raw) {
+    return raw.value;
+  }
+  return raw;
+}
+
+/** Режим расчёта ячейки (как на вкладке «Расчёт отдельно»), иначе null. */
+export function getSelectionCellMode(
+  raw: SelectionCellRaw,
+): CalculationCell["mode"] | null {
+  if (raw && typeof raw === "object" && "mode" in raw) {
+    return raw.mode;
+  }
+  return null;
+}
+
 export function formatSelectionFrozenValue(
   value: string | number | null | undefined,
 ): string {
@@ -35,7 +69,7 @@ function formatSelectionNumericValue(value: number): string {
 }
 
 export function formatSelectionCellValue(
-  raw: number | string | null | undefined,
+  raw: SelectionCellRaw,
   options: {
     columnKey: string;
     baseUnit: string;
@@ -46,24 +80,25 @@ export function formatSelectionCellValue(
 ): string {
   const { columnKey, baseUnit, displayUnit, unitConfig, rowSourceUnit } =
     options;
+  const value = unwrapSelectionCellValue(raw);
 
   if (columnKey === "unit_value") {
     if (displayUnit) {
       return displayUnit;
     }
-    if (raw === null || raw === undefined || raw === "") {
+    if (value === null || value === undefined || value === "") {
       return SELECTION_EMPTY;
     }
-    return String(raw);
+    return String(value);
   }
 
-  if (raw === null || raw === undefined || raw === "") {
+  if (value === null || value === undefined || value === "") {
     return SELECTION_EMPTY;
   }
 
-  const numeric = typeof raw === "number" ? raw : Number(raw);
+  const numeric = typeof value === "number" ? value : Number(value);
   if (Number.isNaN(numeric)) {
-    return String(raw);
+    return String(value);
   }
 
   let sourceUnit = baseUnit;
@@ -153,8 +188,9 @@ export function getSelectionCellDisplayText(
         baseUnit: col.unit ?? "",
         displayUnit,
         unitConfig,
-        rowSourceUnit: row.values.unit_value,
-      });
+        rowSourceUnit: unwrapSelectionCellValue(row.values.unit_value),
+
+     });
     }
   }
 }

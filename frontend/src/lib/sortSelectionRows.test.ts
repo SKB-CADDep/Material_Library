@@ -55,6 +55,21 @@ describe("sortSelectionRows", () => {
     expect(sortSelectionRows(single, "material_name", "asc")).toBe(single);
     expect(sortSelectionRows([], "material_name", "asc")).toEqual([]);
   });
+
+  it("sorts calculation-shaped {value, mode} cells by value", () => {
+    const rows = [
+      row({
+        material_name: "A",
+        values: { density: { value: 7800, mode: "exact" } },
+      }),
+      row({
+        material_name: "B",
+        values: { density: { value: 7850, mode: "interp" } },
+      }),
+    ];
+    const sorted = sortSelectionRows(rows, "density", "desc");
+    expect(sorted.map((r) => r.material_name)).toEqual(["B", "A"]);
+  });
 });
 
 describe("getSelectionRowSortValue", () => {

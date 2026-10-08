@@ -18,3 +18,33 @@ export function parseDecimalInput(raw: string): number | null {
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : null;
 }
+
+/**
+ * Для controlled-инпутов: не съедает промежуточный ввод («2.», «2,», «-»).
+ * - "" → undefined
+ * - незавершённое валидное → string
+ * - готовое число → number
+ * - мусор → null (не обновлять поле)
+ */
+export function parseDecimalFieldInput(
+  raw: string,
+): number | string | undefined | null {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (!/^-?\d*(?:[.,]\d*)?$/.test(trimmed)) {
+    return null;
+  }
+  const normalized = trimmed.replace(",", ".");
+  if (
+    normalized === "-" ||
+    normalized === "." ||
+    normalized === "-." ||
+    normalized.endsWith(".")
+  ) {
+    return normalized;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}

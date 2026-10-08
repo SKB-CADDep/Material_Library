@@ -4,12 +4,9 @@ import { useWorkspace } from "../context/WorkSpaceContext";
 import { useQuery } from "@tanstack/react-query";
 import { postTemperatureSelection } from "../api/selection";
 import { SelectionTable } from "../components/SelectionTable";
+import { CalculationTableLegend } from "../components/CalculationTableLegend";
 import { useColumnUnitConfigs } from "../hooks/useColumnUnitConfigs";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import {
-  TABLE_SORT_HINT,
-  TableSortHint,
-} from "../lib/tableSortHeader";
 import { mergeColumnUnits } from "../lib/columnUnits";
 import { parseDecimalInput } from "../lib/formatDecimal";
 import {
@@ -206,14 +203,6 @@ export function TempSelectionTab() {
             }}
           />
         </div>
-
-        <p
-          className="selection-unit-hint"
-          title={TABLE_SORT_HINT}
-          data-tour="temp-unit-hint"
-        >
-          <TableSortHint />
-        </p>
       </div>
 
       <section className="selection-body">
@@ -237,6 +226,12 @@ export function TempSelectionTab() {
 
         {workspace && result.isSuccess && rows.length > 0 && (
           <div className="selection-table-panel" data-tour="temp-table">
+              <div
+                className="calculation-table-toolbar"
+                data-tour="temp-unit-hint"
+              >
+                <CalculationTableLegend />
+              </div>
               <SelectionTable
                 scrollColumns={columns}
                 rows={displayRows}

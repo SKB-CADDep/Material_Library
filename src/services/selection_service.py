@@ -207,9 +207,14 @@ class SelectionService:
                     source_ref_id=cat.get(Schema.REF_ID) if isinstance(cat, dict) else None,
                 )
                 for prop_key in prop_keys:
-                    row["values"][prop_key] = material.get_interpolated_property(
-                        prop_key, temperature, category_idx=i
+                    value, mode = self._get_value_with_mode(
+                        material,
+                        prop_key,
+                        temperature,
+                        cat_idx=i,
+                        allow_extrapolation=True,
                     )
+                    row["values"][prop_key] = {"value": value, "mode": mode}
                 rows.append(row)
             return rows
 
@@ -222,9 +227,13 @@ class SelectionService:
             material, "-", source_str, max_temp, temperature_comment
         )
         for prop_key in prop_keys:
-            row["values"][prop_key] = material.get_interpolated_property(
-                prop_key, temperature
+            value, mode = self._get_value_with_mode(
+                material,
+                prop_key,
+                temperature,
+                allow_extrapolation=True,
             )
+            row["values"][prop_key] = {"value": value, "mode": mode}
         return [row]
 
     def _hardness_rows(

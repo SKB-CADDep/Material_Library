@@ -7,7 +7,8 @@ export type NamedProperty = {
   comment?: string;
   property_subsource?: string | number | readonly string[];
   source_ref_id?: string | null;
-  min_value?: number;
+  /** number в JSON; string — незавершённый ввод в UI («2.»). */
+  min_value?: number | string;
   is_acceptance?: boolean;
   [key: string]: unknown;
 };

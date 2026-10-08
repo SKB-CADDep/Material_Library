@@ -6,6 +6,7 @@ import {
   commitHardnessInMaterial,
   validateHardnessRanges,
 } from "../lib/hardnessCommit";
+import { validateScalarMechValues } from "../lib/scalarMechCommit";
 import {
   categoryDisplayName,
   hasCategorySource,
@@ -54,6 +55,12 @@ export function validateMaterialDraftForSave(
   if (hardnessError) {
     return hardnessError;
   }
+
+  const scalarError = validateScalarMechValues(body);
+  if (scalarError) {
+    return scalarError;
+  }
+
   return null;
 }
 

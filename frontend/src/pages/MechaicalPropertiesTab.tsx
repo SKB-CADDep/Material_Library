@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { UnitSelect } from "./UnitSelect";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
 import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
@@ -17,7 +17,11 @@ import { RequiredFieldsFootnote } from "../components/RequiredFieldsFootnote";
 import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureLineChart";
 import { PropertyCommentField } from "../components/PropertyCommentField";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
-import { parseDecimalInput } from "../lib/formatDecimal";
+import { BlurCommitTextInput } from "../components/BlurCommitTextInput";
+import {
+  parseDecimalFieldInput,
+  parseDecimalInput,
+} from "../lib/formatDecimal";
 import { useUnitLabels } from "../hooks/useUnitLabels";
 import { usePropertiesCatalog } from "../hooks/usePropertiesCatalog";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
@@ -167,24 +171,33 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
 }
 
 
-function MechTemperatureGraph({
+const MechTemperatureGraph = memo(function MechTemperatureGraph({
   prop,
   data,
   unitType,
+  enabled,
 }: {
   prop: MechPropertyConfig;
   data: PropertyData | undefined;
   unitType: string;
+  enabled: boolean;
 }) {
   const { labels } = useUnitLabels(unitType);
+  const pairs = data?.temperature_value_pairs;
+  const chartData = useMemo(() => toChartData(pairs), [pairs]);
+  const yLabel = yLabelWithUnit(prop.yLabel, data?.value_unit, labels);
+
+  if (!enabled) {
+    return <div className="property-chart-plot" aria-hidden="true" />;
+  }
 
   return (
     <PropertyTemperatureLineChart
-      data={toChartData(data?.temperature_value_pairs)}
-      yLabel={yLabelWithUnit(prop.yLabel, data?.value_unit, labels)}
+      data={chartData}
+      yLabel={yLabel}
     />
   );
-}
+});
 
 function getPropertyData(
   category: StrengthCategory | undefined,
@@ -215,12 +228,15 @@ function patchCategoryProperty(
   };
 }
 
-export function MechanicalPropertiesTab({
+export const MechanicalPropertiesTab = memo(function MechanicalPropertiesTab({
   material,
   onDraftChange,
   readOnly = false,
 }: MechanicalPropertiesTabProps) {
   const paneActive = useKeepAlivePaneActive();
+  // Графики — низкий приоритет: сначала фокус/ввод, потом Recharts.
+  const chartsEnabled = useDeferredValue(paneActive);
+  const deferredMaterial = useDeferredValue(material);
   const result = useSourcesCatalog({ enabled: paneActive });
   const mechanicalSources = result.data?.strength_sources ?? [];
   const propertySources = result.data?.property_sources ?? [];
@@ -244,8 +260,8 @@ export function MechanicalPropertiesTab({
 
   useEffect(() => {
     setCategoryIndex(0);
-    setHardnessSelectedRowIndex(null);
     setModulusSelectedRowIndex(null);
+    setHardnessSelectedRowIndex(null);
   }, [materialKey]);
 
   useEffect(() => {
@@ -258,14 +274,16 @@ export function MechanicalPropertiesTab({
   }, [strengthCategories.length]);
 
   const category = strengthCategories[categoryIndex];
+  const deferredMechanical = (deferredMaterial?.mechanical_properties ??
+    {}) as MechanicalProperties;
+  const deferredCategory =
+    deferredMechanical.strength_category?.[categoryIndex];
   const currentSource = resolveCategorySourceName(category, mechanicalSources);
   const sourceNames = mechanicalSources.map((src) => src.name_source);
   const showOrphan =
     currentSource !== "" && !sourceNames.includes(currentSource);
   const hardnessTableRef = useRef<HTMLTableElement>(null);
-  const scalarHardnessTableRef = useRef<HTMLTableElement>(null);
   useResizableTableHeaders(hardnessTableRef, { disabled: !paneActive });
-  useResizableTableHeaders(scalarHardnessTableRef, { disabled: !paneActive });
   const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
   const mechanicalUnitType = (key: string) =>
     propertiesCatalog.data?.mechanical[key]?.unit_type ?? "";
@@ -277,8 +295,8 @@ export function MechanicalPropertiesTab({
     (category?.hardness as
       | Array<{
           unit_value?: string;
-          min_value?: number;
-          max_value?: number;
+          min_value?: number | string;
+          max_value?: number | string;
         }>
       | undefined) ?? [];
 
@@ -291,13 +309,13 @@ export function MechanicalPropertiesTab({
     updater: (
       rows: Array<{
         unit_value?: string;
-        min_value?: number;
-        max_value?: number;
+        min_value?: number | string;
+        max_value?: number | string;
       }>,
     ) => Array<{
       unit_value?: string;
-      min_value?: number;
-      max_value?: number;
+      min_value?: number | string;
+      max_value?: number | string;
     }>,
   ) => {
     const categories = mechanical_properties.strength_category ?? [];
@@ -326,7 +344,10 @@ export function MechanicalPropertiesTab({
 
   const updateHardnessAt = (
     rowIndex: number,
-    patch: { min_value?: number; max_value?: number },
+    patch: {
+      min_value?: number | string;
+      max_value?: number | string;
+    },
   ) => {
     updateHardnessRows((rows) =>
       rows.map((row, i) => (i === rowIndex ? { ...row, ...patch } : row)),
@@ -352,8 +373,8 @@ export function MechanicalPropertiesTab({
                 }
                 onChange={(e) => {
                   setCategoryIndex(Number(e.target.value));
-                  setHardnessSelectedRowIndex(null);
                   setModulusSelectedRowIndex(null);
+                  setHardnessSelectedRowIndex(null);
                 }}
                 disabled={(mechanical_properties.strength_category?.length ?? 0) === 0}
               >
@@ -542,36 +563,10 @@ export function MechanicalPropertiesTab({
               <legend>
                 <ScientificText>{prop.legend}</ScientificText>
               </legend>
-              {prop.hasAcceptance && (
-                <div className="form-row">
-                  <label
-                    htmlFor={`${prop.key}_is_acceptance`}
-                    className="checkbox-item"
-                  >
-                    <input
-                      id={`${prop.key}_is_acceptance`}
-                      type="checkbox"
-                      checked={data?.is_acceptance ?? false}
-                      onChange={(event) => {
-                        onDraftChange(
-                          patchCategoryProperty(
-                            material,
-                            mechanical_properties,
-                            categoryIndex,
-                            prop.key,
-                            { is_acceptance: event.target.checked },
-                          ),
-                        );
-                      }}
-                    />{" "}
-                    Сдаточная характеристика
-                  </label>
-                </div>
-              )}
               <div className="property-section-layout">
                 <div className="property-section-fields">
-                  <div className="form-row">
-                    <label htmlFor={unitId}>Ед. изм:</label>
+                  <div className="form-row form-row--unit form-row--unit-with-acceptance">
+                    <label htmlFor={unitId}>Ед.изм.</label>
                     <UnitSelect
                       id={unitId}
                       unitType={mechanicalUnitType(prop.key)}
@@ -588,9 +583,33 @@ export function MechanicalPropertiesTab({
                         );
                       }}
                     />
+                    {prop.hasAcceptance ? (
+                      <label
+                        htmlFor={`${prop.key}_is_acceptance`}
+                        className="checkbox-item checkbox-item--inline"
+                      >
+                        <input
+                          id={`${prop.key}_is_acceptance`}
+                          type="checkbox"
+                          checked={data?.is_acceptance ?? false}
+                          onChange={(event) => {
+                            onDraftChange(
+                              patchCategoryProperty(
+                                material,
+                                mechanical_properties,
+                                categoryIndex,
+                                prop.key,
+                                { is_acceptance: event.target.checked },
+                              ),
+                            );
+                          }}
+                        />{" "}
+                        сдат. хар-ка
+                      </label>
+                    ) : null}
                   </div>
-                  <div className="form-row">
-                    <label htmlFor={sourceId}>Источник свойств:</label>
+                  <div className="form-row form-row--stack">
+                    <label htmlFor={sourceId}>Источник:</label>
                     <PropertySourceSelect
                       id={sourceId}
                       value={currentPropertySource}
@@ -612,7 +631,7 @@ export function MechanicalPropertiesTab({
                       }}
                     />
                   </div>
-                  <div className="form-row">
+                  <div className="form-row form-row--stack">
                     <label htmlFor={commentId}>Комментарий:</label>
                     <PropertyCommentField
                       id={commentId}
@@ -708,17 +727,67 @@ export function MechanicalPropertiesTab({
                   />
                 </div>
                 <div className="property-section-chart">
-                  <MechTemperatureGraph prop={prop} data={data} unitType={mechanicalUnitType(prop.key)}/>
+                  <MechTemperatureGraph
+                    prop={prop}
+                    data={getPropertyData(deferredCategory, prop.key)}
+                    unitType={mechanicalUnitType(prop.key)}
+                    enabled={chartsEnabled}
+                  />
                 </div>
               </div>
             </fieldset>
           );
         })}
 
-        <fieldset className="form-section">
+        <fieldset className="form-section hardness-card">
           <legend>Твёрдость</legend>
-          <div className="form-row">
-            <label htmlFor="hardness_is_acceptance" className="checkbox-item">
+          <div className="hardness-card__row">
+            <div className="hardness-card__unit">
+              <label htmlFor="hardness_value_unit" className="hardness-card__unit-label">
+                Ед.изм
+              </label>
+              <UnitSelect
+                id="hardness_value_unit"
+                unitType={HARDNESS_UNIT_TYPE}
+                value={
+                  (category?.hardness_unit as string | undefined) ??
+                  hardnessRows[0]?.unit_value ??
+                  ""
+                }
+                onChange={(nextUnit) => {
+                  const categories =
+                    mechanical_properties.strength_category ?? [];
+                  onDraftChange({
+                    ...material,
+                    mechanical_properties: {
+                      ...mechanical_properties,
+                      strength_category: categories.map((cat, i) => {
+                        if (i !== categoryIndex) return cat;
+                        const rows =
+                          (cat.hardness as typeof hardnessRows | undefined) ??
+                          [];
+                        const nextRows =
+                          rows.length === 0
+                            ? [{ unit_value: nextUnit }]
+                            : rows.map((row) => ({
+                                ...row,
+                                unit_value: nextUnit,
+                              }));
+                        return {
+                          ...cat,
+                          hardness_unit: nextUnit,
+                          hardness: nextRows,
+                        };
+                      }),
+                    },
+                  });
+                }}
+              />
+            </div>
+            <label
+              htmlFor="hardness_is_acceptance"
+              className="hardness-card__acceptance"
+            >
               <input
                 id="hardness_is_acceptance"
                 type="checkbox"
@@ -742,180 +811,171 @@ export function MechanicalPropertiesTab({
                     },
                   });
                 }}
-              />{" "}
-              Сдаточная характеристика
+              />
+              <span className="hardness-card__acceptance-text">сдат. хар-ка</span>
             </label>
-          </div>
-          <div className="property-section-layout">
-            <div className="property-section-fields">
-              <div className="form-row">
-                <label htmlFor="hardness_value_unit">Ед. изм:</label>
-                <UnitSelect
-                  id="hardness_value_unit"
-                  unitType={HARDNESS_UNIT_TYPE}
-                  value={
-                    (category?.hardness_unit as string | undefined) ??
-                    hardnessRows[0]?.unit_value ??
-                    ""
-                  }
-                  onChange={(nextUnit) => {
-                    const categories =
-                      mechanical_properties.strength_category ?? [];
-                    onDraftChange({
-                      ...material,
-                      mechanical_properties: {
-                        ...mechanical_properties,
-                        strength_category: categories.map((cat, i) => {
-                          if (i !== categoryIndex) return cat;
-                          const rows =
-                            (cat.hardness as typeof hardnessRows | undefined) ??
-                            [];
-                          return {
-                            ...cat,
-                            hardness_unit: nextUnit,
-                            hardness: rows.map((row) => ({
-                              ...row,
-                              unit_value: nextUnit,
-                            })),
-                          };
-                        }),
-                      },
-                    });
-                  }}
-                />
+            <div className="hardness-card__bounds-group">
+              <div className="hardness-card__table-wrap table-wrapper">
+                <table
+                  ref={hardnessTableRef}
+                  className="data-table data-table--selectable-rows hardness-card__table"
+                >
+                  <thead>
+                    <tr>
+                      <th>max</th>
+                      <th>min</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(hardnessRows.length === 0
+                      ? [
+                          {
+                            unit_value: hardnessUnit || "HB",
+                            min_value: undefined as number | undefined,
+                            max_value: undefined as number | undefined,
+                          },
+                        ]
+                      : hardnessRows
+                    ).map((row, i) => {
+                      const isPlaceholder = hardnessRows.length === 0;
+                      return (
+                        <tr
+                          key={isPlaceholder ? "hardness-placeholder" : i}
+                          className={
+                            !isPlaceholder && hardnessSelectedRowIndex === i
+                              ? "table-row-selected"
+                              : ""
+                          }
+                          onClick={() => {
+                            if (!isPlaceholder) setHardnessSelectedRowIndex(i);
+                          }}
+                        >
+                          <td>
+                            <BlurCommitTextInput
+                              className="table-cell-input"
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="—"
+                              value={
+                                row.max_value === undefined ||
+                                row.max_value === null
+                                  ? ""
+                                  : String(row.max_value)
+                              }
+                              commitWhenUnchanged={false}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onCommit={(raw) => {
+                                const max_value = parseDecimalFieldInput(raw);
+                                if (max_value === null) return;
+                                if (isPlaceholder) {
+                                  updateHardnessRows(() => [
+                                    {
+                                      unit_value: hardnessUnit || "HB",
+                                      min_value: undefined,
+                                      max_value,
+                                    },
+                                  ]);
+                                  setHardnessSelectedRowIndex(0);
+                                  return;
+                                }
+                                updateHardnessAt(i, { max_value });
+                              }}
+                            />
+                          </td>
+                          <td>
+                            <BlurCommitTextInput
+                              className="table-cell-input"
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="—"
+                              value={
+                                row.min_value === undefined ||
+                                row.min_value === null
+                                  ? ""
+                                  : String(row.min_value)
+                              }
+                              commitWhenUnchanged={false}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onCommit={(raw) => {
+                                const min_value = parseDecimalFieldInput(raw);
+                                if (min_value === null) return;
+                                if (isPlaceholder) {
+                                  updateHardnessRows(() => [
+                                    {
+                                      unit_value: hardnessUnit || "HB",
+                                      min_value,
+                                      max_value: undefined,
+                                    },
+                                  ]);
+                                  setHardnessSelectedRowIndex(0);
+                                  return;
+                                }
+                                updateHardnessAt(i, { min_value });
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </div>
-          <div className="table-wrapper">
-            <table ref={hardnessTableRef} className="data-table data-table--selectable-rows">
-              <thead>
-                <tr>
-                  <th>Min</th>
-                  <th>Max</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(hardnessRows.length === 0
-                  ? [
+              <div className="hardness-card__controls table-controls">
+                <button
+                  type="button"
+                  className="table-control-btn"
+                  title="Добавить строку твёрдости"
+                  onClick={() => {
+                    updateHardnessRows((rows) => [
+                      ...rows,
                       {
                         unit_value: hardnessUnit || "HB",
-                        min_value: undefined as number | undefined,
-                        max_value: undefined as number | undefined,
+                        min_value: undefined,
+                        max_value: undefined,
                       },
-                    ]
-                  : hardnessRows
-                ).map((row, i) => {
-                  const isPlaceholder = hardnessRows.length === 0;
-                  return (
-                    <tr
-                      key={isPlaceholder ? "hardness-placeholder" : i}
-                      className={
-                        !isPlaceholder && hardnessSelectedRowIndex === i
-                          ? "table-row-selected"
-                          : ""
-                      }
-                      onClick={() => {
-                        if (!isPlaceholder) setHardnessSelectedRowIndex(i);
-                      }}
-                    >
-                      <td>
-                        <input
-                          className="table-cell-input"
-                          type="text"
-                          placeholder="—"
-                          value={row.min_value ?? ""}
-                          onChange={(event) => {
-                            const raw = event.target.value;
-                            const min_value =
-                              raw === ""
-                                ? undefined
-                                : (parseDecimalInput(raw) ?? undefined);
-                            if (isPlaceholder) {
-                              updateHardnessRows(() => [
-                                {
-                                  unit_value: hardnessUnit || "HB",
-                                  min_value,
-                                  max_value: undefined,
-                                },
-                              ]);
-                              setHardnessSelectedRowIndex(0);
-                              return;
-                            }
-                            updateHardnessAt(i, { min_value });
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="table-cell-input"
-                          type="text"
-                          placeholder="—"
-                          value={row.max_value ?? ""}
-                          onChange={(event) => {
-                            const raw = event.target.value;
-                            const max_value =
-                              raw === ""
-                                ? undefined
-                                : (parseDecimalInput(raw) ?? undefined);
-                            if (isPlaceholder) {
-                              updateHardnessRows(() => [
-                                {
-                                  unit_value: hardnessUnit || "HB",
-                                  min_value: undefined,
-                                  max_value,
-                                },
-                              ]);
-                              setHardnessSelectedRowIndex(0);
-                              return;
-                            }
-                            updateHardnessAt(i, { max_value });
-                          }}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="table-controls">
-              <button
-                type="button"
-                className="table-control-btn"
-                title="Добавить строку твёрдости"
-                onClick={() => {
-                  updateHardnessRows((rows) => [
-                    ...rows,
-                    {
-                      unit_value: hardnessUnit || "HB",
-                      min_value: undefined,
-                      max_value: undefined,
-                    },
-                  ]);
-                  setHardnessSelectedRowIndex(hardnessRows.length);
-                }}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                className="table-control-btn"
-                title={
-                  hardnessSelectedRowIndex === null
-                    ? "Сначала выберите строку"
-                    : "Удалить выбранную строку"
-                }
-                disabled={hardnessSelectedRowIndex === null}
-                onClick={() => {
-                  if (hardnessSelectedRowIndex === null) return;
-                  const removeIndex = hardnessSelectedRowIndex;
-                  updateHardnessRows((rows) =>
-                    rows.filter((_, i) => i !== removeIndex),
-                  );
-                  setHardnessSelectedRowIndex(null);
-                }}
-              >
-                −
-              </button>
+                    ]);
+                    setHardnessSelectedRowIndex(hardnessRows.length);
+                  }}
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  className="table-control-btn"
+                  title={
+                    hardnessRows.length === 0 || hardnessSelectedRowIndex === null
+                      ? "Сначала выберите строку"
+                      : "Удалить выбранную строку"
+                  }
+                  disabled={
+                    hardnessRows.length === 0 || hardnessSelectedRowIndex === null
+                  }
+                  onClick={() => {
+                    if (
+                      hardnessRows.length === 0 ||
+                      hardnessSelectedRowIndex === null
+                    ) {
+                      return;
+                    }
+                    const removeIndex = hardnessSelectedRowIndex;
+                    updateHardnessRows((rows) =>
+                      rows.filter((_, i) => i !== removeIndex),
+                    );
+                    setHardnessSelectedRowIndex((prev) => {
+                      if (prev === null) return null;
+                      if (hardnessRows.length <= 1) return null;
+                      return Math.max(
+                        0,
+                        Math.min(prev, hardnessRows.length - 2),
+                      );
+                    });
+                  }}
+                >
+                  −
+                </button>
+              </div>
             </div>
           </div>
         </fieldset>
@@ -935,38 +995,16 @@ export function MechanicalPropertiesTab({
           );
 
           return (
-            <fieldset key={prop.key} className="form-section">
+            <fieldset key={prop.key} className="form-section scalar-mech-card">
               <legend>
                 <ScientificText>{prop.legend}</ScientificText>
               </legend>
-              <div className="form-row">
-                <label
-                  htmlFor={`${prop.key}_is_acceptance`}
-                  className="checkbox-item"
-                >
-                  <input
-                    id={`${prop.key}_is_acceptance`}
-                    type="checkbox"
-                    checked={data?.is_acceptance ?? false}
-                    onChange={(event) => {
-                      onDraftChange(
-                        patchCategoryProperty(
-                          material,
-                          mechanical_properties,
-                          categoryIndex,
-                          prop.key,
-                          { is_acceptance: event.target.checked },
-                        ),
-                      );
-                    }}
-                  />{" "}
-                  Сдаточная характеристика
-                </label>
-              </div>
-              <div className="property-section-layout">
-                <div className="property-section-fields">
-                  <div className="form-row">
-                    <label htmlFor={unitId}>Ед. изм:</label>
+              <div className="scalar-mech-card__body">
+                <div className="scalar-mech-card__top">
+                  <div className="scalar-mech-card__unit">
+                    <label htmlFor={unitId} className="scalar-mech-card__unit-label">
+                      Ед.изм
+                    </label>
                     <UnitSelect
                       id={unitId}
                       unitType={mechanicalUnitType(prop.key)}
@@ -984,81 +1022,111 @@ export function MechanicalPropertiesTab({
                       }}
                     />
                   </div>
-                  <div className="form-row">
-                    <label htmlFor={sourceId}>Источник свойств:</label>
-                    <PropertySourceSelect
-                      id={sourceId}
-                      value={currentPropertySource}
-                      showOrphan={showPropertyOrphan}
-                      sources={propertySources}
-                      onChange={(name, sourceRefId) => {
-                        onDraftChange(
-                          patchCategoryProperty(
-                            material,
-                            mechanical_properties,
-                            categoryIndex,
-                            prop.key,
-                            {
-                              property_subsource: name,
-                              source_ref_id: sourceRefId,
-                            },
-                          ),
-                        );
-                      }}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label htmlFor={commentId}>Комментарий:</label>
-                    <PropertyCommentField
-                      id={commentId}
-                      value={data?.comment ?? ""}
-                      onChange={(text) => {
-                        onDraftChange(
-                          patchCategoryProperty(
-                            material,
-                            mechanical_properties,
-                            categoryIndex,
-                            prop.key,
-                            { comment: text },
-                          ),
-                        );
-                      }}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label htmlFor={value}>Значение:</label>
+                  <label
+                    htmlFor={`${prop.key}_is_acceptance`}
+                    className="scalar-mech-card__acceptance"
+                  >
                     <input
-                      id={value}
-                      value={data?.min_value ?? ""}
-                      className="input"
+                      id={`${prop.key}_is_acceptance`}
+                      type="checkbox"
+                      checked={data?.is_acceptance ?? false}
                       onChange={(event) => {
-                        const raw = event.target.value;
                         onDraftChange(
                           patchCategoryProperty(
                             material,
                             mechanical_properties,
                             categoryIndex,
                             prop.key,
-                            { min_value: raw === "" ? undefined : (parseDecimalInput(raw) ?? undefined) },
+                            { is_acceptance: event.target.checked },
                           ),
                         );
                       }}
                     />
-                  </div>
-                  <div className="table-wrapper">
-                    <table ref={scalarHardnessTableRef} className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Min</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                        <td>{data?.min_value ?? ""}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                    <span>сдат. хар-ка</span>
+                  </label>
+                  <label className="scalar-mech-card__value" htmlFor={value}>
+                    <span>Значение:</span>
+                    <BlurCommitTextInput
+                      id={value}
+                      value={
+                        data?.min_value === undefined || data?.min_value === null
+                          ? ""
+                          : String(data.min_value)
+                      }
+                      className="input scalar-mech-card__value-input"
+                      inputMode="decimal"
+                      commitWhenUnchanged={false}
+                      onCommit={(raw) => {
+                        const trimmed = raw.trim();
+                        if (!trimmed) {
+                          onDraftChange(
+                            patchCategoryProperty(
+                              material,
+                              mechanical_properties,
+                              categoryIndex,
+                              prop.key,
+                              { min_value: undefined },
+                            ),
+                          );
+                          return;
+                        }
+                        const parsed = parseDecimalFieldInput(raw);
+                        // Нечисловой ввод оставляем в draft — save покажет предупреждение.
+                        const min_value =
+                          parsed === null ? trimmed : parsed;
+                        onDraftChange(
+                          patchCategoryProperty(
+                            material,
+                            mechanical_properties,
+                            categoryIndex,
+                            prop.key,
+                            { min_value },
+                          ),
+                        );
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="form-row form-row--stack">
+                  <label htmlFor={sourceId}>Источник:</label>
+                  <PropertySourceSelect
+                    id={sourceId}
+                    value={currentPropertySource}
+                    showOrphan={showPropertyOrphan}
+                    sources={propertySources}
+                    onChange={(name, sourceRefId) => {
+                      onDraftChange(
+                        patchCategoryProperty(
+                          material,
+                          mechanical_properties,
+                          categoryIndex,
+                          prop.key,
+                          {
+                            property_subsource: name,
+                            source_ref_id: sourceRefId,
+                          },
+                        ),
+                      );
+                    }}
+                  />
+                </div>
+                <div className="form-row form-row--stack">
+                  <label htmlFor={commentId}>Комментарий:</label>
+                  <PropertyCommentField
+                    id={commentId}
+                    value={data?.comment ?? ""}
+                    onChange={(text) => {
+                      onDraftChange(
+                        patchCategoryProperty(
+                          material,
+                          mechanical_properties,
+                          categoryIndex,
+                          prop.key,
+                          { comment: text },
+                        ),
+                      );
+                    }}
+                  />
                 </div>
               </div>
             </fieldset>
@@ -1068,7 +1136,7 @@ export function MechanicalPropertiesTab({
       </div>
     </form>
   );
-}
+});
 
 
 // алиас на случай старого имени экспорта

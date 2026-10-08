@@ -238,6 +238,37 @@ def test_temperature_selection_areas_list_matches_any() -> None:
     assert len(result["rows"]) == 1
 
 
+def test_temperature_selection_returns_value_with_mode() -> None:
+    material = _calc_material()
+    service = _calc_service()
+    repo = _FakeRepo([material])
+
+    exact = service.temperature_selection(repo, "physical", 20.0)
+    density_exact = exact["rows"][0]["values"]["density"]
+    assert density_exact == {"value": 7800.0, "mode": "exact"}
+
+    interp = service.temperature_selection(repo, "physical", 110.0)
+    density_interp = interp["rows"][0]["values"]["density"]
+    assert density_interp["mode"] == "interp"
+    assert density_interp["value"] == pytest.approx(7775.0)
+
+    mech = service.temperature_selection(repo, "mechanical", 110.0)
+    yield_cell = mech["rows"][0]["values"]["yield_strength"]
+    assert yield_cell["mode"] == "interp"
+    assert yield_cell["value"] == pytest.approx(330.0)
+
+    # За пределами точек (20…200) — экстраполяция, как в «Расчёт отдельно».
+    approx = service.temperature_selection(repo, "physical", 300.0)
+    density_approx = approx["rows"][0]["values"]["density"]
+    assert density_approx["mode"] == "approx"
+    assert density_approx["value"] is not None
+
+    mech_approx = service.temperature_selection(repo, "mechanical", -10.0)
+    yield_approx = mech_approx["rows"][0]["values"]["yield_strength"]
+    assert yield_approx["mode"] == "approx"
+    assert yield_approx["value"] is not None
+
+
 @pytest.fixture
 def calc_context(client, material_with_composition):
     response = client.post(

@@ -2108,7 +2108,7 @@ select {
 
 
   .general-form .form-row,
-  .physical-properties-form .property-section-fields .form-row {
+  .physical-properties-form .property-section-fields .form-row:not(.form-row--stack) {
     display: grid;
     grid-template-columns: var(--editor-label-width) minmax(0, 1fr);
     gap: 6px var(--space-sm);
@@ -2126,7 +2126,32 @@ select {
     color: var(--text);
   }
 
-  .physical-properties-form .property-section-fields .form-row :is(input, select, textarea) {
+  .physical-properties-form .property-section-fields .form-row.form-row--unit {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px var(--space-sm);
+    grid-template-columns: none;
+  }
+
+  .physical-properties-form .property-section-fields .form-row.form-row--unit-with-acceptance {
+    flex-wrap: nowrap;
+    grid-template-columns: none;
+  }
+
+  .physical-properties-form .property-section-fields .form-row.form-row--unit-with-acceptance .unit-select {
+    flex: 0 1 9rem;
+    max-width: 9rem;
+  }
+
+  .physical-properties-form .property-section-fields .form-row--stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .physical-properties-form .property-section-fields .form-row :is(input:not([type="checkbox"]), select, textarea) {
     width: 100%;
     min-width: 0;
     padding: 6px 10px;
@@ -2138,7 +2163,7 @@ select {
     box-sizing: border-box;
   }
 
-  .physical-properties-form .property-section-fields .form-row :is(input, select, textarea):focus {
+  .physical-properties-form .property-section-fields .form-row :is(input:not([type="checkbox"]), select, textarea):focus {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(61, 90, 128, 0.1);
@@ -2452,6 +2477,331 @@ select {
   overflow-x: clip;
 }
 
+.physical-properties-form .property-section-layout {
+  gap: var(--space-md);
+}
+
+.physical-properties-form .property-section-fields {
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+}
+
+.physical-properties-form .property-section-fields .form-row--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.physical-properties-form .property-section-fields .form-row--stack label {
+  min-width: unset;
+  width: auto;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  padding-top: 0;
+}
+
+.physical-properties-form .property-section-fields .form-row--stack :is(input, select, textarea),
+.physical-properties-form .property-section-fields .form-row--stack .unit-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.physical-properties-form .property-section-fields .form-row.form-row--unit {
+  display: flex !important;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px var(--space-sm);
+  grid-template-columns: none;
+}
+
+.physical-properties-form .property-section-fields .form-row.form-row--unit > label:first-of-type {
+  flex: 0 0 auto;
+}
+
+.physical-properties-form .property-section-fields .form-row.form-row--unit .unit-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 9rem;
+}
+
+.physical-properties-form .property-section-fields .form-row.form-row--unit-with-acceptance {
+  flex-wrap: nowrap;
+}
+
+.physical-properties-form .property-section-fields .form-row.form-row--unit-with-acceptance .unit-select {
+  flex: 0 1 9rem;
+  max-width: 9rem;
+}
+
+.physical-properties-form .property-section-fields .checkbox-item--inline {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  background: transparent;
+}
+
+.physical-properties-form .property-section-fields .checkbox-item--inline:hover {
+  background: transparent;
+}
+
+.physical-properties-form .property-section-fields .checkbox-item--inline input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.physical-properties-form .property-section-chart {
+  align-self: stretch;
+}
+
+.hardness-card .hardness-card__row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  width: 100%;
+  min-width: 0;
+}
+
+.hardness-card__unit {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.hardness-card__unit-label {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.hardness-card__unit .unit-select {
+  flex: 0 1 7.5rem;
+  width: 7.5rem;
+  min-width: 5rem;
+  max-width: 9rem;
+}
+
+.hardness-card__acceptance {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.hardness-card__acceptance input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.hardness-card__acceptance-text {
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.hardness-card__bounds-group {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  gap: var(--space-sm);
+  min-width: 12rem;
+  justify-content: flex-end;
+}
+
+.hardness-card__table-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  overflow: auto;
+}
+
+.hardness-card__table {
+  width: 100%;
+  margin: 0;
+  table-layout: fixed;
+}
+
+.hardness-card__table th,
+.hardness-card__table td {
+  text-align: left;
+}
+
+.hardness-card__table .table-cell-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.hardness-card__controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 4px;
+  align-self: flex-start;
+  padding-top: 2px;
+}
+
+.scalar-mech-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.scalar-mech-card__top {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  width: 100%;
+  min-width: 0;
+}
+
+.scalar-mech-card__unit {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.scalar-mech-card__unit-label {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.scalar-mech-card__unit .unit-select {
+  flex: 0 1 7.5rem;
+  width: 7.5rem;
+  min-width: 5rem;
+  max-width: 9rem;
+}
+
+.scalar-mech-card__acceptance {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.scalar-mech-card__acceptance input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.scalar-mech-card__value {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.scalar-mech-card__value-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 6rem;
+}
+
+.scalar-mech-card .form-row--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin: 0;
+}
+
+.scalar-mech-card .form-row--stack label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.scalar-mech-card .form-row--stack :is(input, select, textarea),
+.scalar-mech-card .form-row--stack .unit-select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .hardness-card .hardness-card__row {
+    flex-wrap: wrap;
+  }
+
+  .hardness-card__bounds-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .scalar-mech-card__top {
+    flex-wrap: wrap;
+  }
+
+  .scalar-mech-card__value {
+    width: 100%;
+  }
+}
+
 .property-section-fields {
   flex: 1;
   min-width: 0;
@@ -2554,7 +2904,7 @@ fieldset.property-section-fields {
 }
 
 .physical-properties-form .property-section-fields .form-row:has([id$="_comment"]) label {
-  padding-top: 6px;
+  padding-top: 0;
 }
 
 .physical-properties-form .property-section-fields .property-field-wrap,
@@ -4894,7 +5244,7 @@ fieldset.property-section-fields {
   height: 100%;
 }
 
-.larson-miller-chart-panel .larson-miller-chart-wrap,
+.larson-miller-chart-panel .larson-miller-chart,
 .larson-miller-chart-panel .larson-miller-chart-empty {
   flex: 1 1 auto;
   min-height: 440px;
@@ -5024,16 +5374,54 @@ fieldset.property-section-fields {
   color: var(--text-muted);
 }
 
+.larson-miller-chart {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.larson-miller-chart .larson-miller-chart-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.larson-miller-chart .ashby-toolbar {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
 .larson-miller-chart-wrap {
   position: relative;
   min-height: 520px;
   height: 58vh;
+  overflow: visible;
 }
 
-.larson-miller-legend-panel {
+.larson-miller-legend-panel.ashby-legend-overlay {
   position: absolute;
   z-index: 3;
   pointer-events: none;
+  overflow: visible !important;
+  max-width: none !important;
+  width: max-content !important;
+}
+
+.larson-miller-legend-panel .ashby-legend-overlay-title,
+.larson-miller-legend-panel .ashby-legend-label {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.larson-miller-legend-list.ashby-legend-overlay-list {
+  overflow: visible !important;
+  max-width: none !important;
+  width: max-content !important;
 }
 
 .larson-miller-legend-marker {
@@ -5998,20 +6386,27 @@ fieldset.property-section-fields {
   flex: 0 0 0.5cm;
 }
 
+/* Списки занимают освободившееся место после переноса кнопок вниз. */
 .compare-props-selection-stack > .compare-props-search-labelframe,
 .compare-props-tab .ashby-controls .ashby-labelframe.compare-props-search-labelframe,
 .compare-props-selection-stack > .compare-props-selected-labelframe,
 .compare-props-tab .ashby-controls .ashby-labelframe.compare-props-selected-labelframe {
-  flex: 0 0 auto !important;
-  min-height: 120px !important;
-  max-height: 160px !important;
+  flex: 1 1 0 !important;
+  min-height: 160px !important;
+  max-height: none !important;
 }
 
 .compare-props-search-list,
 .compare-props-selected-list {
-  max-height: 110px !important;
-  min-height: 80px !important;
+  flex: 1 1 auto !important;
+  max-height: none !important;
+  min-height: 120px !important;
   overflow-y: auto !important;
+}
+
+.compare-props-tab .ashby-controls > .compare-props-actions {
+  margin-top: 0.5cm;
+  flex-shrink: 0;
 }
 
 .compare-props-chart {

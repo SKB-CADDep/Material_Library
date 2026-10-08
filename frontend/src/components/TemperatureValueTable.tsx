@@ -1,6 +1,8 @@
 import { useRef } from "react";
 
+import { BlurCommitTextInput } from "./BlurCommitTextInput";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 
 function formatPairNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
@@ -25,9 +27,11 @@ export function TemperatureValueTable({
   onDeleteRow,
 }: TemperatureValueTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(tableRef);
+  const paneActive = useKeepAlivePaneActive();
+  useResizableTableHeaders(tableRef, { disabled: !paneActive });
 
-  const isRowSelectionEnabled = Boolean(onRowSelect);  const tableClassName = isRowSelectionEnabled
+  const isRowSelectionEnabled = Boolean(onRowSelect);
+  const tableClassName = isRowSelectionEnabled
     ? "data-table data-table--temperature-pairs data-table--selectable-rows"
     : "data-table data-table--temperature-pairs";
 
@@ -72,13 +76,14 @@ export function TemperatureValueTable({
                         : undefined
                     }
                   >
-                    <input
+                    <BlurCommitTextInput
                       readOnly={!onChangeTemperature}
                       value={formatPairNumber(temperature)}
-                      onChange={
+                      commitWhenUnchanged={false}
+                      onCommit={
                         onChangeTemperature
-                          ? (e) => onChangeTemperature(index, e.target.value)
-                          : undefined
+                          ? (raw) => onChangeTemperature(index, raw)
+                          : () => undefined
                       }
                       onMouseDown={(e) => {
                         if (isRowSelectionEnabled) {
@@ -88,6 +93,7 @@ export function TemperatureValueTable({
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className="table-cell-input"
+                      inputMode="decimal"
                     />
                   </td>
                   <td
@@ -102,15 +108,17 @@ export function TemperatureValueTable({
                         : undefined
                     }
                   >
-                    <input
+                    <BlurCommitTextInput
                       readOnly={!onChangeValue}
-                      onChange={
+                      commitWhenUnchanged={false}
+                      onCommit={
                         onChangeValue
-                          ? (e) => onChangeValue(index, e.target.value)
-                          : undefined
+                          ? (raw) => onChangeValue(index, raw)
+                          : () => undefined
                       }
                       value={formatPairNumber(value)}
                       className="table-cell-input"
+                      inputMode="decimal"
                       onMouseDown={(e) => {
                         if (isRowSelectionEnabled) {
                           onRowSelect?.(index);
