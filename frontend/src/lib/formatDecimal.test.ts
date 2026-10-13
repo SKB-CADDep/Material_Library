@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDecimal,
+  isDecimalDraft,
   parseDecimalFieldInput,
   parseDecimalInput,
 } from "./formatDecimal";
@@ -22,6 +23,21 @@ describe("parseDecimalInput", () => {
 
   it("accepts a dot as decimal separator", () => {
     expect(parseDecimalInput("10.5")).toBe(10.5);
+  });
+});
+
+describe("isDecimalDraft", () => {
+  it("allows digits, a sign and one decimal separator", () => {
+    expect(isDecimalDraft("")).toBe(true);
+    expect(isDecimalDraft("-")).toBe(true);
+    expect(isDecimalDraft("2.")).toBe(true);
+    expect(isDecimalDraft("2,5")).toBe(true);
+    expect(isDecimalDraft("-12.5")).toBe(true);
+  });
+
+  it("rejects letters", () => {
+    expect(isDecimalDraft("2a")).toBe(false);
+    expect(isDecimalDraft("нет")).toBe(false);
   });
 });
 

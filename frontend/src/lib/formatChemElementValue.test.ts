@@ -3,8 +3,8 @@ import { formatChemElementValue } from "./formatChemElementValue";
 
 describe("formatChemElementValue", () => {
   it("returns dash for missing data", () => {
-    expect(formatChemElementValue(null)).toBe("-");
-    expect(formatChemElementValue({})).toBe("-");
+    expect(formatChemElementValue(null)).toBe("—");
+    expect(formatChemElementValue({})).toBe("—");
   });
 
   it("formats min-max range with tolerances", () => {

@@ -133,7 +133,7 @@ try {
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
     Write-Host $ui.success_hint_backend
-    Write-Host $ui.success_hint_stop
+    Write-Host "Остановка: закройте окна сервера и интерфейса. Если порт остался занят — scripts\Stop Demo.bat"
     Write-Host ""
 
     if (-not $SkipBrowser) {

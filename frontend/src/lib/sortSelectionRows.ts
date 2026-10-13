@@ -1,5 +1,9 @@
-import type { TemperatureSelectionRow } from "../types/api";
-import { unwrapSelectionCellValue } from "./formatSelectionCellValue";
+import type { TemperatureSelectionColumn, TemperatureSelectionRow, UnitResponse } from "../types/api";
+import { isEmptyCellMarker } from "./emptyCell";
+import {
+  selectionCellComparableValue,
+  unwrapSelectionCellValue,
+} from "./formatSelectionCellValue";
 
 export type SelectionSortColumn =
   | "material_name"
@@ -31,7 +35,7 @@ function buildSortKey(raw: unknown): SortKey {
 
   if (typeof unwrapped === "string") {
     const trimmed = unwrapped.trim();
-    if (trimmed === "" || trimmed === "—") {
+    if (isEmptyCellMarker(trimmed)) {
       return [2, null];
     }
 
@@ -70,9 +74,16 @@ function compareSortKeys(a: SortKey, b: SortKey): number {
   return 0;
 }
 
+export type SelectionSortUnits = {
+  columns: Array<Pick<TemperatureSelectionColumn, "key" | "unit" | "unit_type">>;
+  columnUnits?: Record<string, string>;
+  unitConfigs?: Record<string, UnitResponse>;
+};
+
 export function getSelectionRowSortValue(
   row: TemperatureSelectionRow,
   column: SelectionSortColumn,
+  units?: SelectionSortUnits,
 ): unknown {
   switch (column) {
     case "material_name":
@@ -83,8 +94,23 @@ export function getSelectionRowSortValue(
       return row.source;
     case "max_temp":
       return row.max_temp;
-    default:
-      return row.values[column] ?? null;
+    default: {
+      const raw = row.values[column] ?? null;
+      const col = units?.columns.find((item) => item.key === column);
+      if (!col) {
+        return raw;
+      }
+      const unitConfig = col.unit_type
+        ? units?.unitConfigs?.[col.unit_type]
+        : undefined;
+      return selectionCellComparableValue(raw, {
+        columnKey: col.key,
+        baseUnit: col.unit ?? "",
+        displayUnit: units?.columnUnits?.[col.key] ?? col.unit ?? "",
+        unitConfig,
+        rowSourceUnit: unwrapSelectionCellValue(row.values.unit_value),
+      });
+    }
   }
 }
 
@@ -92,10 +118,11 @@ export function sortSelectionRows(
   rows: TemperatureSelectionRow[],
   column: SelectionSortColumn,
   direction: SortDirection,
+  units?: SelectionSortUnits,
 ): TemperatureSelectionRow[] {
   return sortRowsByValue(
     rows,
-    (row) => getSelectionRowSortValue(row, column),
+    (row) => getSelectionRowSortValue(row, column, units),
     direction,
   );
 }

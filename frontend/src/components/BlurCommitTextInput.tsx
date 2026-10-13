@@ -4,6 +4,7 @@ import {
   type FocusEventHandler,
   type InputHTMLAttributes,
 } from "react";
+import { isDecimalDraft } from "../lib/formatDecimal";
 
 type BlurCommitTextInputProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -72,7 +73,15 @@ export function BlurCommitTextInput({
       {...rest}
       value={editing ? draft : value}
       onFocus={handleFocus}
-      onChange={(event) => setDraft(event.target.value)}
+      onChange={(event) => {
+        const next = event.target.value;
+        if (rest.inputMode === "decimal" && !isDecimalDraft(next)) {
+          if (next.length >= draft.length) {
+            return;
+          }
+        }
+        setDraft(next);
+      }}
       onBlur={handleBlur}
       onKeyDown={(event) => {
         if (event.key === "Enter") {

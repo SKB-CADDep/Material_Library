@@ -282,7 +282,7 @@ class SelectionService:
                 rows.append(row)
                 continue
 
-            for hardness in hardness_list:
+            for hardness_index, hardness in enumerate(hardness_list):
                 src = hardness.get("property_source", "")
                 sub = hardness.get("property_subsource")
                 if sub:
@@ -299,6 +299,7 @@ class SelectionService:
                     category_index=i,
                     source_ref_id=cat_ref,
                 )
+                row["hardness_index"] = hardness_index
                 row["values"] = {
                     "min_value": hardness.get("min_value"),
                     "max_value": hardness.get("max_value"),

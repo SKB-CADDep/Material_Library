@@ -123,8 +123,12 @@ export function TempSelectionTab() {
     if (!sortState || filteredRows.length === 0) {
       return filteredRows;
     }
-    return sortSelectionRows(filteredRows, sortState.column, sortState.direction);
-  }, [filteredRows, sortState]);
+    return sortSelectionRows(filteredRows, sortState.column, sortState.direction, {
+      columns,
+      columnUnits,
+      unitConfigs,
+    });
+  }, [filteredRows, sortState, columns, columnUnits, unitConfigs]);
 
   const handleSortColumn = (column: SelectionSortColumn) => {
     setSortState((prev) => {

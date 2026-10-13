@@ -767,12 +767,71 @@ select {
     box-sizing: border-box;
   }
 
-.kp-category-fields {
+.physical-properties-form .property-section-fields.kp-category-fields {
     display: flex;
     flex-direction: column;
-    gap: 0;
-    max-width: 640px;
-  }
+    max-width: none;
+    width: 100%;
+}
+
+.physical-properties-form .kp-category-pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px 20px;
+    width: 100%;
+}
+
+.physical-properties-form .property-section-fields.kp-category-fields .kp-category-pair > .form-row:not(.form-row--stack) {
+    display: grid;
+    grid-template-columns: auto max-content;
+    gap: 8px;
+    margin-bottom: 0;
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.physical-properties-form .kp-category-pair > .form-row label.form-label--fixed {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+}
+
+.physical-properties-form .property-section-fields.kp-category-fields .kp-category-pair > .form-row :is(input.input, select.input) {
+    width: 18rem;
+    max-width: 100%;
+}
+
+.physical-properties-form .property-section-fields.kp-category-fields .kp-category-pair > .form-row select.input {
+    width: 24rem;
+    padding-right: 2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background-color: var(--surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+}
+
+.physical-properties-form .kp-category-pair > .form-footnote {
+    margin: 0;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+    .physical-properties-form .kp-category-pair {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .physical-properties-form .property-section-fields.kp-category-fields .kp-category-pair > .form-row:not(.form-row--stack) {
+        width: 100%;
+    }
+}
 
 .form-row .input {
     flex: 1; /* РРЅРїСѓС‚ Р·Р°РЅРёРјР°РµС‚ РІСЃС‘ РѕСЃС‚Р°РІС€РµРµСЃСЏ РјРµСЃС‚Рѕ */
@@ -2304,18 +2363,70 @@ select {
   overflow: hidden;
 }
 
+.chem-source-chart-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-md);
+  width: 100%;
+  min-width: 0;
+}
+
+.chem-source-chart-row > .chem-source-data {
+  flex: 0 1 36rem;
+  width: min(100%, 36rem);
+  max-width: 36rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.chem-source-chart-row > .chemical-composition-chart {
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.property-section-fields.chem-elements-block {
+  width: 100%;
+  max-width: none;
+}
+
+.property-section-fields.chem-elements-block table.data-table--chemical-elements {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .chem-source-chart-row {
+    flex-direction: column;
+  }
+
+  .chem-source-chart-row > .chem-source-data {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 .table-wrapper--chemical-elements .data-table-container {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .property-section-fields table.data-table--chemical-elements {
-  min-width: 920px;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.property-section-fields table.data-table--chemical-elements th,
+.property-section-fields table.data-table--chemical-elements td {
+  overflow-wrap: anywhere;
 }
 
 .property-section-fields table.data-table--chemical-elements .table-cell-input {
-  min-width: 72px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 

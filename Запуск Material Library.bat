@@ -10,7 +10,7 @@ echo.
 echo   Material Library - starting...
 echo   Folder: %CD%
 echo   See INSTRUKCIYA / instruction file in this folder.
-echo   Do not close this window while working.
+echo   Close this window to stop the program.
 echo.
 
 set "LOG=%TEMP%\material-library-launch.log"

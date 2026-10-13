@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { SingleCalculationRow } from "../types/api";
+import type { SingleCalculationRow, UnitResponse } from "../types/api";
 import {
   getCalculationRowSortValue,
   sortCalculationRows,
 } from "./sortCalculationRows";
+
+const hardnessConfig: UnitResponse = {
+  unit_type: "Твердость",
+  system_unit: "HB",
+  units: ["HB", "HRC", "d10"],
+  factors: { HB: 1, HRC: "table", d10: "table" },
+  display_labels: {},
+};
 
 function calcRow(
   temperature: number | string,
@@ -33,6 +41,32 @@ describe("sortCalculationRows", () => {
       }),
     ];
     const sorted = sortCalculationRows(rows, "yield_strength", "asc");
+    expect(sorted.map((r) => r.temperature)).toEqual([100, 20]);
+  });
+
+  it("sorts hardness by the unit selected in the column header", () => {
+    const rows = [
+      calcRow(20, { hardness: { value: 653, mode: "exact" } }),
+      calcRow(100, { hardness: { value: 712, mode: "exact" } }),
+    ];
+    const sorted = sortCalculationRows(rows, "hardness", "asc", {
+      columns: [{ key: "hardness", unit: "HB", unit_type: "Твердость" }],
+      columnUnits: { hardness: "d10" },
+      unitConfigs: { Твердость: hardnessConfig },
+    });
+    expect(sorted.map((r) => r.temperature)).toEqual([100, 20]);
+  });
+
+  it("puts hardness outside the table after real values", () => {
+    const rows = [
+      calcRow(20, { hardness: { value: 74, mode: "exact" } }),
+      calcRow(100, { hardness: { value: 653, mode: "exact" } }),
+    ];
+    const sorted = sortCalculationRows(rows, "hardness", "asc", {
+      columns: [{ key: "hardness", unit: "HB", unit_type: "Твердость" }],
+      columnUnits: { hardness: "HRC" },
+      unitConfigs: { Твердость: hardnessConfig },
+    });
     expect(sorted.map((r) => r.temperature)).toEqual([100, 20]);
   });
 });

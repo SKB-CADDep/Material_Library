@@ -9,6 +9,7 @@ import {
   type ToleranceType,
 } from "./chemicalEffectiveBounds";
 import { materialMatchesApplicationAreas } from "./applicationAreaFilter";
+import { EMPTY_CELL } from "./emptyCell";
 import { resolveCompositionSourceLabel } from "./resolveCompositionSourceLabel";
 
 export type ChemCompositionEntryApi = {
@@ -85,7 +86,7 @@ export function buildChemCompositionCache(
       areas: entry.areas ?? [],
       composition,
       sourceLabel: resolveCompositionSourceLabel(composition, chemicalSources),
-      baseElement: String(composition.base_element ?? "").trim() || "-",
+      baseElement: String(composition.base_element ?? "").trim() || EMPTY_CELL,
       unit: elements[0]?.unit_value?.trim() || "%",
       elementsMap: buildElementsMap(elements),
     };
@@ -277,7 +278,7 @@ export function formatDetailNumber(
   prec = 4,
 ): string {
   if (value === null || value === undefined) {
-    return "-";
+    return EMPTY_CELL;
   }
   return value
     .toFixed(prec)

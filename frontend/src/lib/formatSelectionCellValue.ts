@@ -1,3 +1,4 @@
+import { EMPTY_CELL, isEmptyCellMarker } from "./emptyCell";
 import { formatDecimal } from "./formatDecimal";
 import type {
   CalculationCell,
@@ -5,10 +6,11 @@ import type {
   UnitResponse,
 } from "../types/api";
 import type { SelectionSortColumn } from "./sortSelectionRows";
+import { usesHardnessTableConversion } from "./hardnessConversion";
 import { convertBetweenUnits } from "./unitConversion";
 
 
-export const SELECTION_EMPTY = "-";
+export const SELECTION_EMPTY = EMPTY_CELL;
 
 export const HARDNESS_COLUMN_KEYS = [
   "min_value",
@@ -58,7 +60,8 @@ export function formatSelectionFrozenValue(
   if (value === null || value === undefined) {
     return SELECTION_EMPTY;
   }
-  return String(value);
+  const text = String(value);
+  return isEmptyCellMarker(text) ? SELECTION_EMPTY : text;
 }
 
 function formatSelectionNumericValue(value: number): string {
@@ -68,16 +71,37 @@ function formatSelectionNumericValue(value: number): string {
   return formatDecimal(value, 2);
 }
 
-export function formatSelectionCellValue(
-  raw: SelectionCellRaw,
-  options: {
-    columnKey: string;
-    baseUnit: string;
-    displayUnit: string;
-    unitConfig?: UnitResponse;
-    rowSourceUnit?: number | string | null;
-  },
+type SelectionCellFormatOptions = {
+  columnKey: string;
+  baseUnit: string;
+  displayUnit: string;
+  unitConfig?: UnitResponse;
+  rowSourceUnit?: number | string | null;
+};
+
+function selectionSourceUnit(
+  columnKey: string,
+  baseUnit: string,
+  rowSourceUnit: number | string | null | undefined,
 ): string {
+  if (columnKey !== "min_value" && columnKey !== "max_value") {
+    return baseUnit;
+  }
+  if (
+    rowSourceUnit === null ||
+    rowSourceUnit === undefined ||
+    isEmptyCellMarker(String(rowSourceUnit))
+  ) {
+    return baseUnit;
+  }
+  return String(rowSourceUnit).trim();
+}
+
+/** Число в единице колонки, подпись или null, если ячейка пустая. */
+export function selectionCellComparableValue(
+  raw: SelectionCellRaw,
+  options: SelectionCellFormatOptions,
+): number | string | null {
   const { columnKey, baseUnit, displayUnit, unitConfig, rowSourceUnit } =
     options;
   const value = unwrapSelectionCellValue(raw);
@@ -87,53 +111,64 @@ export function formatSelectionCellValue(
       return displayUnit;
     }
     if (value === null || value === undefined || value === "") {
-      return SELECTION_EMPTY;
+      return null;
     }
     return String(value);
   }
 
   if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
+
+  const numeric =
+    typeof value === "number"
+      ? value
+      : Number(String(value).trim().replace(",", "."));
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  const sourceUnit = selectionSourceUnit(columnKey, baseUnit, rowSourceUnit);
+  if (
+    !unitConfig ||
+    !sourceUnit ||
+    !displayUnit ||
+    sourceUnit === displayUnit
+  ) {
+    return numeric;
+  }
+
+  try {
+    const converted = convertBetweenUnits(
+      numeric,
+      sourceUnit,
+      displayUnit,
+      unitConfig,
+    );
+    return Number.isFinite(converted) ? converted : null;
+  } catch {
+    if (usesHardnessTableConversion(unitConfig.factors)) {
+      return null;
+    }
+    return numeric;
+  }
+}
+
+export function formatSelectionCellValue(
+  raw: SelectionCellRaw,
+  options: SelectionCellFormatOptions,
+): string {
+  const comparable = selectionCellComparableValue(raw, options);
+  if (comparable === null) {
     return SELECTION_EMPTY;
   }
-
-  const numeric = typeof value === "number" ? value : Number(value);
-  if (Number.isNaN(numeric)) {
-    return String(value);
+  if (typeof comparable === "number") {
+    return formatSelectionNumericValue(comparable);
   }
-
-  let sourceUnit = baseUnit;
-  if (columnKey === "min_value" || columnKey === "max_value") {
-    const rowUnit = rowSourceUnit;
-    if (
-      rowUnit !== null &&
-      rowUnit !== undefined &&
-      String(rowUnit).trim() !== "" &&
-      String(rowUnit).trim() !== SELECTION_EMPTY
-    ) {
-      sourceUnit = String(rowUnit).trim();
-    }
-  }
-
-  if (
-    unitConfig &&
-    sourceUnit &&
-    displayUnit &&
-    sourceUnit !== displayUnit
-  ) {
-    try {
-      const converted = convertBetweenUnits(
-        numeric,
-        sourceUnit,
-        displayUnit,
-        unitConfig,
-      );
-      return formatSelectionNumericValue(converted);
-    } catch {
-      return formatSelectionNumericValue(numeric);
-    }
-  }
-
-  return formatSelectionNumericValue(numeric);
+  return isEmptyCellMarker(comparable) ? SELECTION_EMPTY : comparable;
 }
 
 export function syncHardnessColumnUnits(

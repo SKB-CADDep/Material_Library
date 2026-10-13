@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from datetime import datetime
@@ -477,20 +478,48 @@ class Material:
                 self._hydrate_chemical_from_group(group)
 
     def _hydrate_physical_from_group(self, group: dict) -> None:
-        if self.get_physical_list():
+        entries = group.get("properties")
+        if not isinstance(entries, list):
+            return
+        # Пустая группа не затирает уже заполненный legacy.
+        if self.get_physical_list() and not entries:
             return
         props = []
-        for entry in group.get("properties") or []:
+        for entry in entries:
             item = self._named_prop_from_group_entry(entry)
             if item:
                 props.append(item)
         self.data[Schema.PHYSICAL] = {Schema.PROPERTIES: props}
 
+    _MECHANICAL_CATEGORY_OWN_KEYS = frozenset({
+        Schema.VAL_STR_CAT,
+        Schema.PROPERTIES,
+        Schema.HARDNESS,
+        Schema.HARDNESS_UNIT,
+        "comment",
+        Schema.REF_ID,
+        "property_subsource",
+        "property_source",
+    })
+    _STRENGTH_GROUP_OWN_KEYS = frozenset({
+        "strength_category",
+        "comment",
+        "properties",
+        Schema.REF_ID,
+        "property_subsource",
+        "property_source",
+    })
+
     def _hydrate_mechanical_from_group(self, group: dict) -> None:
-        if self.get_strength_categories():
+        strength_groups = group.get("strength_groups")
+        if not isinstance(strength_groups, list):
+            return
+        # Пустая группа не затирает уже заполненный legacy.
+        # Непустая — источник для подбора и API, даже если mechanical_properties устарел.
+        if self.get_strength_categories() and not strength_groups:
             return
         categories = []
-        for strength_group in group.get("strength_groups") or []:
+        for strength_group in strength_groups:
             if not isinstance(strength_group, dict):
                 continue
             category = {
@@ -518,17 +547,127 @@ class Material:
                 item = self._named_prop_from_group_entry(entry)
                 if item:
                     category[Schema.PROPERTIES].append(item)
+            for key, value in strength_group.items():
+                if key in self._STRENGTH_GROUP_OWN_KEYS:
+                    continue
+                category[key] = copy.deepcopy(value)
             categories.append(category)
         self.data[Schema.MECHANICAL] = {Schema.STRENGTH_CAT: categories}
 
-    def _hydrate_chemical_from_group(self, group: dict) -> None:
+    def _find_property_group(self, kind: str) -> dict | None:
+        groups = self.data.get("property_groups")
+        if not isinstance(groups, list):
+            return None
+        for group in groups:
+            if isinstance(group, dict) and group.get("property_type") == kind:
+                return group
+        return None
+
+    @staticmethod
+    def _group_entry_from_named_prop(prop: dict) -> dict | None:
+        name = prop.get(Schema.PROP_NAME)
+        if not name:
+            return None
+        data = {
+            key: copy.deepcopy(value)
+            for key, value in prop.items()
+            if key != Schema.PROP_NAME
+        }
+        return {"property_name": name, "data": data}
+
+    def _project_physical_into_property_groups(self) -> None:
+        group = self._find_property_group("physical")
+        if group is None:
+            return
+        entries = []
+        for prop in self.get_physical_list():
+            if not isinstance(prop, dict):
+                continue
+            entry = self._group_entry_from_named_prop(prop)
+            if entry:
+                entries.append(entry)
+        group["properties"] = entries
+
+    def _project_chemical_into_property_groups(self) -> None:
+        group = self._find_property_group("chemical")
+        if group is None:
+            return
         chemical = self.data.get(Schema.CHEMICAL)
-        if isinstance(chemical, dict):
-            composition = chemical.get(Schema.COMPOSITION)
-            if isinstance(composition, list) and composition:
-                return
         composition = []
-        for entry in group.get("properties") or []:
+        if isinstance(chemical, dict):
+            raw = chemical.get(Schema.COMPOSITION)
+            if isinstance(raw, list):
+                composition = raw
+        group["properties"] = [
+            {"property_name": "composition", "data": copy.deepcopy(entry)}
+            for entry in composition
+            if isinstance(entry, dict)
+        ]
+
+    def _project_mechanical_into_property_groups(self) -> None:
+        """Копирует текущие категории прочности в mechanical property_groups.
+
+        Иначе save() → normalize заново развернёт старую группу и затрёт правку.
+        """
+        mechanical_group = self._find_property_group("mechanical")
+        if mechanical_group is None:
+            return
+        mechanical_group["strength_groups"] = [
+            self._strength_group_from_category(cat)
+            for cat in self.get_strength_categories()
+            if isinstance(cat, dict)
+        ]
+
+    @staticmethod
+    def _strength_group_from_category(cat: dict) -> dict:
+        strength_group = {
+            "strength_category": cat.get(Schema.VAL_STR_CAT) or "",
+            "comment": cat.get("comment") or "",
+            "properties": [],
+        }
+        if cat.get(Schema.REF_ID):
+            strength_group[Schema.REF_ID] = cat[Schema.REF_ID]
+        if cat.get("property_subsource") is not None:
+            strength_group["property_subsource"] = cat["property_subsource"]
+        if cat.get("property_source") is not None:
+            strength_group["property_source"] = cat["property_source"]
+
+        hardness = cat.get(Schema.HARDNESS)
+        hardness_unit = cat.get(Schema.HARDNESS_UNIT)
+        if isinstance(hardness, list) or hardness_unit:
+            strength_group["properties"].append(
+                {
+                    "property_name": "hardness",
+                    "data": {
+                        "hardness_values": copy.deepcopy(hardness)
+                        if isinstance(hardness, list)
+                        else [],
+                        "hardness_unit": hardness_unit or "",
+                    },
+                }
+            )
+
+        for prop in cat.get(Schema.PROPERTIES) or []:
+            if not isinstance(prop, dict):
+                continue
+            name = prop.get(Schema.PROP_NAME)
+            if not name or name == "hardness":
+                continue
+            entry = Material._group_entry_from_named_prop(prop)
+            if entry:
+                strength_group["properties"].append(entry)
+        for key, value in cat.items():
+            if key in Material._MECHANICAL_CATEGORY_OWN_KEYS:
+                continue
+            strength_group[key] = copy.deepcopy(value)
+        return strength_group
+
+    def _hydrate_chemical_from_group(self, group: dict) -> None:
+        raw_entries = group.get("properties")
+        if not isinstance(raw_entries, list):
+            raw_entries = []
+        composition = []
+        for entry in raw_entries:
             if not isinstance(entry, dict):
                 continue
             if entry.get("property_name") != "composition":
@@ -536,6 +675,15 @@ class Material:
             data = entry.get("data")
             if isinstance(data, dict):
                 composition.append(dict(data))
+        chemical = self.data.get(Schema.CHEMICAL)
+        legacy = []
+        if isinstance(chemical, dict):
+            stored = chemical.get(Schema.COMPOSITION)
+            if isinstance(stored, list):
+                legacy = stored
+        # Пустая группа не затирает уже заполненный состав.
+        if legacy and not composition:
+            return
         self.data[Schema.CHEMICAL] = {Schema.COMPOSITION: composition}
 
     @staticmethod
@@ -646,7 +794,8 @@ class Material:
         self.normalize_metadata(self.data)
         self.filepath = save_path
         self.filename = os.path.basename(save_path)
-        self.normalize_schema()
+        self._normalize_physical()
+        self._normalize_mechanical()
         now = datetime.now().isoformat()
 
         for prop in self.get_physical_list():
@@ -657,5 +806,11 @@ class Material:
             for prop in cat.get(Schema.PROPERTIES) or []:
                 if isinstance(prop, dict):
                     prop["property_last_updated"] = now
+
+        # Сначала правка legacy → группы, затем normalize снова разворачивает группы.
+        self._project_physical_into_property_groups()
+        self._project_chemical_into_property_groups()
+        self._project_mechanical_into_property_groups()
+        self.normalize_schema()
 
         atomic_write_json(save_path, self.data)

@@ -635,7 +635,12 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
             prop_map = self.HARDNESS_COLUMNS
 
         for row in self.treeview_data:
-            frozen_values = [str(row.get(c, "-") if row.get(c) is not None else "-") for c in frozen_cols]
+            frozen_values = [
+                "—"
+                if row.get(c) is None or str(row.get(c)).strip() in ("", "-", "—")
+                else str(row.get(c))
+                for c in frozen_cols
+            ]
             scrollable_values = []
             for col_key in scrollable_cols:
                 raw_val = row.get(col_key)
@@ -646,10 +651,14 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
                         unit = self.column_units.get(col_key) or UnitManager.get_system_unit("Твердость")
                         scrollable_values.append(unit)
                     else:
-                        scrollable_values.append(str(raw_val) if raw_val else "-")
+                        scrollable_values.append(
+                            "—"
+                            if not raw_val or str(raw_val).strip() in ("-", "—")
+                            else str(raw_val)
+                        )
                     continue
                 if raw_val is None:
-                    scrollable_values.append("-")
+                    scrollable_values.append("—")
                     continue
 
                 prop_info = prop_map.get(col_key)
@@ -1146,7 +1155,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                     mode = None
 
                 if raw_val is None:
-                    values.append("-")
+                    values.append("—")
                     continue
 
                 info = PROPERTIES.get_meta(prop_key)

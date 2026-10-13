@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
-import type { TemperatureSelectionRow } from "../types/api";
+import type { TemperatureSelectionRow, UnitResponse } from "../types/api";
 import {
   getSelectionRowSortValue,
   sortRowsByValue,
   sortSelectionRows,
   toggleSortDirection,
 } from "./sortSelectionRows";
+
+const hardnessConfig: UnitResponse = {
+  unit_type: "Твердость",
+  system_unit: "HB",
+  units: ["HB", "HRC", "d10"],
+  factors: { HB: 1, HRC: "table", d10: "table" },
+  display_labels: {},
+};
 
 function row(
   overrides: Partial<TemperatureSelectionRow> & Pick<TemperatureSelectionRow, "material_name">,
@@ -25,10 +33,11 @@ describe("sortSelectionRows", () => {
       row({ material_name: "C", max_temp: "—" }),
       row({ material_name: "A", max_temp: 100 }),
       row({ material_name: "B", max_temp: "50" }),
+      row({ material_name: "D", max_temp: "-" }),
     ];
 
     const sorted = sortSelectionRows(rows, "max_temp", "asc");
-    expect(sorted.map((r) => r.material_name)).toEqual(["B", "A", "C"]);
+    expect(sorted.map((r) => r.material_name)).toEqual(["B", "A", "C", "D"]);
   });
 
   it("reverses order for desc", () => {
@@ -69,6 +78,63 @@ describe("sortSelectionRows", () => {
     ];
     const sorted = sortSelectionRows(rows, "density", "desc");
     expect(sorted.map((r) => r.material_name)).toEqual(["B", "A"]);
+  });
+
+  it("sorts hardness by the unit selected in the column header", () => {
+    const rows = [
+      row({
+        material_name: "softer",
+        values: { min_value: 653, unit_value: "HB" },
+      }),
+      row({
+        material_name: "harder",
+        values: { min_value: 712, unit_value: "HB" },
+      }),
+    ];
+    const sorted = sortSelectionRows(rows, "min_value", "asc", {
+      columns: [{ key: "min_value", unit: "HB", unit_type: "Твердость" }],
+      columnUnits: { min_value: "d10" },
+      unitConfigs: { Твердость: hardnessConfig },
+    });
+    expect(sorted.map((r) => r.material_name)).toEqual(["harder", "softer"]);
+  });
+
+  it("sorts mixed hardness scales in the column unit", () => {
+    const rows = [
+      row({
+        material_name: "hrc",
+        values: { min_value: 62.9, unit_value: "HRC" },
+      }),
+      row({
+        material_name: "hb",
+        values: { min_value: 601, unit_value: "HB" },
+      }),
+    ];
+    const sorted = sortSelectionRows(rows, "min_value", "asc", {
+      columns: [{ key: "min_value", unit: "HB", unit_type: "Твердость" }],
+      columnUnits: { min_value: "HRC" },
+      unitConfigs: { Твердость: hardnessConfig },
+    });
+    expect(sorted.map((r) => r.material_name)).toEqual(["hb", "hrc"]);
+  });
+
+  it("puts hardness outside the table after real values", () => {
+    const rows = [
+      row({
+        material_name: "out",
+        values: { min_value: 74, unit_value: "HB" },
+      }),
+      row({
+        material_name: "in",
+        values: { min_value: 653, unit_value: "HB" },
+      }),
+    ];
+    const sorted = sortSelectionRows(rows, "min_value", "asc", {
+      columns: [{ key: "min_value", unit: "HB", unit_type: "Твердость" }],
+      columnUnits: { min_value: "HRC" },
+      unitConfigs: { Твердость: hardnessConfig },
+    });
+    expect(sorted.map((r) => r.material_name)).toEqual(["in", "out"]);
   });
 });
 

@@ -18,6 +18,7 @@ import { PropertyTemperatureLineChart } from "../components/PropertyTemperatureL
 import { PropertyCommentField } from "../components/PropertyCommentField";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
 import { BlurCommitTextInput } from "../components/BlurCommitTextInput";
+import { EMPTY_CELL } from "../lib/emptyCell";
 import {
   parseDecimalFieldInput,
   parseDecimalInput,
@@ -450,6 +451,7 @@ export const MechanicalPropertiesTab = memo(function MechanicalPropertiesTab({
           <fieldset className="editor-readonly-scope" disabled={readOnly}>
             <fieldset className="form-section mech-kp-sticky__meta">
               <div className="property-section-fields kp-category-fields">
+                <div className="kp-category-pair">
                 <div className="form-row">
                   <label htmlFor="name_strength_select" className="form-label--fixed">
                     Название КП:
@@ -538,6 +540,7 @@ export const MechanicalPropertiesTab = memo(function MechanicalPropertiesTab({
                   </select>
                 </div>
                 <RequiredFieldsFootnote />
+                </div>
               </div>
             </fieldset>
           </fieldset>
@@ -855,7 +858,7 @@ export const MechanicalPropertiesTab = memo(function MechanicalPropertiesTab({
                               className="table-cell-input"
                               type="text"
                               inputMode="decimal"
-                              placeholder="—"
+                              placeholder={EMPTY_CELL}
                               value={
                                 row.max_value === undefined ||
                                 row.max_value === null
@@ -888,7 +891,7 @@ export const MechanicalPropertiesTab = memo(function MechanicalPropertiesTab({
                               className="table-cell-input"
                               type="text"
                               inputMode="decimal"
-                              placeholder="—"
+                              placeholder={EMPTY_CELL}
                               value={
                                 row.min_value === undefined ||
                                 row.min_value === null

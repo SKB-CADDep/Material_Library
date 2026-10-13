@@ -1,5 +1,6 @@
 import { ELEMENTS_MAP } from "./elementsCatalog";
 import type { SourceItem } from "../types/api";
+import { EMPTY_CELL } from "./emptyCell";
 import { formatChemElementValue, type ChemElementValue } from "./formatChemElementValue";
 import { resolveCompositionSourceLabel } from "./resolveCompositionSourceLabel";
 
@@ -81,7 +82,7 @@ export function buildChemComparisonView(
       key: `src_${index}`,
       label: resolveCompositionSourceLabel(entry, chemicalSources),
       comment: String(entry.comment ?? ""),
-      baseElement: String(entry.base_element ?? "").trim() || "-",
+      baseElement: String(entry.base_element ?? "").trim() || EMPTY_CELL,
       unit: elements[0]?.unit_value?.trim() || "%",
       note: String(entry.note ?? ""),
     });

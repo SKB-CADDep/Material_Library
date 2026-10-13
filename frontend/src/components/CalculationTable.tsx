@@ -19,14 +19,13 @@ import {
 } from "../lib/calculationColumnHeader";
 
 import {
+  calculationCellInDisplayUnit,
   calculationCellModeClass,
   calculationCellModeTitle,
   formatCalculationCell,
 } from "../lib/formatCalculationCell";
 
 import type { CalculationColumnSourceRef } from "../lib/calculationColumnSources";
-
-import { convertBetweenUnits } from "../lib/unitConversion";
 
 import { AcceptanceIndicator } from "./AcceptanceIndicator";
 
@@ -114,39 +113,18 @@ function CalculationCellValue({
 
 }) {
 
-  let displayCell = cell;
-
-  if (
-    cell?.value != null &&
-    unitConfig &&
-    baseUnit &&
-    displayUnit &&
-    baseUnit !== displayUnit
-  ) {
-    const numeric =
-      typeof cell.value === "number" ? cell.value : Number(cell.value);
-
-    if (Number.isFinite(numeric)) {
-      try {
-        const converted = convertBetweenUnits(
-          numeric,
-          baseUnit,
-          displayUnit,
-          unitConfig,
-        );
-        displayCell = { ...cell, value: converted };
-      } catch {
-        displayCell = cell;
-      }
-    }
-  }
-
-
+  const displayCell = calculationCellInDisplayUnit(cell, {
+    baseUnit,
+    displayUnit,
+    unitConfig,
+  });
 
   const text = formatCalculationCell(displayCell);
 
-  const isEmpty = !cell || cell.value === null;
-  const modeClass = calculationCellModeClass(displayCell?.mode);
+  const isEmpty = !displayCell || displayCell.value === null;
+  const modeClass = isEmpty
+    ? ""
+    : calculationCellModeClass(displayCell?.mode);
   const modeTitle = isEmpty
     ? undefined
     : calculationCellModeTitle(displayCell?.mode);
@@ -173,7 +151,18 @@ function CalculationCellValue({
 
 }
 
+/** Индекс строки в исходном списке. Сортировка не копирует объекты, поэтому ссылка стабильна. */
+export function calculationRowSourceIndex<T>(source: readonly T[], row: T): number {
+  return source.indexOf(row);
+}
 
+/** Ключ строки не зависит от температуры и от места в отсортированном списке. */
+export function calculationRowKey(
+  section: "db" | "custom",
+  sourceIndex: number,
+): string {
+  return `${section}-${sourceIndex}`;
+}
 
 export function CalculationTable({
 
@@ -222,24 +211,37 @@ export function CalculationTable({
     });
   };
 
+  const sortUnits = {
+    columns,
+    columnUnits,
+    unitConfigs,
+  };
+
   const sortedDbRows = useMemo(
     () =>
       sortState
-        ? sortCalculationRows(dbRows, sortState.column, sortState.direction)
+        ? sortCalculationRows(
+            dbRows,
+            sortState.column,
+            sortState.direction,
+            sortUnits,
+          )
         : dbRows,
-    [dbRows, sortState],
+    [dbRows, sortState, columns, columnUnits, unitConfigs],
   );
 
   const sortedCustomRows = useMemo(
     () =>
       sortState
-        ? sortCalculationRows(customRows, sortState.column, sortState.direction)
+        ? sortCalculationRows(
+            customRows,
+            sortState.column,
+            sortState.direction,
+            sortUnits,
+          )
         : customRows,
-    [customRows, sortState],
+    [customRows, sortState, columns, columnUnits, unitConfigs],
   );
-
-  const findCustomRowSourceIndex = (row: SingleCalculationRow) =>
-    customRows.findIndex((item) => item.temperature === row.temperature);
 
   const customRowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
 
@@ -549,9 +551,9 @@ export function CalculationTable({
 
           <tbody>
 
-            {sortedDbRows.map((row, rowIndex) => (
+            {sortedDbRows.map((row) => (
 
-              <tr key={`db-${row.temperature}-${rowIndex}`}>
+              <tr key={calculationRowKey("db", calculationRowSourceIndex(dbRows, row))}>
 
                 <td className="selection-table-col--temp calculation-table-col--temp">
 
@@ -616,13 +618,13 @@ export function CalculationTable({
 
 
 
-            {sortedCustomRows.map((row, rowIndex) => {
-              const sourceIndex = findCustomRowSourceIndex(row);
+            {sortedCustomRows.map((row) => {
+              const sourceIndex = calculationRowSourceIndex(customRows, row);
 
               return (
               <tr
 
-                key={`custom-${row.temperature}-${rowIndex}`}
+                key={calculationRowKey("custom", sourceIndex)}
 
                 ref={(element) => {
                   if (sourceIndex >= 0) {

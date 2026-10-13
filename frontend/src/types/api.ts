@@ -113,6 +113,8 @@ export type TemperatureSelectionRow = {
   temperature_comment?: string | null;
   category_index?: number | null;
   source_ref_id?: string | null;
+  /** Индекс записи твёрдости внутри КП (для уникального key строки). */
+  hardness_index?: number | null;
   /** Число/строка (твёрдость) или {value, mode} как в «Расчёт отдельно». */
   values: Record<string, number | string | null | CalculationCell>;
 };

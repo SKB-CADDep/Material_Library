@@ -572,7 +572,8 @@ const handleRowClick = (index: number) => {
         </div>
       </div>
       <div className="form-stack">
-        <fieldset className="form-section">
+        <div className="chem-source-chart-row">
+        <fieldset className="form-section chem-source-data">
           <legend>Данные источника</legend>
           <div className="property-section-layout">
             <div className="property-section-fields">
@@ -739,8 +740,16 @@ const handleRowClick = (index: number) => {
             />
           </div>
         </fieldset>
-        <div className="property-section-layout">
-          <fieldset className="property-section-fields">
+          {chartsEnabled ? (
+            <ChemicalCompositionChart
+              data={chartData}
+              unit={chartUnit}
+              mode={chartMode}
+              onModeChange={setChartMode}
+            />
+          ) : null}
+        </div>
+        <fieldset className="property-section-fields chem-elements-block">
           <legend>Элементы(ПКМ для выбора из списка)</legend>
             <div className="table-wrapper table-wrapper--chemical-elements">
               <div className="data-table-container">
@@ -945,17 +954,6 @@ const handleRowClick = (index: number) => {
   </div>
 )}
           </fieldset>
-          {chartsEnabled ? (
-            <ChemicalCompositionChart
-              data={chartData}
-              unit={chartUnit}
-              mode={chartMode}
-              onModeChange={setChartMode}
-            />
-          ) : (
-            <div className="chemical-composition-chart" aria-hidden="true" />
-          )}
-        </div>
         <div className="note-field">
       <label className="note-label" htmlFor="composition_note">
         Примечание

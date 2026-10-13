@@ -238,6 +238,35 @@ def test_temperature_selection_areas_list_matches_any() -> None:
     assert len(result["rows"]) == 1
 
 
+def test_hardness_rows_get_unique_hardness_index() -> None:
+    material = _calc_material(
+        strength_categories=[
+            {
+                "value_strength_category": "КП40",
+                "source_ref_id": "src-1",
+                "hardness_unit": "HB",
+                "hardness": [
+                    {"unit_value": "HB", "min_value": 100, "max_value": 120},
+                    {"unit_value": "HB", "min_value": 200, "max_value": 220},
+                ],
+                "properties": [],
+            }
+        ]
+    )
+    service = _calc_service()
+    rows = service._hardness_rows(
+        material,
+        material.get_strength_categories(),
+        "-",
+        None,
+        None,
+    )
+    assert len(rows) == 2
+    assert [row["hardness_index"] for row in rows] == [0, 1]
+    assert rows[0]["values"]["min_value"] == 100
+    assert rows[1]["values"]["min_value"] == 200
+
+
 def test_temperature_selection_returns_value_with_mode() -> None:
     material = _calc_material()
     service = _calc_service()

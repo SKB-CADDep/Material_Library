@@ -79,6 +79,73 @@ def resolve_source_json(root: Path, materials_dir: Path) -> Path | None:
     return None
 
 
+def listening_pids(port: int) -> list[int]:
+    found: list[int] = []
+    try:
+        out = subprocess.check_output(
+            ["netstat", "-ano"],
+            text=True,
+            errors="ignore",
+        )
+    except Exception:
+        return found
+    needle = f":{port}"
+    for line in out.splitlines():
+        if "LISTENING" not in line.upper() or needle not in line:
+            continue
+        parts = line.split()
+        if not parts or not parts[-1].isdigit():
+            continue
+        pid = int(parts[-1])
+        if pid not in found and pid != os.getpid():
+            found.append(pid)
+    return found
+
+
+def release_port(port: int) -> bool:
+    """Останавливает прошлый запуск на этом порту. Закрытие окна должно делать то же самое."""
+    pids = listening_pids(port)
+    if not pids:
+        return True
+    print(f"Порт {port} ещё занят предыдущим запуском. Останавливаю его.")
+    for pid in pids:
+        subprocess.call(
+            ["taskkill", "/F", "/T", "/PID", str(pid)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    deadline = time.time() + 8
+    while time.time() < deadline:
+        if not port_in_use(port):
+            return True
+        time.sleep(0.3)
+    return not port_in_use(port)
+
+
+def install_console_close_stop() -> None:
+    """Закрытие окна консоли сразу завершает процесс и освобождает порт."""
+    if os.name != "nt":
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    ctrl_c = 0
+    ctrl_break = 1
+    ctrl_close = 2
+    ctrl_logoff = 5
+    ctrl_shutdown = 6
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+    def _on_console_ctrl(ctrl_type: int) -> bool:
+        if ctrl_type in (ctrl_c, ctrl_break, ctrl_close, ctrl_logoff, ctrl_shutdown):
+            os._exit(0)
+        return False
+
+    global _CONSOLE_CLOSE_HANDLER
+    _CONSOLE_CLOSE_HANDLER = _on_console_ctrl
+    ctypes.windll.kernel32.SetConsoleCtrlHandler(_CONSOLE_CLOSE_HANDLER, True)
+
+
 def port_in_use(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.5)
@@ -170,10 +237,11 @@ def after_server_ready(data_dir: Path) -> None:
 
     print()
     print("=" * 40)
-    print("  Готово — не закрывайте это окно")
+    print("  Готово")
     print(f"  {APP_URL}")
     print("=" * 40)
-    print("Остановка: «Остановить Material Library.bat» или Ctrl+C")
+    print("Остановка: закройте это окно или нажмите Ctrl+C.")
+    print("Закрытие вкладки в браузере программу не останавливает.")
     print()
     print("==> Открытие браузера")
     open_browser(APP_URL)
@@ -207,13 +275,14 @@ def main() -> int:
             ["Дистрибутив неполный. Запросите полный архив у разработчиков."],
         )
 
-    if port_in_use(8000):
+    install_console_close_stop()
+
+    if port_in_use(8000) and not release_port(8000):
         return fail(
-            "Порт 8000 занят (сервер)",
+            "Порт 8000 занят",
             [
-                "Возможно, программа уже запущена",
-                "Запустите файл: Остановить Material Library.bat",
-                "Затем запустите снова",
+                "Его занимает другая программа, остановить её не удалось",
+                "Закройте ту программу или запустите «Остановить Material Library.bat»",
             ],
         )
 
@@ -240,7 +309,8 @@ def main() -> int:
     ready.start()
 
     print()
-    print("==> Запуск сервера (это окно должно оставаться открытым)")
+    print("==> Запуск сервера")
+    print("Чтобы остановить программу, закройте это окно или нажмите Ctrl+C.")
     try:
         import uvicorn
     except ImportError:

@@ -21,6 +21,8 @@ describe("normalizeNtdLabel", () => {
   it("trims and uses em dash for empty", () => {
     expect(normalizeNtdLabel("  GOST  ")).toBe("GOST");
     expect(normalizeNtdLabel(null)).toBe("—");
+    expect(normalizeNtdLabel("-")).toBe("—");
+    expect(normalizeNtdLabel("—")).toBe("—");
   });
 });
 
@@ -31,6 +33,7 @@ describe("collectNtdFilterOptions", () => {
       row("GOST A"),
       row("GOST A"),
       row(null),
+      row("-"),
     ]);
     expect(options).toEqual(["—", "GOST A", "GOST B"]);
   });

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
+import { EMPTY_CELL } from "../lib/emptyCell";
 
 import {
   syncChemPivotStickyColumns,
@@ -106,14 +107,14 @@ export function ChemComparisonPivotTable({
                 {row.symbol}
               </td>
               <td className="chem-comparison-pivot-col chem-comparison-pivot-col--name">
-                {row.name.trim() ? row.name : "—"}
+                {row.name.trim() ? row.name : EMPTY_CELL}
               </td>
               {columns.map((column) => (
                 <td
                   key={column.key}
                   className="chem-comparison-pivot-col chem-comparison-pivot-col--value"
                 >
-                  {row.cells[column.key] ?? "-"}
+                  {row.cells[column.key] ?? EMPTY_CELL}
                 </td>
               ))}
             </tr>

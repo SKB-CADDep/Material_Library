@@ -1,3 +1,5 @@
+import { EMPTY_CELL } from "./emptyCell";
+
 export type ChemElementValue = {
   min_value?: number | null;
   max_value?: number | null;
@@ -43,7 +45,7 @@ export function formatChemElementValue(
   elemData: ChemElementValue | null | undefined,
 ): string {
   if (!elemData) {
-    return "-";
+    return EMPTY_CELL;
   }
 
   const minValue = asFiniteNumber(elemData.min_value ?? undefined);
@@ -55,7 +57,7 @@ export function formatChemElementValue(
   const hasMax = maxValue !== null;
 
   if (!hasMin && !hasMax) {
-    return "-";
+    return EMPTY_CELL;
   }
 
   if (hasMin && hasMax) {

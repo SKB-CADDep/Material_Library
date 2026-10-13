@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { EMPTY_CELL } from "../lib/emptyCell";
 
 export type TruncatedTextProps = {
   value: string;
@@ -23,7 +24,7 @@ export function TruncatedText({
   className,
   tooltip,
   tooltipContent,
-  emptyPlaceholder = "—",
+  emptyPlaceholder = EMPTY_CELL,
   href,
   target,
   rel,

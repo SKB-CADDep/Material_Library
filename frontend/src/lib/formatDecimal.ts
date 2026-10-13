@@ -19,6 +19,11 @@ export function parseDecimalInput(raw: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Черновик числового поля: пусто, «-», «2.», «2,5». Буквы не допускаются. */
+export function isDecimalDraft(raw: string): boolean {
+  return raw === "" || /^-?\d*(?:[.,]\d*)?$/.test(raw);
+}
+
 /**
  * Для controlled-инпутов: не съедает промежуточный ввод («2.», «2,», «-»).
  * - "" → undefined

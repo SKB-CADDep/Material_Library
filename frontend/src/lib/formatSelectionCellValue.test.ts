@@ -16,7 +16,9 @@ const tempConfig: UnitResponse = {
 
 describe("formatSelectionFrozenValue", () => {
   it("formats null as dash", () => {
-    expect(formatSelectionFrozenValue(null)).toBe("-");
+    expect(formatSelectionFrozenValue(null)).toBe("—");
+    expect(formatSelectionFrozenValue("-")).toBe("—");
+    expect(formatSelectionFrozenValue("—")).toBe("—");
     expect(formatSelectionFrozenValue("Steel")).toBe("Steel");
   });
 });
@@ -113,12 +115,12 @@ describe("formatSelectionCellValue", () => {
     ).toBe("62.90");
   });
 
-  it("keeps source hardness when table conversion is out of range", () => {
+  it("shows empty when hardness table conversion is out of range", () => {
     const hardnessConfig: UnitResponse = {
       unit_type: "Твердость",
       system_unit: "HB",
-      units: ["HB", "HRC"],
-      factors: { HB: 1, HRC: "table" },
+      units: ["HB", "HRC", "HSD"],
+      factors: { HB: 1, HRC: "table", HSD: "table" },
       display_labels: {},
     };
     expect(
@@ -129,7 +131,16 @@ describe("formatSelectionCellValue", () => {
         unitConfig: hardnessConfig,
         rowSourceUnit: "HB",
       }),
-    ).toBe("74.00");
+    ).toBe("—");
+    expect(
+      formatSelectionCellValue(135, {
+        columnKey: "min_value",
+        baseUnit: "HB",
+        displayUnit: "HSD",
+        unitConfig: hardnessConfig,
+        rowSourceUnit: "HB",
+      }),
+    ).toBe("—");
   });
   it("unwraps {value, mode} cells like calculation tab", () => {
     expect(
@@ -142,6 +153,23 @@ describe("formatSelectionCellValue", () => {
         },
       ),
     ).toBe("360.46");
+  });
+
+  it("shows a dash instead of a non-numeric string", () => {
+    expect(
+      formatSelectionCellValue("нет данных", {
+        columnKey: "yield_strength",
+        baseUnit: "МПа",
+        displayUnit: "МПа",
+      }),
+    ).toBe("—");
+    expect(
+      formatSelectionCellValue("12,5", {
+        columnKey: "yield_strength",
+        baseUnit: "МПа",
+        displayUnit: "МПа",
+      }),
+    ).toBe("12.50");
   });
 });
 
