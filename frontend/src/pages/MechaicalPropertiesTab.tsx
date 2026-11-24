@@ -117,17 +117,17 @@ const TEMPERATURE_MECH_PROPERTIES: MechPropertyConfig[] = [
   },
   {
     key: "decrement_oscillations_at_800",
-    legend: "Декремент колебаний при 800 (·10⁻⁴) (δψ_800)",
+    legend: "Декремент колебаний при 800 (кгс/см²) (δψ_800)",
     yLabel: "δψ_800",
   },
   {
     key: "decrement_oscillations_at_1200",
-    legend: "Декремент колебаний при 1200 (·10⁻⁴) (δψ_1200)",
+    legend: "Декремент колебаний при 1200 (кгс/см²) (δψ_1200)",
     yLabel: "δψ_1200",
   },
   {
     key: "decrement_oscillations_at_1600",
-    legend: "Декремент колебаний при 1600 (·10⁻⁴) (δψ_1600)",
+    legend: "Декремент колебаний при 1600 (кгс/см²) (δψ_1600)",
     yLabel: "δψ_1600",
   },
   {

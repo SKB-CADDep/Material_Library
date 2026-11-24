@@ -56,8 +56,8 @@
             ],
             "value_unit": "МПа",
             "comment": "",
-            "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
-            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
+            "source_ref_id": "08ff83ff-a6a3-4160-99ba-2a5e33d423e5",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч.3 вып.16"
           }
         },
         {
@@ -95,8 +95,8 @@
             ],
             "value_unit": "1/С",
             "comment": "",
-            "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
-            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
+            "source_ref_id": "08ff83ff-a6a3-4160-99ba-2a5e33d423e5",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч.3 вып.16"
           }
         },
         {
@@ -227,8 +227,7 @@
                     "max_value": 223.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -482,8 +481,7 @@
                     "max_value": 223.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
@@ -534,9 +532,8 @@
                     186.0
                   ]
                 ],
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             },
             {
@@ -587,9 +584,8 @@
                     216.0
                   ]
                 ],
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             },
             {
@@ -640,9 +636,8 @@
                     64.0
                   ]
                 ],
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             },
             {
@@ -681,9 +676,8 @@
                     64.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             },
             {
@@ -722,9 +716,8 @@
                     39.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             },
             {
@@ -767,9 +760,8 @@
                     30.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             },
             {
@@ -800,9 +792,8 @@
                     34.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T09:39:41.261975"
+                "property_last_updated": "2026-10-06T08:37:09.891811"
               }
             }
           ]

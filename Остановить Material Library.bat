@@ -13,6 +13,8 @@ if defined PY goto do_py_stop
 goto do_net_stop
 
 :do_py_stop
+chcp 65001 >nul
+set "PYTHONIOENCODING=utf-8"
 "%PY%" "%CD%\scripts\stop_customer.py"
 goto done
 

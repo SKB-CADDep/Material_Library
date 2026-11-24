@@ -204,8 +204,7 @@
                     "max_value": 179.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -354,7 +353,8 @@
                 ],
                 "value_unit": "МПа",
                 "comment": "",
-                "property_subsource": "Определение значений длительной прочности при 200 тыс. часов"
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -380,7 +380,8 @@
                 ],
                 "value_unit": "МПа",
                 "comment": "",
-                "property_subsource": "Определение значений длительной прочности при 200 тыс. часов"
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {

@@ -60,8 +60,8 @@
             ],
             "value_unit": "МПа",
             "comment": "",
-            "source_ref_id": "cbc983c8-ec34-4f6c-bb42-4e2d6ed9e1da",
-            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 1 вып. 16, 218 стр"
+            "source_ref_id": "08ff83ff-a6a3-4160-99ba-2a5e33d423e5",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч.3 вып.16"
           }
         },
         {
@@ -183,8 +183,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {

@@ -10,7 +10,7 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "Коррозионно-стойкая, жаропрочная",
+      "classification_category": "Сталь коррозионно-стойкая жаропрочная",
       "classification_class": "Аустенитный",
       "classification_subclass": ""
     }
@@ -271,8 +271,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -605,9 +604,9 @@
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.8,
-                "min_value_tolerance": 4.9,
+                "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.85,
-                "min_value_tolerance_relative": -4.9,
+                "min_value_tolerance_relative": 0.0,
                 "max_value_tolerance_relative": 0.05
               },
               {

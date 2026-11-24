@@ -31,7 +31,7 @@
               {
                 "element": "Fe",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.3,
                 "max_value": 0.3,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
@@ -41,7 +41,7 @@
               {
                 "element": "Si",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.3,
                 "max_value": 0.3,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
@@ -51,7 +51,7 @@
               {
                 "element": "Mn",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.025,
                 "max_value": 0.025,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
@@ -61,7 +61,7 @@
               {
                 "element": "Ti",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.15,
                 "max_value": 0.15,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
@@ -71,7 +71,7 @@
               {
                 "element": "Cu",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.05,
                 "max_value": 0.05,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
@@ -81,7 +81,7 @@
               {
                 "element": "Mg",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.05,
                 "max_value": 0.05,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
@@ -91,7 +91,7 @@
               {
                 "element": "Zn",
                 "unit_value": "%",
-                "min_value": 0.0,
+                "min_value": 0.1,
                 "max_value": 0.1,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,

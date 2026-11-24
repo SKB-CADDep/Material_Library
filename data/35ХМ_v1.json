@@ -203,8 +203,7 @@
                     "max_value": 248.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -383,8 +382,8 @@
                 ],
                 "value_unit": "МПа",
                 "comment": "",
-                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
-                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             },
             {
@@ -508,14 +507,12 @@
                     "max_value": 277.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "[11]",
@@ -566,13 +563,12 @@
                     373.0
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "[11]",
@@ -623,7 +619,7 @@
                     461.0
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             },
             {
@@ -638,9 +634,8 @@
                     59.0
                   ]
                 ],
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             }
           ]
@@ -661,14 +656,12 @@
                     "max_value": 311.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "*Предел текучести записан с разницей в 86 МПа  = 772 ([1, стр.1071) - 686 (КП70) ",
@@ -691,13 +684,12 @@
                     401.0
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "*Предел прочности записан с разницей в 45 МПа  = 878 ([1, стр.1071]) -  833 (КП70)",
@@ -720,13 +712,12 @@
                     501.0
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "[1]",
@@ -749,7 +740,7 @@
                     123.6
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             }
           ]
@@ -770,14 +761,12 @@
                     "max_value": 321.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "[1]",
@@ -800,13 +789,12 @@
                     450.0
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "[1]",
@@ -829,13 +817,12 @@
                     550.0
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
                 "property_source": "ТУ 24-22-074-2004",
                 "property_subsource": "[1]",
@@ -858,7 +845,7 @@
                     123.6
                   ]
                 ],
-                "property_last_updated": "2026-06-19T06:31:50.600855"
+                "property_last_updated": "2026-10-01T11:24:02.728134"
               }
             }
           ]
@@ -922,6 +909,46 @@
                 "max_value_tolerance": 0.27,
                 "min_value_tolerance_relative": 0.02,
                 "max_value_tolerance_relative": 0.02
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.035,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.035,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
+              },
+              {
+                "element": "Cu",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
+              },
+              {
+                "element": "Ni",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "composition_subsource": "",

@@ -23,6 +23,9 @@ if not defined PY goto fail_python
 
 if not exist "%CD%\scripts\launch_customer.py" goto fail_script
 
+chcp 65001 >nul
+set "PYTHONIOENCODING=utf-8"
+
 echo PY=%PY%>>"%LOG%"
 echo   Python: %PY%
 echo   Log: %LOG%

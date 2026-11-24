@@ -1,7 +1,7 @@
 {
   "material_id": "4a573f81-d7ae-4255-9cb9-96c34a60b4be",
   "metadata": {
-    "name_material_standard": "18X11МНФБ-Ш",
+    "name_material_standard": "18Х11МНФБ-Ш",
     "name_material_alternative": [
       "2Х11МФБН",
       "ЭП291"
@@ -133,8 +133,8 @@
             ],
             "value_unit": "Вт/(м*С)",
             "comment": "",
-            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+            "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
           }
         },
         {
@@ -187,8 +187,8 @@
             ],
             "value_unit": "Дж/(кг*С)",
             "comment": "",
-            "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-            "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+            "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
           }
         }
       ]
@@ -210,8 +210,7 @@
                     "max_value": 269.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -309,8 +308,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -354,8 +354,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -376,8 +377,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -421,14 +423,12 @@
                     "max_value": 293.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "[1]",
@@ -455,13 +455,12 @@
                     460.4
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "[1]",
@@ -488,13 +487,12 @@
                     411.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "[3]",
@@ -505,13 +503,12 @@
                     39.3
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
               "property_name": "tensile_strength_limit_10_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "[2]",
@@ -530,13 +527,12 @@
                     157.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
@@ -555,13 +551,12 @@
                     120.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
               "property_name": "tensile_strength_limit_200_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
@@ -580,13 +575,12 @@
                     110.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
               "property_name": "tensile_strength_limit_250_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 250 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ОСТ 108.020.03-82",
                 "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
@@ -605,7 +599,7 @@
                     105.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -620,9 +614,8 @@
                     69.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             }
           ]
@@ -643,8 +636,7 @@
                     "max_value": 277.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
@@ -675,9 +667,8 @@
                     411.4
                   ]
                 ],
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -708,9 +699,8 @@
                     391.4
                   ]
                 ],
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -725,9 +715,8 @@
                     49.0
                   ]
                 ],
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -750,9 +739,8 @@
                     120.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -775,9 +763,8 @@
                     80.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -800,9 +787,8 @@
                     68.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -825,9 +811,8 @@
                     65.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 250 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             },
             {
@@ -850,9 +835,8 @@
                     70.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T08:39:28.232742"
+                "property_last_updated": "2026-10-06T08:59:58.885660"
               }
             }
           ]

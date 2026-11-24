@@ -166,8 +166,8 @@
             ],
             "value_unit": "кг/м3",
             "comment": "",
-            "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
-            "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
+            "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+            "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
           }
         }
       ]
@@ -189,8 +189,7 @@
                     "max_value": 269.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -224,8 +223,8 @@
                 ],
                 "value_unit": "МПа",
                 "comment": "*Предел текучести записан с разницей в 29 МПа = (58(кп60)-55 ([3, стр. 35]))",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
@@ -259,8 +258,8 @@
                 ],
                 "value_unit": "МПа",
                 "comment": "*Предел прочности записан с разницей в 30 МПа = 755 (кп60) - 725 (максимальное значение по [1, стр.1083])",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
@@ -294,8 +293,8 @@
                 ],
                 "value_unit": "Дж/см2",
                 "comment": "",
-                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
-                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
@@ -331,8 +330,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -349,8 +349,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -367,8 +368,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -500,25 +502,17 @@
               "data": {
                 "hardness_values": [
                   {
-                    "property_source": "",
-                    "property_subsource": "",
                     "unit_value": "HB",
                     "min_value": 248.0,
                     "max_value": 293.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[1]",
-                "comment": "*Предел текучести записан с разницей в 9,8 Мпа =  (69([3, стр.35]) - 68 (кп70))*9,80665\t\t\t\t\t\t\t\n",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -545,17 +539,15 @@
                     490.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "*Предел текучести записан с разницей в 9,8 Мпа =  (69([3, стр.35]) - 68 (кп70))*9,80665",
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[1]",
-                "comment": "*Предел прочности записан с разницей в 49 Мпа = (85 ([3, стр.35]) - 80 (кп70))*9,80665\t\t\t\t\t\t\t\n",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -582,17 +574,15 @@
                     481.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "*Предел прочности записан с разницей в 49 Мпа = (85 ([3, стр.35]) - 80 (кп70))*9,80665",
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
-                "property_unit": "Дж/см²",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[1]",
-                "comment": "\t\t\t\t\t\t\n",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -619,17 +609,15 @@
                     137.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "Дж/см2",
+                "comment": "",
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
               "property_name": "tensile_strength_limit_10_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[6]",
-                "comment": "Значения для температур 550 и 600 взяты не из источника",
                 "temperature_value_pairs": [
                   [
                     500.0,
@@ -644,17 +632,15 @@
                     47.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "Значения для температур получены по зависимости Ларсона-Миллера",
+                "source_ref_id": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
+                "property_subsource": "Паспорт на сталь марки 15Х11МФ (ПО \"ЛМЗ\")"
               }
             },
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[6]",
-                "comment": "Значения для температур 550 и 600 взяты не из источника",
                 "temperature_value_pairs": [
                   [
                     500.0,
@@ -669,17 +655,15 @@
                     18.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "Значения для температур 550 и 600 получены по зависимости Ларсона-Миллера",
+                "source_ref_id": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
+                "property_subsource": "Паспорт на сталь марки 15Х11МФ (ПО \"ЛМЗ\")"
               }
             },
             {
               "property_name": "tensile_strength_limit_200_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     500.0,
@@ -694,17 +678,15 @@
                     10.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
               "property_name": "tensile_strength_limit_250_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 250 тыс.ч",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     500.0,
@@ -719,17 +701,15 @@
                     5.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
               "property_name": "decrement_oscillations_at_800",
               "data": {
-                "property_name": "Декремент колебаний при 1000 кгс/см2",
-                "property_unit": "δψ·104",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[2]",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -744,17 +724,15 @@
                     215.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "кгс/см2",
+                "comment": "",
+                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
               }
             },
             {
               "property_name": "decrement_oscillations_at_1600",
               "data": {
-                "property_name": "Декремент колебаний при 1750 кгс/см2",
-                "property_unit": "δψ·104",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[2]",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -769,32 +747,30 @@
                     185.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "кгс/см2",
+                "comment": "",
+                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
               }
             },
             {
               "property_name": "fatigue_limit_for_notched_specimen",
               "data": {
-                "property_name": "Предел выносливости для образца с надрезом",
-                "property_unit": "МПа",
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "[1]",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
                     170.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             },
             {
               "property_name": "decrement_oscillations_at_1200",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "2",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -809,43 +785,40 @@
                     200.0
                   ]
                 ],
-                "property_name": "Декремент колебаний при 1200 кгс/см²",
-                "property_unit": "-",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "-",
+                "comment": "",
+                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
               }
             },
             {
               "property_name": "fatigue_limit_for_smooth_specimen",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "1",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
                     250.0
                   ]
                 ],
-                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             },
             {
               "property_name": "сreep_strain_rate_1_100_thousands_hours",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "6",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     500.0,
                     177.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
+                "property_subsource": "Паспорт на сталь марки 15Х11МФ (ПО \"ЛМЗ\")"
               }
             }
           ]
@@ -859,23 +832,17 @@
               "data": {
                 "hardness_values": [
                   {
-                    "property_source": "",
-                    "property_subsource": "",
                     "unit_value": "HB",
                     "min_value": 217.0,
                     "max_value": 255.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "1",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -902,17 +869,15 @@
                     407.0
                   ]
                 ],
-                "property_name": "Предел текучести",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "1",
-                "comment": "*Предел прочности записан с разницей в 39 МПа = 725 (максимальное значение по [1, стр.1083]) - 686 (кп55)\t\t\t\t\t\t\t\n",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -939,17 +904,15 @@
                     402.0
                   ]
                 ],
-                "property_name": "Предел прочности",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "*Предел прочности записан с разницей в 39 МПа = 725 (максимальное значение по [1, стр.1083]) - 686 (кп55)",
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "3",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -976,17 +939,15 @@
                     206.0
                   ]
                 ],
-                "property_name": "Ударная вязкость",
-                "property_unit": "Дж/см²",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "Дж/см2",
+                "comment": "",
+                "source_ref_id": "2c0b9f8d-176a-489f-b96a-a958760745ac",
+                "property_subsource": "Либерман Л.Я. Свойства сталей и сплавов, применяемых в котлотурбостроении.Л.:ЦКТИ,1966,Ч. 2 вып. 16, 244 стр"
               }
             },
             {
               "property_name": "tensile_strength_limit_10_thousands_hours",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "6",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
@@ -997,17 +958,15 @@
                     93.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
+                "property_subsource": "Паспорт на сталь марки 15Х11МФ (ПО \"ЛМЗ\")"
               }
             },
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "6",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
@@ -1018,17 +977,15 @@
                     60.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
+                "property_subsource": "Паспорт на сталь марки 15Х11МФ (ПО \"ЛМЗ\")"
               }
             },
             {
               "property_name": "tensile_strength_limit_200_thousands_hours",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера\t\t\t\t\t\n",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
@@ -1039,17 +996,15 @@
                     50.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллер",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
               "property_name": "tensile_strength_limit_250_thousands_hours",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера\t\t\t\t\t\n",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
@@ -1060,17 +1015,15 @@
                     47.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 250 тыс.ч",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
               "property_name": "сreep_strain_rate_1_100_thousands_hours",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "6",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     500.0,
@@ -1085,17 +1038,15 @@
                     44.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "0e8963df-aa1e-4822-8d80-7d0b0a7a6787",
+                "property_subsource": "Паспорт на сталь марки 15Х11МФ (ПО \"ЛМЗ\")"
               }
             },
             {
               "property_name": "decrement_oscillations_at_800",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "2",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -1110,17 +1061,15 @@
                     215.0
                   ]
                 ],
-                "property_name": "Декремент колебаний при 800 кгс/см²",
-                "property_unit": "-",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "-",
+                "comment": "",
+                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
               }
             },
             {
               "property_name": "decrement_oscillations_at_1200",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "2",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -1135,17 +1084,15 @@
                     200.0
                   ]
                 ],
-                "property_name": "Декремент колебаний при 1200 кгс/см²",
-                "property_unit": "-",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "-",
+                "comment": "",
+                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
               }
             },
             {
               "property_name": "decrement_oscillations_at_1600",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "2",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -1160,43 +1107,40 @@
                     185.0
                   ]
                 ],
-                "property_name": "Декремент колебаний при 1600 кгс/см²",
-                "property_unit": "-",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "-",
+                "comment": "",
+                "source_ref_id": "7b7d2f72-ccb4-4f53-a477-8afa5780cdd6",
+                "property_subsource": "Михайлов-Михеев П.Б. Справочник по металлическим материалам турбино- и моторостроения. Л.: Машгиз, 1961. 838с."
               }
             },
             {
               "property_name": "fatigue_limit_for_smooth_specimen",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "1",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
                     250.0
                   ]
                 ],
-                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             },
             {
               "property_name": "fatigue_limit_for_notched_specimen",
               "data": {
-                "property_source": "ОСТ 108.020.03-82",
-                "property_subsource": "550",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     550.0,
                     170.0
                   ]
                 ],
-                "property_name": "Предел выносливости (образец с надрезом, N=10e7)",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T07:04:31.991343"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             }
           ]

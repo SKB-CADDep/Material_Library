@@ -53,8 +53,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -208,9 +207,9 @@
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.0,
-                "min_value_tolerance": 0.3,
+                "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.55,
-                "min_value_tolerance_relative": -0.3,
+                "min_value_tolerance_relative": 0.0,
                 "max_value_tolerance_relative": 0.55
               },
               {

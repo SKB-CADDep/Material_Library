@@ -208,8 +208,7 @@
                     "max_value": 207.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -316,14 +315,12 @@
                     "max_value": 207.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ГОСТ-1050-2013",
                 "property_subsource": "[11]",
@@ -362,13 +359,12 @@
                     225.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T09:37:51.320985"
+                "property_last_updated": "2026-09-21T17:33:45.098739"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ГОСТ-1050-2013",
                 "property_subsource": "[11]",
@@ -407,7 +403,7 @@
                     500.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T09:37:51.320985"
+                "property_last_updated": "2026-09-21T17:33:45.098739"
               }
             }
           ]
@@ -427,70 +423,70 @@
                 "unit_value": "%",
                 "min_value": 0.32,
                 "max_value": 0.4,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.31,
+                "max_value_tolerance": 0.41,
+                "min_value_tolerance_relative": 0.01,
+                "max_value_tolerance_relative": 0.01
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.17,
                 "max_value": 0.37,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.15,
+                "max_value_tolerance": 0.39,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.5,
                 "max_value": 0.8,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.47,
+                "max_value_tolerance": 0.83,
+                "min_value_tolerance_relative": 0.03,
+                "max_value_tolerance_relative": 0.03
               },
               {
                 "element": "P",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.03,
+                "max_value_tolerance": 0.035,
                 "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
                 "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "S",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.035,
+                "max_value_tolerance": 0.04,
                 "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
                 "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "Cr",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.25,
+                "max_value_tolerance": 0.27,
                 "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
                 "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Ni",
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.3,
+                "max_value_tolerance": 0.32,
                 "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
                 "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Cu",
