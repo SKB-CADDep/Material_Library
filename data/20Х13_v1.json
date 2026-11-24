@@ -13,7 +13,7 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "Коррозионно-стойкая, жаропрочная",
+      "classification_category": "Сталь коррозионно-стойкая жаропрочная",
       "classification_class": "Мартенситный",
       "classification_subclass": "Хромистая"
     },
@@ -268,8 +268,7 @@
                     "max_value": 269.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -698,8 +697,7 @@
                     "max_value": 295.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -897,8 +895,7 @@
                     "max_value": 241.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -1114,8 +1111,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {
@@ -1140,8 +1138,9 @@
                   ]
                 ],
                 "value_unit": "МПа",
-                "comment": "",
-                "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера"
+                "comment": "Данные получены экстраполяцией по зависимости Ларсона-Миллера",
+                "source_ref_id": "f892d8db-8c64-49f9-b3be-2aa5a127805b",
+                "property_subsource": "-"
               }
             },
             {

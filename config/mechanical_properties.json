@@ -56,21 +56,21 @@
         "temperature_dependent": true
     },
     "decrement_oscillations_at_800": {
-        "name": "Декремент колебаний при 800 (·10¯⁴)",
+        "name": "Декремент колебаний при 800 (кгс/см²)",
         "symbol": "δψ_800",
         "unit": "кгс/см2",
         "unit_type": "Декремент колебаний",
         "temperature_dependent": true
     },
     "decrement_oscillations_at_1200": {
-        "name": "Декремент колебаний при 1200 (·10¯⁴)",
+        "name": "Декремент колебаний при 1200 (кгс/см²)",
         "symbol": "δψ_1200",
         "unit": "кгс/см2",
         "unit_type": "Декремент колебаний",
         "temperature_dependent": true
     },
     "decrement_oscillations_at_1600": {
-        "name": "Декремент колебаний при 1600 (·10¯⁴)",
+        "name": "Декремент колебаний при 1600 (кгс/см²)",
         "symbol": "δψ_1600",
         "unit": "кгс/см2",
         "unit_type": "Декремент колебаний",

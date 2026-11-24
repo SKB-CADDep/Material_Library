@@ -1,11 +1,13 @@
 """Customer launcher without PowerShell (fileserver / corporate policy safe).
 
-Started by: Запуск Material Library.bat -> runtime\\python\\python.exe this file
+Started by:
+- Запуск Material Library.vbs -> pythonw.exe (no window; console only if startup fails)
+- Запуск Material Library.bat -> python.exe (console stays open)
 
-Runs uvicorn IN THIS SAME console window so:
-- errors are visible
-- bat pushd drive stays mapped while the app is running
-- no second PowerShell / python window that corporate policy kills
+The .vbs launcher waits hidden. This script writes
+%TEMP%\\material-library-launch.log and, after the site is ready,
+%TEMP%\\material-library-launch.ok. The launcher opens a console only when
+the process exits with an error before that mark exists.
 """
 
 from __future__ import annotations
@@ -23,7 +25,10 @@ from pathlib import Path
 
 APP_URL = "http://127.0.0.1:8000"
 HEALTH_URL = f"{APP_URL}/api/health"
-PID_FILE = Path(os.environ.get("TEMP", ".")) / "material-library-server.pid"
+_TEMP_DIR = Path(os.environ.get("TEMP", "."))
+PID_FILE = _TEMP_DIR / "material-library-server.pid"
+LAUNCH_LOG = _TEMP_DIR / "material-library-launch.log"
+LAUNCH_OK = _TEMP_DIR / "material-library-launch.ok"
 
 
 def project_root() -> Path:
@@ -122,9 +127,89 @@ def release_port(port: int) -> bool:
     return not port_in_use(port)
 
 
+class _LaunchLog:
+    """Пишет журнал запуска. В консоли текст ещё и печатается."""
+
+    def __init__(self, log_path: Path) -> None:
+        self._streams = [stream for stream in (sys.stdout, sys.stderr) if stream is not None]
+        self._file = log_path.open("w", encoding="utf-8", errors="replace")
+
+    def write(self, data: str) -> None:
+        self._file.write(data)
+        self._file.flush()
+        for stream in self._streams:
+            try:
+                stream.write(data)
+                stream.flush()
+            except Exception:
+                pass
+
+    def flush(self) -> None:
+        self._file.flush()
+        for stream in self._streams:
+            try:
+                stream.flush()
+            except Exception:
+                pass
+
+    def isatty(self) -> bool:
+        for stream in self._streams:
+            check = getattr(stream, "isatty", None)
+            if not callable(check):
+                continue
+            try:
+                return bool(check())
+            except Exception:
+                return False
+        return False
+
+
+def attach_launch_log() -> None:
+    """Журнал нужен pythonw: у него нет окна, пока запуск не сорвался."""
+    log = _LaunchLog(LAUNCH_LOG)
+    sys.stdout = log  # type: ignore[assignment]
+    sys.stderr = log  # type: ignore[assignment]
+
+
+def clear_launch_ok() -> None:
+    try:
+        LAUNCH_OK.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def reopen_running_server(data_dir: Path) -> bool:
+    """Сервер уже работает: перечитать data и снова открыть сайт."""
+    if not port_in_use(8000) or not wait_http(HEALTH_URL, 3):
+        return False
+    print("Сервер уже запущен. Перечитываю базу.")
+    if data_dir.is_dir():
+        if open_workspace(data_dir):
+            print(f"База обновлена: {data_dir}")
+        else:
+            print("Не удалось перечитать папку data. Запускаю сервер заново.")
+            return False
+    else:
+        print(f"Папка с материалами не найдена: {data_dir}")
+    mark_launch_ok()
+    print("Открываю сайт.")
+    open_browser(APP_URL)
+    return True
+
+
+def mark_launch_ok() -> None:
+    try:
+        LAUNCH_OK.write_text("ok", encoding="ascii")
+    except OSError:
+        pass
+
+
 def install_console_close_stop() -> None:
     """Закрытие окна консоли сразу завершает процесс и освобождает порт."""
     if os.name != "nt":
+        return
+    stdout = sys.__stdout__
+    if stdout is None or not getattr(stdout, "isatty", lambda: False)():
         return
     import ctypes
     from ctypes import wintypes
@@ -202,7 +287,7 @@ def open_browser(url: str) -> None:
             return
     try:
         os.startfile(url)  # type: ignore[attr-defined]
-    except OSError:
+    except (AttributeError, OSError):
         print(f"Откройте браузер вручную: {url}")
 
 
@@ -220,7 +305,7 @@ def fail(title: str, steps: list) -> int:
 def after_server_ready(data_dir: Path) -> None:
     if not wait_http(HEALTH_URL, 90):
         print("Сервер не ответил вовремя — смотрите сообщения выше.")
-        return
+        os._exit(1)
     print("Сервер готов")
     if not wait_http(APP_URL, 30):
         print("Интерфейс ещё не готов — откройте http://127.0.0.1:8000 вручную.")
@@ -243,11 +328,13 @@ def after_server_ready(data_dir: Path) -> None:
     print("Остановка: закройте это окно или нажмите Ctrl+C.")
     print("Закрытие вкладки в браузере программу не останавливает.")
     print()
+    mark_launch_ok()
     print("==> Открытие браузера")
     open_browser(APP_URL)
 
 
 def main() -> int:
+    attach_launch_log()
     root = project_root()
     # Portable python312._pth ignores PYTHONPATH — put project on sys.path explicitly.
     root_str = str(root)
@@ -276,6 +363,11 @@ def main() -> int:
         )
 
     install_console_close_stop()
+
+    if reopen_running_server(data_dir):
+        return 0
+
+    clear_launch_ok()
 
     if port_in_use(8000) and not release_port(8000):
         return fail(

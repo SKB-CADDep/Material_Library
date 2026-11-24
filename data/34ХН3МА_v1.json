@@ -150,8 +150,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -267,18 +266,12 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
-                "property_unit": "МПа",
-                "property_source": "ТУ 108.1028-81",
-                "property_subsource": "8",
-                "comment": "*Предел текучести записан с разницей в 14 МПа =  664 (КП68) - 650 (по [8, стр.20])\t\t\t\t\t\t\t\n",
                 "temperature_value_pairs": [
                   [
                     20.0,
@@ -297,34 +290,29 @@
                     444.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T08:44:32.377117"
+                "value_unit": "МПа",
+                "comment": "*Предел текучести записан с разницей в 14 МПа =  664 (КП68) - 650 (по [8, стр.20])",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
-                "property_unit": "Дж/см²",
-                "property_source": "ТУ 108.1028-81",
-                "property_subsource": "1",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
                     49.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T08:44:32.377117"
+                "value_unit": "Дж/см2",
+                "comment": "",
+                "property_subsource": "1"
               }
             },
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
-                "property_unit": "МПа",
-                "property_source": "ТУ 108.1028-81",
-                "property_subsource": "5",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     450.0,
@@ -343,17 +331,14 @@
                     31.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T08:44:32.377117"
+                "value_unit": "МПа",
+                "comment": "",
+                "property_subsource": "5"
               }
             },
             {
               "property_name": "сreep_strain_rate_1_100_thousands_hours",
               "data": {
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
-                "property_unit": "МПа",
-                "property_source": "ТУ 108.1028-81",
-                "property_subsource": "5",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     450.0,
@@ -368,24 +353,24 @@
                     12.0
                   ]
                 ],
-                "property_last_updated": "2026-06-24T08:44:32.377117"
+                "value_unit": "МПа",
+                "comment": "",
+                "property_subsource": "5"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_source": "",
-                "property_subsource": "",
-                "comment": "",
                 "temperature_value_pairs": [
                   [
                     20.0,
                     815.0
                   ]
                 ],
-                "property_name": "Предел прочности",
-                "property_unit": "МПа",
-                "property_last_updated": "2026-06-24T08:44:32.377117"
+                "value_unit": "МПа",
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             }
           ]

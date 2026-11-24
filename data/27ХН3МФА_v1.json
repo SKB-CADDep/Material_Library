@@ -29,8 +29,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -82,8 +81,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
@@ -98,7 +96,6 @@
                     667.0
                   ]
                 ],
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_last_updated": "2026-06-24T08:37:57.515600"
               }
@@ -115,7 +112,6 @@
                     834.0
                   ]
                 ],
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_last_updated": "2026-06-24T08:37:57.515600"
               }
@@ -132,7 +128,6 @@
                     59.0
                   ]
                 ],
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
                 "property_last_updated": "2026-06-24T08:37:57.515600"
               }

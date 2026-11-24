@@ -169,8 +169,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -356,7 +355,9 @@
                   ]
                 ],
                 "value_unit": "Дж/см2",
-                "comment": ""
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             }
           ]

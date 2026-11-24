@@ -187,8 +187,7 @@
                     "max_value": 241.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -533,14 +532,12 @@
                     "max_value": 241.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -591,13 +588,12 @@
                     294.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -648,13 +644,12 @@
                     412.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[1]",
@@ -685,13 +680,12 @@
                     142.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
               "property_name": "tensile_strength_limit_10_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[2]",
@@ -714,13 +708,12 @@
                     110.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[2]",
@@ -743,13 +736,12 @@
                     70.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
               "property_name": "tensile_strength_limit_200_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
@@ -772,13 +764,12 @@
                     58.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
               "property_name": "fatigue_limit_for_notched_specimen",
               "data": {
-                "property_name": "Предел выносливости для образца с надрезом",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[1]",
@@ -813,7 +804,7 @@
                     9.0
                   ]
                 ],
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -840,9 +831,8 @@
                     350.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -877,9 +867,8 @@
                     172.0
                   ]
                 ],
-                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             }
           ]
@@ -900,8 +889,7 @@
                     "max_value": 286.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
@@ -956,9 +944,8 @@
                     382.0
                   ]
                 ],
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1013,9 +1000,8 @@
                     530.0
                   ]
                 ],
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1050,9 +1036,8 @@
                     142.0
                   ]
                 ],
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1079,9 +1064,8 @@
                     108.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1108,9 +1092,8 @@
                     69.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1137,9 +1120,8 @@
                     58.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1166,9 +1148,8 @@
                     350.0
                   ]
                 ],
-                "property_name": "Предел длит. прочности за 250 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1207,9 +1188,8 @@
                     0.0
                   ]
                 ],
-                "property_name": "Предел выносливости (гладкий образец, N=10e7)",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1248,9 +1228,8 @@
                     9.0
                   ]
                 ],
-                "property_name": "Предел выносливости (образец с надрезом, N=10e7)",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             },
             {
@@ -1277,9 +1256,8 @@
                     34.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                 "property_unit": "МПа",
-                "property_last_updated": "2026-06-26T10:01:51.403117"
+                "property_last_updated": "2026-09-17T17:40:09.555512"
               }
             }
           ]
@@ -1299,46 +1277,86 @@
                 "unit_value": "%",
                 "min_value": 0.26,
                 "max_value": 0.33,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.25,
+                "max_value_tolerance": 0.34,
+                "min_value_tolerance_relative": 0.01,
+                "max_value_tolerance_relative": 0.01
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.17,
                 "max_value": 0.37,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.15,
+                "max_value_tolerance": 0.39,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.4,
                 "max_value": 0.7,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.38,
+                "max_value_tolerance": 0.72,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
               },
               {
                 "element": "Cr",
                 "unit_value": "%",
                 "min_value": 0.8,
                 "max_value": 1.1,
-                "min_value_tolerance": 0.0,
-                "max_value_tolerance": 0.0,
-                "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.0
+                "min_value_tolerance": 0.78,
+                "max_value_tolerance": 1.15,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.05
               },
               {
                 "element": "Mo",
                 "unit_value": "%",
                 "min_value": 0.15,
                 "max_value": 0.25,
+                "min_value_tolerance": 0.13,
+                "max_value_tolerance": 0.27,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.02
+              },
+              {
+                "element": "Cu",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
+              },
+              {
+                "element": "Ni",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.025,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.025,
                 "min_value_tolerance": 0.0,
                 "max_value_tolerance": 0.0,
                 "min_value_tolerance_relative": 0.0,

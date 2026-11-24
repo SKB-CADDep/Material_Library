@@ -76,18 +76,19 @@ $paths = @(
     "scripts\stop-web.ps1",
     "scripts\launch_customer.py",
     "scripts\stop_customer.py",
+    "requirements.txt",
     "requirements-runtime.txt"
 )
 foreach ($relative in $paths) { Copy-Tree $relative }
 
-Get-ChildItem -LiteralPath $ProjectRoot -File -Filter "*.bat" | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Staging $_.Name) -Force
-}
-$excludeRootTxt = @("app_list.txt", "instruction_list.txt", "change_list.txt")
-Get-ChildItem -LiteralPath $ProjectRoot -File -Filter "*.txt" | Where-Object {
-    $excludeRootTxt -notcontains $_.Name
-} | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Staging $_.Name) -Force
+$launchers = @(
+    "Start Material Library.vbs",
+    "Manual start Material Library.bat",
+    "Stop Material Library.bat",
+    "INSTRUCTION.txt"
+)
+foreach ($name in $launchers) {
+    Copy-Item -LiteralPath (Join-Path $ProjectRoot $name) -Destination (Join-Path $Staging $name) -Force
 }
 
 Write-Step "Package summary"

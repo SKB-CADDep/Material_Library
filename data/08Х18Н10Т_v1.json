@@ -119,8 +119,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -309,10 +308,10 @@
                 "unit_value": "%",
                 "min_value": 0.0,
                 "max_value": 0.08,
-                "max_value_tolerance": 0.9,
+                "max_value_tolerance": 0.09,
                 "min_value_tolerance": 0.0,
                 "min_value_tolerance_relative": 0.0,
-                "max_value_tolerance_relative": 0.82
+                "max_value_tolerance_relative": 0.01
               },
               {
                 "element": "Si",

@@ -185,8 +185,7 @@
                     "max_value": 229.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -321,14 +320,12 @@
                     "max_value": 269.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -381,7 +378,6 @@
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -434,7 +430,6 @@
             {
               "property_name": "tensile_strength_limit_10_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -451,7 +446,6 @@
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -483,14 +477,12 @@
                     "max_value": 277.0
                   }
                 ],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": ""
               }
             },
             {
               "property_name": "yield_strength",
               "data": {
-                "property_name": "Предел текучести",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -547,7 +539,6 @@
             {
               "property_name": "tensile_strength",
               "data": {
-                "property_name": "Предел прочности",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[11]",
@@ -604,7 +595,6 @@
             {
               "property_name": "impact_strength",
               "data": {
-                "property_name": "Ударная вязкость",
                 "property_unit": "Дж/см²",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[9]",
@@ -625,7 +615,6 @@
             {
               "property_name": "tensile_strength_limit_10_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 10 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[9]",
@@ -654,7 +643,6 @@
             {
               "property_name": "tensile_strength_limit_100_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 100 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "[9]",
@@ -683,7 +671,6 @@
             {
               "property_name": "tensile_strength_limit_200_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 200 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
@@ -712,7 +699,6 @@
             {
               "property_name": "tensile_strength_limit_250_thousands_hours",
               "data": {
-                "property_name": "Предел длит. прочности за 250 тыс.ч",
                 "property_unit": "МПа",
                 "property_source": "ТУ 24-22-073-2004",
                 "property_subsource": "*Данные получены экстраполяцией по зависимости Ларсона-Миллера",
@@ -766,7 +752,6 @@
                     29.0
                   ]
                 ],
-                "property_name": "Ползучесть при скорости деформации 1%/100 тыс.ч",
                 "property_unit": "МПа",
                 "property_last_updated": "2026-06-24T08:08:16.349767"
               }

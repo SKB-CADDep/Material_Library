@@ -563,6 +563,22 @@ class Material:
                 return group
         return None
 
+    def _ensure_property_groups(self) -> None:
+        """Гарантирует наличие групп новой схемы перед сохранением материала."""
+        groups = self.data.get("property_groups")
+        if not isinstance(groups, list):
+            groups = []
+            self.data["property_groups"] = groups
+
+        defaults = {
+            "physical": {Schema.PROPERTIES: []},
+            "mechanical": {"strength_groups": []},
+            "chemical": {Schema.PROPERTIES: []},
+        }
+        for kind, contents in defaults.items():
+            if self._find_property_group(kind) is None:
+                groups.append({"property_type": kind, **contents})
+
     @staticmethod
     def _group_entry_from_named_prop(prop: dict) -> dict | None:
         name = prop.get(Schema.PROP_NAME)
@@ -808,9 +824,15 @@ class Material:
                     prop["property_last_updated"] = now
 
         # Сначала правка legacy → группы, затем normalize снова разворачивает группы.
+        self._ensure_property_groups()
         self._project_physical_into_property_groups()
         self._project_chemical_into_property_groups()
         self._project_mechanical_into_property_groups()
         self.normalize_schema()
 
-        atomic_write_json(save_path, self.data)
+        # Старая структура остаётся в памяти для совместимости с логикой
+        # приложения, но в файл записывается только новая схема property_groups.
+        data_to_save = copy.deepcopy(self.data)
+        for key in (Schema.PHYSICAL, Schema.MECHANICAL, Schema.CHEMICAL):
+            data_to_save.pop(key, None)
+        atomic_write_json(save_path, data_to_save)

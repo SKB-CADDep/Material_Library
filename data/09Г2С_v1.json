@@ -8,7 +8,7 @@
     ],
     "comment": "Тест",
     "classification": {
-      "classification_category": "Конструкционная для сварных конструкций",
+      "classification_category": "Сталь конструкционная для сварных конструкций",
       "classification_class": "",
       "classification_subclass": ""
     }
@@ -100,8 +100,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
