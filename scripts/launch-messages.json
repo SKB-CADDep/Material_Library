@@ -9,34 +9,34 @@
   "port_busy_title": "Порт {0} занят ({1})",
   "port_busy_steps": [
     "Порт занят другой программой, предыдущий запуск Material Library остановить не удалось",
-    "Закройте ту программу или запустите «Остановить Material Library.bat»",
-    "Затем снова: Запуск Material Library.bat"
+    "Закройте ту программу или запустите «Stop Material Library.bat»",
+    "Затем снова: Manual start Material Library.bat"
   ],
   "server_timeout_title": "Сервер не ответил за 90 секунд",
   "server_timeout_steps": [
     "Посмотрите окно Python/uvicorn — там текст ошибки",
     "Часто: антивирус или нет прав на папку runtime на файлсервере",
-    "Попробуйте «Остановить Material Library.bat» и запустить снова",
+    "Попробуйте «Stop Material Library.bat» и запустить снова",
     "Если не помогло — скриншот этого окна и окна Python разработчикам"
   ],
   "ui_timeout_title": "Интерфейс не открылся за 90 секунд",
   "ui_timeout_steps": [
     "Посмотрите окно Python/uvicorn — там текст ошибки",
     "Проверьте, что в папке frontend/dist есть index.html",
-    "Попробуйте «Остановить Material Library.bat» и запустить снова"
+    "Попробуйте «Stop Material Library.bat» и запустить снова"
   ],
   "stop_ok": "Остановлен процесс PID {0} (порт {1})",
   "stop_fail": "Не удалось остановить PID {0} (порт {1}): {2}",
   "start_title": "Material Library — запуск",
   "start_project_root": "Папка программы: {0}",
-  "start_hint": "Подробная инструкция: ИНСТРУКЦИЯ.txt",
+  "start_hint": "Подробная инструкция: INSTRUCTION.txt",
   "setup_venv": "Подготовка Python (виртуальное окружение)",
   "setup_venv_first": "Первый запуск: создаём окружение Python (1–3 минуты)...",
   "setup_venv_fail_title": "Не удалось создать окружение Python",
   "setup_venv_fail_steps": [
     "Проверьте, что на диске достаточно места (~500 МБ)",
     "Временно отключите антивирус и повторите запуск",
-    "См. ИНСТРУКЦИЯ.txt"
+    "См. INSTRUCTION.txt"
   ],
   "setup_pip": "Установка Python-пакетов",
   "setup_pip_wait": "При первом запуске это может занять несколько минут...",
@@ -44,7 +44,7 @@
   "setup_pip_fail_steps": [
     "Нужен доступ в интернет при первом запуске",
     "Проверьте подключение к сети и повторите запуск",
-    "См. ИНСТРУКЦИЯ.txt"
+    "См. INSTRUCTION.txt"
   ],
   "portable_runtime_ok": "Встроенный Python готов (runtime/python)",
   "server_pid_hint": "Процесс сервера PID {0} (окно Python/uvicorn)",
@@ -57,7 +57,7 @@
   "workspace_path_hint": "На экране программы введите путь: {0}",
   "not_ready_title": "Программа ещё не подготовлена к работе",
   "not_ready_steps": [
-    "Запустите «Запуск Material Library.bat»",
+    "Запустите «Manual start Material Library.bat»",
     "Первый запуск сам установит Python-пакеты"
   ],
   "no_dist_title": "Не найден собранный интерфейс (frontend/dist)",
@@ -78,7 +78,7 @@
   "browser_window_warn": "Не удалось развернуть окно браузера автоматически.",
   "unexpected_title": "Непредвиденная ошибка",
   "unexpected_steps_extra": [
-    "Попробуйте «Остановить Material Library.bat» и запустить снова",
+    "Попробуйте «Stop Material Library.bat» и запустить снова",
     "Сохраните текст этого окна и обратитесь к разработчикам"
   ],
   "port_label_server": "веб-сервер",

@@ -1,8 +1,8 @@
 """Customer launcher without PowerShell (fileserver / corporate policy safe).
 
 Started by:
-- Запуск Material Library.vbs -> pythonw.exe (no window; console only if startup fails)
-- Запуск Material Library.bat -> python.exe (console stays open)
+- Start Material Library.vbs -> pythonw.exe (no window; console only if startup fails)
+- Manual start Material Library.bat -> python.exe (console stays open)
 
 The .vbs launcher waits hidden. This script writes
 %TEMP%\\material-library-launch.log and, after the site is ready,
@@ -345,7 +345,7 @@ def main() -> int:
     except OSError as exc:
         return fail(
             "Не удалось открыть папку программы",
-            [str(exc), "Запускайте «Запуск Material Library.bat» из папки на файлсервере."],
+            [str(exc), "Запускайте «Manual start Material Library.bat» из папки на файлсервере."],
         )
 
     data_dir = resolve_materials_dir(root)
@@ -353,7 +353,7 @@ def main() -> int:
 
     print("Material Library — запуск")
     print(f"Папка программы: {root}")
-    print("Подробная инструкция: ИНСТРУКЦИЯ.txt")
+    print("Подробная инструкция: INSTRUCTION.txt")
     print()
 
     if not dist_index.is_file():
@@ -374,7 +374,7 @@ def main() -> int:
             "Порт 8000 занят",
             [
                 "Его занимает другая программа, остановить её не удалось",
-                "Закройте ту программу или запустите «Остановить Material Library.bat»",
+                "Закройте ту программу или запустите «Stop Material Library.bat»",
             ],
         )
 
