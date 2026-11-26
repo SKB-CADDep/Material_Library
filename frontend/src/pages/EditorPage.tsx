@@ -8,10 +8,16 @@ import {
   normalizeMaterialFilename,
   nextVersionedMaterialFilename,
   validateMaterialDraftForSave,
-  versionForNew
+  versionForNew,
+  prepareMaterialPayloadForSave,
 } from "../api/materials";
-import { syncMaterialsAfterSave, normalizeMaterialDraft, materialListLabel } from "../lib/materialDraft";
-import { useEffect, useMemo, useRef, useCallback } from "react";
+import {
+  syncMaterialsAfterSave,
+  normalizeMaterialDraft,
+  materialListLabel,
+  materialDisplayName,
+} from "../lib/materialDraft";
+import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { EditorTabPaneProvider } from "../context/EditorTabPaneContext";
 import { EditorTabPanes } from "./EditorTabPanes";
 import { useEditor } from "../context/EditorContext";
@@ -22,6 +28,12 @@ import { useRememberStickyEditorTab } from "../context/StickyRouteContext";
 import { editorTabKeyFromPath, isEditorIndexPath, editorTabPathFromKey } from "../lib/keepAliveRoutes";
 import { readEditorMaterialSearchParams } from "../lib/editorNavigation";
 import { showToastWithOK } from "../lib/toast";
+import {
+  auditMaterialCancelChanges,
+  auditMaterialCreateDraft,
+  auditMaterialResetCreate,
+  auditMaterialSelected,
+} from "../lib/auditSession";
 
 function editorSubtabClass({ isActive }: { isActive: boolean }) {
   return isActive ? "editor-subtab active" : "editor-subtab";
@@ -132,6 +144,9 @@ export function EditorPage() {
     setIsNewMaterial,
     isEditing,
     setIsEditing,
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
+    confirmDiscardUnsavedChanges,
   } = useEditor();
   const detail = useQuery({
     queryKey: ["material", selectedId],
@@ -151,37 +166,23 @@ export function EditorPage() {
     }
     if (!selectedId) {
       setDraft(null);
+      setHasUnsavedChanges(false);
       return;
     }
     if (detail.data) {
-      setDraft(draft => {
-        if (draft?.material_id === detail.data.material_id) return draft;
-        return structuredClone(detail.data);
+      const incoming = detail.data;
+      setDraft((current) => {
+        if (current?.material_id === incoming.material_id) return current;
+        return structuredClone(incoming);
       });
-      
     }
-  }, [selectedId, detail.data, isNewMaterial]);
+  }, [selectedId, detail.data, isNewMaterial, setDraft, setHasUnsavedChanges]);
 
   const materials = result.data ?? [];
 
-  useEffect(() => {
-    const { materialId, edit } = readEditorMaterialSearchParams(searchParams);
-    if (!materialId || materials.length === 0) {
-      return;
-    }
-    if (!materials.some((material) => material.id === materialId)) {
-      return;
-    }
-
-    setIsNewMaterial(false);
-    setSelectedId(materialId);
-    setIsEditing(edit);
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("material");
-    nextParams.delete("edit");
-    setSearchParams(nextParams, { replace: true });
-  }, [materials, searchParams, setSearchParams, setIsEditing, setIsNewMaterial, setSelectedId]);
+  // Блокируем смену материала до завершения записи на диск (в т.ч. первый тик до isPending).
+  const [saveLock, setSaveLock] = useState(false);
+  const saveLockRef = useRef(false);
 
   const hasFileOnDisk = selectedId !== null && !isNewMaterial;
   const canEdit = isNewMaterial || isEditing;
@@ -204,16 +205,31 @@ export function EditorPage() {
   }, [materialLoading, draft, hash]);
 
   const newSave = useMutation({
-    mutationFn: ({ body, filename }: { body: Record<string, unknown>; filename: string }) =>
-      saveNewMaterial(normalizeMaterialDraft(body), filename),
-    onSuccess: async (data, variables) => {
-      const normalized = normalizeMaterialDraft(variables.body);
-      const id = normalized.material_id as string;
-      await syncMaterialsAfterSave(queryClient, normalized, data.filename);
+    mutationFn: ({
+      body,
+      filename,
+      sourceMaterialId,
+    }: {
+      body: Record<string, unknown>;
+      filename: string;
+      sourceMaterialId?: string | null;
+    }) => {
+      const prepared = prepareMaterialPayloadForSave(
+        normalizeMaterialDraft(body),
+      );
+      return saveNewMaterial(prepared, filename, {
+        sourceMaterialId,
+      }).then((data) => ({ data, prepared }));
+    },
+    onSuccess: async (result) => {
+      const { data, prepared } = result;
+      const id = prepared.material_id as string;
+      await syncMaterialsAfterSave(queryClient, prepared, data.filename);
       setIsNewMaterial(false);
       setIsEditing(false);
       setSelectedId(id);
-      setDraft(normalized);
+      setDraft(prepared);
+      setHasUnsavedChanges(false);
 
       showToastWithOK(`Материал "${data.filename}" успешно сохранён`, 'success');
     },
@@ -222,9 +238,50 @@ export function EditorPage() {
     },
   });
 
-  const saveBusy = newSave.isPending;
+  const saveBusy = newSave.isPending || saveLock;
   const newSaveRef = useRef(newSave);
   newSaveRef.current = newSave;
+
+  useEffect(() => {
+    if (saveBusy) {
+      return;
+    }
+    const { materialId, edit } = readEditorMaterialSearchParams(searchParams);
+    if (!materialId || materials.length === 0) {
+      return;
+    }
+    if (!materials.some((material) => material.id === materialId)) {
+      return;
+    }
+    if (hasUnsavedChanges && !confirmDiscardUnsavedChanges()) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("material");
+      nextParams.delete("edit");
+      setSearchParams(nextParams, { replace: true });
+      return;
+    }
+
+    setIsNewMaterial(false);
+    setSelectedId(materialId);
+    setIsEditing(edit);
+    setHasUnsavedChanges(false);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("material");
+    nextParams.delete("edit");
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    materials,
+    searchParams,
+    setSearchParams,
+    setIsEditing,
+    setIsNewMaterial,
+    setSelectedId,
+    setHasUnsavedChanges,
+    saveBusy,
+    hasUnsavedChanges,
+    confirmDiscardUnsavedChanges,
+  ]);
 
   const handleDraftChange = useCallback(
     (next: Record<string, unknown>) => {
@@ -232,9 +289,10 @@ export function EditorPage() {
         return;
       }
       setDraft(next);
+      setHasUnsavedChanges(true);
       newSaveRef.current.reset();
     },
-    [readOnly, setDraft],
+    [readOnly, setDraft, setHasUnsavedChanges],
   );
 
   const tabPaneState = useMemo(
@@ -275,15 +333,40 @@ export function EditorPage() {
   }
 
 
-  function handleCreateNew() {
+  function handleCreateNew(options?: { skipDiscardConfirm?: boolean }) {
+    if (saveBusy) return;
+    if (!options?.skipDiscardConfirm && !confirmDiscardUnsavedChanges()) return;
     setSelectedId(null);
     setIsNewMaterial(true);
     setIsEditing(true);
-    setDraft(createEmptyMaterialDraft());
+    const next = createEmptyMaterialDraft();
+    setDraft(next);
+    setHasUnsavedChanges(false);
+    const meta = (next.metadata ?? {}) as { name_material_standard?: string };
+    auditMaterialCreateDraft(materialDisplayName(meta));
   }
 
   function handleStartEditing() {
+    if (saveBusy) return;
     setIsEditing(true);
+  }
+
+  function selectMaterial(nextId: string | null) {
+    if (saveBusy) return;
+    if (nextId === selectedId && !isNewMaterial) return;
+    if (!confirmDiscardUnsavedChanges()) return;
+    setIsNewMaterial(false);
+    setIsEditing(false);
+    setSelectedId(nextId);
+    setHasUnsavedChanges(false);
+    if (!nextId) {
+      setDraft(null);
+      return;
+    }
+    const material = materials.find((item) => item.id === nextId);
+    if (material) {
+      auditMaterialSelected(materialListLabel(material));
+    }
   }
 
   function pickSaveFilename(): string | null {
@@ -310,7 +393,7 @@ export function EditorPage() {
   }
 
   function runSaveFlow() {
-    if (!draft) return;
+    if (!draft || saveBusy || saveLockRef.current) return;
     const error = validateMaterialDraftForSave(draft);
     if (error) {
       showToastWithOK(error, 'warning');
@@ -319,7 +402,21 @@ export function EditorPage() {
     const filename = pickSaveFilename();
     if (!filename) return;
     const body = hasFileOnDisk ? draftCopyAsNewFile(draft) : draft;
-    newSave.mutate({ body, filename });
+    saveLockRef.current = true;
+    setSaveLock(true);
+    newSave.mutate(
+      {
+        body,
+        filename,
+        sourceMaterialId: hasFileOnDisk ? selectedId : null,
+      },
+      {
+        onSettled: () => {
+          saveLockRef.current = false;
+          setSaveLock(false);
+        },
+      },
+    );
   }
 
   async function handleRevertChanges() {
@@ -331,7 +428,8 @@ export function EditorPage() {
       ) {
         return;
       }
-      handleCreateNew();
+      auditMaterialResetCreate();
+      handleCreateNew({ skipDiscardConfirm: true });
       return;
     }
 
@@ -343,6 +441,14 @@ export function EditorPage() {
       return;
     }
 
+    const name =
+      materials.find((material) => material.id === selectedId)?.name ??
+      materialListLabel({
+        filename: materials.find((m) => m.id === selectedId)?.filename ?? "",
+        name: "",
+      });
+    auditMaterialCancelChanges(name);
+
     await queryClient.refetchQueries({ queryKey: ["material", selectedId] });
     const fresh = queryClient.getQueryData<Record<string, unknown>>([
       "material",
@@ -352,6 +458,7 @@ export function EditorPage() {
       setDraft(structuredClone(fresh));
     }
     setIsEditing(false);
+    setHasUnsavedChanges(false);
   }
 
   const detailErrorMessage = detail.error instanceof Error ? detail.error.message: "Неизвестная ошибка";
@@ -365,14 +472,10 @@ export function EditorPage() {
             id="material-select"
             className="input"
             value={selectedId ?? ""}
+            disabled={saveBusy}
+            title={saveBusy ? "Дождитесь окончания сохранения" : undefined}
             onChange={(event) => {
-              setIsNewMaterial(false);
-              setIsEditing(false);
-              const nextId = event.target.value || null;
-              setSelectedId(nextId);
-              if (!nextId) {
-                setDraft(null);
-              }
+              selectMaterial(event.target.value || null);
             }}
           >
             <option value="">— не выбран —</option>
@@ -390,14 +493,16 @@ export function EditorPage() {
         )}
         <div className="button-group">
           {hasFileOnDisk && !isEditing && (
-            <button type="button" onClick={handleStartEditing}>
+            <button type="button" onClick={handleStartEditing} disabled={saveBusy}>
               Редактировать
             </button>
           )}
           <button
             type="button"
             className="button-secondary"
-            onClick={handleCreateNew}
+            onClick={() => handleCreateNew()}
+            disabled={saveBusy}
+            title={saveBusy ? "Дождитесь окончания сохранения" : undefined}
           >
             Создать новый
           </button>
@@ -464,7 +569,12 @@ export function EditorPage() {
               <p className="tab-placeholder">
                 Выберите материал в списке выше или создайте новый
               </p>
-              <button type="button" className="button-secondary" onClick={handleCreateNew}>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => handleCreateNew()}
+                disabled={saveBusy}
+              >
                 Создать новый
               </button>
             </div>

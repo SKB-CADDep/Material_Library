@@ -123,6 +123,36 @@ function Start-WebServerProcess {
     return $proc
 }
 
+function Register-ServerKillOnLauncherExit {
+    param($Process)
+    if (-not ("MaterialLibraryJob" -as [type])) {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class MaterialLibraryJob {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string lpName);
+    [DllImport("kernel32.dll")]
+    public static extern bool SetInformationJobObject(IntPtr hJob, int JobObjectInfoClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool AssignProcessToJobObject(IntPtr hJob, IntPtr hProcess);
+}
+"@
+    }
+    $job = [MaterialLibraryJob]::CreateJobObject([IntPtr]::Zero, $null)
+    $info = [Runtime.InteropServices.Marshal]::AllocHGlobal(64)
+    try {
+        [Runtime.InteropServices.Marshal]::Copy([byte[]]::new(64), 0, $info, 64)
+        # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: закрытие окна запуска гасит сервер.
+        [Runtime.InteropServices.Marshal]::WriteInt32($info, 16, 0x2000)
+        [void][MaterialLibraryJob]::SetInformationJobObject($job, 2, $info, 64)
+        [void][MaterialLibraryJob]::AssignProcessToJobObject($job, $Process.Handle)
+    } finally {
+        [Runtime.InteropServices.Marshal]::FreeHGlobal($info)
+    }
+    $script:ServerJob = $job
+}
+
 function Open-Workspace {
     param([string]$Directory = $DataDir)
 
@@ -159,7 +189,12 @@ try {
         exit 1
     }
 
-    if (Test-PortListening 8000) { Fail-PortBusy 8000 $ui.port_label_server }
+    if (Test-PortListening 8000) {
+        Write-Host "Порт 8000 занят предыдущим запуском. Останавливаю его." -ForegroundColor Yellow
+        Stop-PortListeners @(8000)
+        Start-Sleep -Seconds 1
+        if (Test-PortListening 8000) { Fail-PortBusy 8000 $ui.port_label_server }
+    }
 
     if (-not $SkipSetup) {
         Ensure-Setup
@@ -173,6 +208,11 @@ try {
 
     Write-LaunchStep $ui.server_start
     $serverProc = Start-WebServerProcess
+    try {
+        Register-ServerKillOnLauncherExit $serverProc
+    } catch {
+        Write-Host "Окно запуска не смогло привязать остановку сервера: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
     Write-Host ($ui.server_pid_hint -f $serverProc.Id) -ForegroundColor DarkGray
 
     if (-not (Wait-ForHttp $HealthUrl 90)) {
@@ -207,6 +247,10 @@ try {
             Write-LaunchWarn $ui.browser_window_warn
         }
     }
+
+    Write-Host ""
+    Write-Host "Программа работает, пока открыто это окно. Закройте его, чтобы остановить." -ForegroundColor DarkGray
+    Wait-Process -Id $serverProc.Id
 } catch {
     $steps = @($_.Exception.Message) + @($ui.unexpected_steps_extra)
     Show-LaunchFailure $ui.unexpected_title $steps

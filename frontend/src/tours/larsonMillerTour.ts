@@ -37,4 +37,13 @@ export const LARSON_MILLER_TOUR_STEPS: TourStep[] = [
     selector: "[data-tour='lm-chart']",
     placement: "top",
   },
+  {
+    id: "toolbar",
+    title: "Инструменты графика",
+    text: "Справа от графика: исходный масштаб, перемещение, рамка зума, приближение/отдаление и сохранение в PNG или SVG. Инструменты активны, когда на графике есть кривая или расчётная точка.",
+    selector: "[data-tour='lm-chart-toolbar']",
+    placement: "left",
+    paddingX: 10,
+    paddingY: 14,
+  },
 ];

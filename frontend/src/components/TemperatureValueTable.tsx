@@ -1,6 +1,8 @@
 import { useRef } from "react";
 
+import { BlurCommitTextInput } from "./BlurCommitTextInput";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
+import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
 
 function formatPairNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
@@ -25,16 +27,19 @@ export function TemperatureValueTable({
   onDeleteRow,
 }: TemperatureValueTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
-  useResizableTableHeaders(tableRef);
+  const paneActive = useKeepAlivePaneActive();
+  useResizableTableHeaders(tableRef, { disabled: !paneActive });
 
-  const isRowSelectionEnabled = Boolean(onRowSelect);  const tableClassName = isRowSelectionEnabled
+  const isRowSelectionEnabled = Boolean(onRowSelect);
+  const tableClassName = isRowSelectionEnabled
     ? "data-table data-table--temperature-pairs data-table--selectable-rows"
     : "data-table data-table--temperature-pairs";
 
   return (
     <div className="table-wrapper table-wrapper--temperature-pairs">
       <div className="data-table-container">
-        <table ref={tableRef} className={tableClassName}>          <colgroup>
+        <table ref={tableRef} className={tableClassName}>
+          <colgroup>
             <col className="data-table__col-temperature" />
             <col className="data-table__col-value" />
           </colgroup>
@@ -55,43 +60,71 @@ export function TemperatureValueTable({
               (pairs ?? []).map(([temperature, value], index) => (
                 <tr
                   key={index}
-                  className={selectedRowIndex === index ? "table-row-selected" : ""}
+                  className={
+                    selectedRowIndex === index ? "table-row-selected" : ""
+                  }
                 >
                   <td
-                    className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                    className={
+                      isRowSelectionEnabled
+                        ? "data-table-select-cell"
+                        : undefined
+                    }
                     onClick={
-                      isRowSelectionEnabled ? () => onRowSelect?.(index) : undefined
+                      isRowSelectionEnabled
+                        ? () => onRowSelect?.(index)
+                        : undefined
                     }
                   >
-                    <input
+                    <BlurCommitTextInput
                       readOnly={!onChangeTemperature}
                       value={formatPairNumber(temperature)}
-                      onChange={
+                      commitWhenUnchanged={false}
+                      onCommit={
                         onChangeTemperature
-                          ? (e) => onChangeTemperature(index, e.target.value)
-                          : undefined
+                          ? (raw) => onChangeTemperature(index, raw)
+                          : () => undefined
                       }
-                      onMouseDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => {
+                        if (isRowSelectionEnabled) {
+                          onRowSelect?.(index);
+                        }
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => e.stopPropagation()}
                       className="table-cell-input"
+                      inputMode="decimal"
                     />
                   </td>
                   <td
-                    className={isRowSelectionEnabled ? "data-table-select-cell" : undefined}
+                    className={
+                      isRowSelectionEnabled
+                        ? "data-table-select-cell"
+                        : undefined
+                    }
                     onClick={
-                      isRowSelectionEnabled ? () => onRowSelect?.(index) : undefined
+                      isRowSelectionEnabled
+                        ? () => onRowSelect?.(index)
+                        : undefined
                     }
                   >
-                    <input
+                    <BlurCommitTextInput
                       readOnly={!onChangeValue}
-                      onChange={
+                      commitWhenUnchanged={false}
+                      onCommit={
                         onChangeValue
-                          ? (e) => onChangeValue(index, e.target.value)
-                          : undefined
+                          ? (raw) => onChangeValue(index, raw)
+                          : () => undefined
                       }
                       value={formatPairNumber(value)}
                       className="table-cell-input"
-                      onMouseDown={(e) => e.stopPropagation()}
+                      inputMode="decimal"
+                      onMouseDown={(e) => {
+                        if (isRowSelectionEnabled) {
+                          onRowSelect?.(index);
+                        }
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>

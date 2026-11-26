@@ -34,55 +34,91 @@
                 "element": "Fe",
                 "unit_value": "%",
                 "min_value": 0.5,
-                "max_value": 1.0
+                "max_value": 1.0,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "C",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.15
+                "max_value": 0.15,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.5,
-                "max_value": 1.0
+                "max_value": 1.0,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "S",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.01
+                "max_value": 0.01,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "P",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.01
+                "max_value": 0.01,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Pb",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.05
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Zn",
                 "unit_value": "%",
                 "min_value": 0.0,
-                "max_value": 0.5
+                "max_value": 0.5,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Ni + Сo",
                 "unit_value": "%",
                 "min_value": 29.0,
-                "max_value": 33.0
+                "max_value": 33.0,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "comment": "",

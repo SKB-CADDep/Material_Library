@@ -1,3 +1,5 @@
+import { EMPTY_CELL } from "./emptyCell";
+
 export type ChemElementValue = {
   min_value?: number | null;
   max_value?: number | null;
@@ -7,22 +9,33 @@ export type ChemElementValue = {
   max_value_tolerance_relative?: string | number | null;
 };
 
-function normalizeBound(value: number | null | undefined): number | null | undefined {
-  if (value === 0) {
+function asFiniteNumber(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) {
     return null;
   }
-  return value;
+  return Number.isFinite(value) ? value : null;
+}
+
+function toleranceNumeric(tolerance: string | number | null | undefined): number | null {
+  if (tolerance === null || tolerance === undefined || tolerance === "") {
+    return null;
+  }
+  const n = typeof tolerance === "number" ? tolerance : Number(String(tolerance).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
 }
 
 function tolerancePrefix(tolerance: string | number | null | undefined): string {
-  if (tolerance === null || tolerance === undefined || tolerance === "") {
+  const n = toleranceNumeric(tolerance);
+  // 0.0 = «нет отдельного допуска» для компактного сравнения
+  if (n === null || n === 0) {
     return "";
   }
   return `(${tolerance}) `;
 }
 
 function toleranceSuffix(tolerance: string | number | null | undefined): string {
-  if (tolerance === null || tolerance === undefined || tolerance === "") {
+  const n = toleranceNumeric(tolerance);
+  if (n === null || n === 0) {
     return "";
   }
   return ` (${tolerance})`;
@@ -32,25 +45,28 @@ export function formatChemElementValue(
   elemData: ChemElementValue | null | undefined,
 ): string {
   if (!elemData) {
-    return "-";
+    return EMPTY_CELL;
   }
 
-  let minValue = normalizeBound(elemData.min_value ?? undefined);
-  let maxValue = normalizeBound(elemData.max_value ?? undefined);
+  const minValue = asFiniteNumber(elemData.min_value ?? undefined);
+  const maxValue = asFiniteNumber(elemData.max_value ?? undefined);
   const minTolerance = elemData.min_value_tolerance;
   const maxTolerance = elemData.max_value_tolerance;
 
-  if (minValue != null && maxValue != null) {
+  const hasMin = minValue !== null;
+  const hasMax = maxValue !== null;
+
+  if (!hasMin && !hasMax) {
+    return EMPTY_CELL;
+  }
+
+  if (hasMin && hasMax) {
     return `${tolerancePrefix(minTolerance)}${minValue} - ${maxValue}${toleranceSuffix(maxTolerance)}`;
   }
 
-  if (maxValue != null) {
+  if (hasMax) {
     return `≤ ${maxValue}${toleranceSuffix(maxTolerance)}`;
   }
 
-  if (minValue != null) {
-    return `≥ ${minValue}${toleranceSuffix(minTolerance)}`;
-  }
-
-  return "-";
+  return `≥ ${minValue}${toleranceSuffix(minTolerance)}`;
 }

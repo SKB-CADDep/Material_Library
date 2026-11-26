@@ -9,6 +9,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { listMaterials, getMaterial } from "../api/materials";
 import { materialListLabel } from "../lib/materialDraft";
 import { postLarsonMiller } from "../api/selection";
+import { EMPTY_CELL } from "../lib/emptyCell";
 import { formatDecimal } from "../lib/formatDecimal";
 import { resolveLarsonMillerChartEmptyReason } from "../lib/larsonMillerStatus";
 import { buildEditorMaterialUrl } from "../lib/editorNavigation";
@@ -76,7 +77,7 @@ function parseNumericInput(value: string): number | null {
 }
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return EMPTY_CELL;
   const formatted = formatDecimal(value, digits);
   if (/e/i.test(formatted)) return formatted;
   return formatted.replace(/\.?0+$/, "");
@@ -510,7 +511,7 @@ export function LarsonMillerTab() {
   const titleHoursLabel =
     displayBaseServiceHours != null
       ? formatServiceHours(displayBaseServiceHours)
-      : "—";
+      : EMPTY_CELL;
   const isInitialLoading =
     queryEnabled && larsonQuery.isLoading && larsonData == null;
   const isRefreshing =
@@ -840,7 +841,7 @@ export function LarsonMillerTab() {
                             >
                               {storedConstantC != null
                                 ? formatNumber(storedConstantC)
-                                : "—"}
+                                : EMPTY_CELL}
                             </td>
                           )}
                           <td className="larson-miller-table-col--calc larson-miller-c-value-cell">

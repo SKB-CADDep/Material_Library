@@ -82,6 +82,9 @@ const SCIENTIFIC_E_PATTERN = /^(·?)10[eE]([+-]?\d+)/;
 const UNDERSCORE_SUB_PATTERN =
   /^_(-?[A-Za-zА-Яа-яёЁ0-9]+(?:,[0-9]+)?)/;
 
+/** σ_{-1 гладкий, N=10e7} — нижний индекс с пробелами/знаками */
+const BRACED_SUB_PATTERN = /^_\{([^}]+)\}/;
+
 /** σ-1 в display_symbol */
 const GREEK_HYPHEN_SUB_PATTERN = /^([σαδψλρβE])-(\d+)/;
 
@@ -116,6 +119,7 @@ function isSpecialStart(rest: string): boolean {
   return (
     SCIENTIFIC_E_PATTERN.test(rest) ||
     POWER_OF_TEN_PATTERN.test(rest) ||
+    BRACED_SUB_PATTERN.test(rest) ||
     UNDERSCORE_SUB_PATTERN.test(rest) ||
     GREEK_HYPHEN_SUB_PATTERN.test(rest) ||
     STANDALONE_SUPERSCRIPT_PATTERN.test(rest) ||
@@ -175,6 +179,13 @@ export function tokenizeScientificText(text: string): ScientificToken[] {
       pushText(tokens, `${dot}10`);
       tokens.push({ type: "sup", value: exponent });
       index += powerOfTenMatch[0].length;
+      continue;
+    }
+
+    const bracedSubMatch = rest.match(BRACED_SUB_PATTERN);
+    if (bracedSubMatch) {
+      tokens.push({ type: "sub", value: bracedSubMatch[1] });
+      index += bracedSubMatch[0].length;
       continue;
     }
 
@@ -307,7 +318,28 @@ function scriptToLatex(value: string): string {
   if (/^[0-9,+\-]+$/.test(value)) {
     return value;
   }
-  return `\\text{${escapeLatexText(value)}}`;
+  // Внутри _{…} могут быть 10e7 и прочий markup — разворачиваем без вложенного _{}.
+  const innerTokens = tokenizeScientificText(value);
+  if (
+    innerTokens.length === 1 &&
+    innerTokens[0].type === "text" &&
+    innerTokens[0].value === value
+  ) {
+    return `\\text{${escapeLatexText(value)}}`;
+  }
+  let latex = "";
+  for (const token of innerTokens) {
+    if (token.type === "sup") {
+      latex += `^{${scriptToLatex(token.value)}}`;
+      continue;
+    }
+    if (token.type === "sub") {
+      latex += `_{${scriptToLatex(token.value)}}`;
+      continue;
+    }
+    latex += textToLatex(token.value);
+  }
+  return latex;
 }
 
 export function toLatex(text: string): string {
@@ -372,7 +404,7 @@ export function parseScientificText(text: string): ReactNode {
     if (token.type === "sup") {
       return <sup key={key}>{token.value}</sup>;
     }
-    return <sub key={key}>{token.value}</sub>;
+    return <sub key={key}>{parseScientificText(token.value)}</sub>;
   });
 }
 
@@ -385,6 +417,21 @@ export function formatScientificPlain(text: string): string {
       }
       if (token.type === "sup") {
         return mapChars(token.value, ASCII_TO_SUPERSCRIPT);
+      }
+      // Длинный индекс (гладкий, N=10e7): цифры/знаки в unicode-sub, остальное как есть.
+      const inner = tokenizeScientificText(token.value);
+      if (inner.length > 1 || (inner[0] && inner[0].type !== "text")) {
+        return inner
+          .map((part) => {
+            if (part.type === "text") {
+              return mapChars(part.value, ASCII_TO_SUBSCRIPT);
+            }
+            if (part.type === "sup") {
+              return mapChars(part.value, ASCII_TO_SUPERSCRIPT);
+            }
+            return mapChars(part.value, ASCII_TO_SUBSCRIPT);
+          })
+          .join("");
       }
       return mapChars(token.value, ASCII_TO_SUBSCRIPT);
     })
@@ -434,13 +481,33 @@ export function ScientificSvgRuns({ text }: ScientificSvgRunsProps) {
             </tspan>
           );
         }
+        if (token.type === "sup") {
+          return (
+            <tspan key={key} baselineShift="super" fontSize="0.72em">
+              {token.value}
+            </tspan>
+          );
+        }
+        const inner = tokenizeScientificText(token.value);
         return (
-          <tspan
-            key={key}
-            baselineShift={token.type === "sup" ? "super" : "sub"}
-            fontSize="0.72em"
-          >
-            {token.value}
+          <tspan key={key} baselineShift="sub" fontSize="0.72em">
+            {inner.map((part, partKey) => {
+              if (part.type === "text") {
+                return <Fragment key={partKey}>{part.value}</Fragment>;
+              }
+              if (part.type === "sup") {
+                return (
+                  <tspan key={partKey} baselineShift="super" fontSize="0.85em">
+                    {part.value}
+                  </tspan>
+                );
+              }
+              return (
+                <tspan key={partKey} baselineShift="sub" fontSize="0.85em">
+                  {part.value}
+                </tspan>
+              );
+            })}
           </tspan>
         );
       })}

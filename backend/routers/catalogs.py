@@ -1,8 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException
 from backend.dependencies import AppState, get_state
-from backend.schemas import PropertiesResponse, HardnessColumnsResponse, HardnessConvertResponse, HardnessConvertRequest, UnitResponse, ClassificationResponse
+from backend.schemas import (
+    PropertiesResponse,
+    HardnessColumnsResponse,
+    HardnessConvertResponse,
+    HardnessConvertRequest,
+    UnitResponse,
+    ClassificationResponse,
+    ElementsCatalogResponse,
+    ElementItem,
+    ElementCreateRequest,
+    ElementUpdateRequest,
+    OkResponse,
+)
 from src.services.unit_manager import UnitManager
 from src.services.classification_catalog import get_classification_catalog
+from src.services.elements_catalog import (
+    ElementsCatalogError,
+    get_elements_catalog,
+)
 
 router = APIRouter(tags=["Catalogs"])
 
@@ -43,5 +59,56 @@ def get_unit(unit_type:str, state: AppState=Depends(get_state)):
         display_labels=display_labels,
         factors=factors,
     )
-    
+
+
+@router.get("/catalogs/elements", response_model=ElementsCatalogResponse)
+def get_elements():
+    catalog = get_elements_catalog()
+    payload = catalog.to_payload()
+    return ElementsCatalogResponse(
+        schema_version=str(payload["schema_version"]),
+        elements=[ElementItem(**item) for item in payload["elements"]],
+    )
+
+
+@router.get("/catalogs/elements/{symbol}", response_model=ElementItem)
+def get_element(symbol: str):
+    item = get_elements_catalog().get_by_symbol(symbol)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Элемент не найден")
+    return ElementItem(**item)
+
+
+@router.post("/catalogs/elements", response_model=ElementItem)
+def create_element(body: ElementCreateRequest):
+    catalog = get_elements_catalog()
+    try:
+        item = catalog.add_element(body.model_dump())
+    except ElementsCatalogError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ElementItem(**item)
+
+
+@router.put("/catalogs/elements/{symbol}", response_model=ElementItem)
+def update_element(symbol: str, body: ElementUpdateRequest):
+    catalog = get_elements_catalog()
+    try:
+        item = catalog.update_element(symbol, body.model_dump(exclude_unset=True))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Элемент не найден") from exc
+    except ElementsCatalogError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ElementItem(**item)
+
+
+@router.delete("/catalogs/elements/{symbol}", response_model=OkResponse)
+def delete_element(symbol: str):
+    catalog = get_elements_catalog()
+    try:
+        catalog.delete_element(symbol)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Элемент не найден") from exc
+    except ElementsCatalogError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return OkResponse(ok=True)
 

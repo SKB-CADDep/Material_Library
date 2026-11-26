@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type PropertyCommentFieldProps = {
   id: string;
@@ -13,23 +13,43 @@ function syncTextareaHeight(textarea: HTMLTextAreaElement) {
 
 export function PropertyCommentField({ id, value, onChange }: PropertyCommentFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraft(value);
+    }
+  }, [value, editing]);
 
   useLayoutEffect(() => {
     if (textareaRef.current) {
       syncTextareaHeight(textareaRef.current);
     }
-  }, [value]);
+  }, [editing, draft, value]);
 
   return (
     <textarea
       ref={textareaRef}
       id={id}
       rows={2}
-      value={value}
+      value={editing ? draft : value}
       className="input property-field-multiline"
+      onFocus={() => {
+        setEditing(true);
+        setDraft(value);
+      }}
       onChange={(event) => {
-        onChange(event.target.value);
+        setDraft(event.target.value);
         syncTextareaHeight(event.target);
+      }}
+      onBlur={(event) => {
+        const next = event.target.value;
+        setEditing(false);
+        setDraft(next);
+        if (next !== value) {
+          onChange(next);
+        }
       }}
     />
   );

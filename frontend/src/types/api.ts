@@ -50,6 +50,20 @@ export type TabType =
 
 export type SourcesTabType = TabType;
 
+export type ElementItem = {
+  symbol: string;
+  display_symbol: string;
+  name: string;
+  color: string | null;
+  influence: string | null;
+  min?: number | null;
+};
+
+export type ElementsCatalogResponse = {
+  schema_version: string;
+  elements: ElementItem[];
+};
+
 
 export type MaterialSaveResponse = {
   ok: boolean;
@@ -99,7 +113,10 @@ export type TemperatureSelectionRow = {
   temperature_comment?: string | null;
   category_index?: number | null;
   source_ref_id?: string | null;
-  values: Record<string, number | string | null>;
+  /** Индекс записи твёрдости внутри КП (для уникального key строки). */
+  hardness_index?: number | null;
+  /** Число/строка (твёрдость) или {value, mode} как в «Расчёт отдельно». */
+  values: Record<string, number | string | null | CalculationCell>;
 };
 
 export type TemperatureSelectionRequest = {

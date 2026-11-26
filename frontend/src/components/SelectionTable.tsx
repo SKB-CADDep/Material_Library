@@ -12,7 +12,15 @@ import {
   TEMPERATURE_UNIT_TYPE,
 } from "../lib/calculationColumnHeader";
 import { copyToClipboard } from "../lib/copyToClipboard";
-import { getSelectionCellDisplayText } from "../lib/formatSelectionCellValue";
+import { isEmptyCellMarker } from "../lib/emptyCell";
+import {
+  getSelectionCellDisplayText,
+  getSelectionCellMode,
+} from "../lib/formatSelectionCellValue";
+import {
+  calculationCellModeClass,
+  calculationCellModeTitle,
+} from "../lib/formatCalculationCell";
 import type {
   SelectionSortColumn,
   SelectionSortState,
@@ -128,10 +136,39 @@ function hasTemperatureComment(row: TemperatureSelectionRow): boolean {
   return Boolean((row.temperature_comment ?? "").trim());
 }
 
-function getRowKey(row: TemperatureSelectionRow, index: number): string {
-  const catIdx = row.category_index ?? index;
+/** Стабильный номер строки: сортировка не копирует объект, поэтому ключ не прыгает. */
+export function createSelectionRowIds(): (row: object) => number {
+  const ids = new WeakMap<object, number>();
+  let next = 0;
+  return (row) => {
+    const existing = ids.get(row);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const id = next;
+    next += 1;
+    ids.set(row, id);
+    return id;
+  };
+}
+
+export function getSelectionTableRowKey(
+  row: TemperatureSelectionRow,
+  index: number,
+): string {
+  const catIdx = row.category_index ?? "x";
   const srcKey = row.source_ref_id ?? row.source ?? "";
-  return `${row.material_id}-${catIdx}-${srcKey}`;
+  const base = `${row.material_id}-${catIdx}-${srcKey}`;
+  if (row.hardness_index !== undefined && row.hardness_index !== null) {
+    return `${base}-h${row.hardness_index}`;
+  }
+  const min = row.values?.min_value;
+  const max = row.values?.max_value;
+  const unit = row.values?.unit_value;
+  if (min != null || max != null || unit != null) {
+    return `${base}-${String(unit ?? "")}-${String(min ?? "")}-${String(max ?? "")}-${index}`;
+  }
+  return `${base}-${index}`;
 }
 
 function renderColumnHeader(
@@ -181,6 +218,7 @@ export function SelectionTable({
   const [frozenWidth, setFrozenWidth] = useState(FROZEN_WIDTH);
   const [layoutTick, setLayoutTick] = useState(0);
   const [columnsResized, setColumnsResized] = useState(false);
+  const rowIdOf = useRef(createSelectionRowIds()).current;
 
   const scrollColumnKeys = scrollColumns.map((col) => col.key).join("|");
 
@@ -403,7 +441,7 @@ export function SelectionTable({
                 <col key={col.key} style={{ width: col.width }} />
               ))}
               {scrollColumns.map((col) => (
-                <col key={col.key} style={{ width: 88 }} />
+                <col key={col.key} style={{ width: 112 }} />
               ))}
             </colgroup>
             <thead>
@@ -588,7 +626,7 @@ export function SelectionTable({
                 </tr>
               ) : null}
               {rows.map((row, index) => (
-                <tr key={getRowKey(row, index)}>
+                <tr key={getSelectionTableRowKey(row, rowIdOf(row))}>
                   {FROZEN_COLUMNS.map((col) => (
                     <td
                       key={col.key}
@@ -644,23 +682,48 @@ export function SelectionTable({
                       )}
                     </td>
                   ))}
-                  {scrollColumns.map((col) => (
-                    <td
-                      key={col.key}
-                      className="selection-table-col--value"
-                      onContextMenu={(event) =>
-                        handleCellContextMenu(event, index, col.key)
-                      }
-                    >
-                      {getSelectionCellDisplayText(
-                        row,
-                        col.key,
-                        scrollColumns,
-                        columnUnits,
-                        unitConfigs,
-                      )}
-                    </td>
-                  ))}
+                  {scrollColumns.map((col) => {
+                    const cellText = getSelectionCellDisplayText(
+                      row,
+                      col.key,
+                      scrollColumns,
+                      columnUnits,
+                      unitConfigs,
+                    );
+                    const mode = getSelectionCellMode(row.values[col.key]);
+                    const isEmpty = isEmptyCellMarker(cellText);
+                    const modeClass = calculationCellModeClass(mode ?? undefined);
+                    const modeTitle = isEmpty
+                      ? undefined
+                      : calculationCellModeTitle(mode ?? undefined);
+                    const title = isEmpty
+                      ? undefined
+                      : modeTitle
+                        ? `${cellText} (${modeTitle})`
+                        : cellText;
+                    return (
+                      <td
+                        key={col.key}
+                        className="selection-table-col--value"
+                        title={title}
+                        onContextMenu={(event) =>
+                          handleCellContextMenu(event, index, col.key)
+                        }
+                      >
+                        <span
+                          className={[
+                            "calculation-cell",
+                            modeClass,
+                            isEmpty ? "calculation-cell--empty" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {cellText}
+                        </span>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

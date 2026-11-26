@@ -1,4 +1,5 @@
 import type { SourceItem } from "../types/api";
+import { EMPTY_CELL, isEmptyCellMarker } from "./emptyCell";
 
 export type CompositionSourceFields = {
   composition_source?: string | null;
@@ -19,7 +20,10 @@ export function resolveCompositionSourceLabel(
       chemicalSources.find((src) => src.id_source === refId)?.name_source ??
       refId;
   } else {
-    sourceName = String(entry?.composition_source ?? "").trim() || "-";
+    sourceName = String(entry?.composition_source ?? "").trim();
+    if (isEmptyCellMarker(sourceName)) {
+      sourceName = EMPTY_CELL;
+    }
   }
 
   const subsource = String(entry?.composition_subsource ?? "").trim();

@@ -10,7 +10,7 @@ echo.
 echo   Material Library - starting...
 echo   Folder: %CD%
 echo   See INSTRUKCIYA / instruction file in this folder.
-echo   Do not close this window while working.
+echo   Close this window to stop the program.
 echo.
 
 set "LOG=%TEMP%\material-library-launch.log"
@@ -22,6 +22,9 @@ if not defined PY if exist "%CD%\.venv\Scripts\python.exe" set "PY=%CD%\.venv\Sc
 if not defined PY goto fail_python
 
 if not exist "%CD%\scripts\launch_customer.py" goto fail_script
+
+chcp 65001 >nul
+set "PYTHONIOENCODING=utf-8"
 
 echo PY=%PY%>>"%LOG%"
 echo   Python: %PY%

@@ -12,7 +12,7 @@ export const CHEM_COMPARISON_TOUR_STEPS: TourStep[] = [
   {
     id: "area",
     title: "Область применения",
-    text: "Отфильтруйте материалы по области применения.",
+    text: "Отфильтруйте список материалов по области применения (например, «Все» — полный список материалов).",
     selector: "[data-tour='chem-s1-area']",
     placement: "right",
   },
@@ -64,7 +64,7 @@ export const CHEM_COMPARISON_TOUR_STEPS: TourStep[] = [
   {
     id: "s2-area",
     title: "Область применения",
-    text: "Отфильтруйте данные кандидатов по области применения.",
+    text: "Отфильтруйте список материалов по области применения (например, «Все» — полный список материалов).",
     selector: "[data-tour='chem-s2-area']",
     placement: "right",
   },

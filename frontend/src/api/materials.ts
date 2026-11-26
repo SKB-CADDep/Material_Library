@@ -1,6 +1,12 @@
 import { api } from "./client";
 import type { MaterialSummary, MaterialSaveResponse} from "../types/api";
 import { materialForEditor, materialFilenameListStem } from "../lib/materialDraft";
+import { commitChemicalCompositionInMaterial } from "../lib/chemCompositionCommit";
+import {
+  commitHardnessInMaterial,
+  validateHardnessRanges,
+} from "../lib/hardnessCommit";
+import { validateScalarMechValues } from "../lib/scalarMechCommit";
 import {
   categoryDisplayName,
   hasCategorySource,
@@ -44,6 +50,17 @@ export function validateMaterialDraftForSave(
       return `Укажите источник для набора состава #${i + 1}`;
     }
   }
+
+  const hardnessError = validateHardnessRanges(body);
+  if (hardnessError) {
+    return hardnessError;
+  }
+
+  const scalarError = validateScalarMechValues(body);
+  if (scalarError) {
+    return scalarError;
+  }
+
   return null;
 }
 
@@ -102,6 +119,15 @@ function stripInvalidTemperaturePairs(
   return next;
 }
 
+/** T–value cleanup + химсостав + твёрдость: перед записью на диск. */
+export function prepareMaterialPayloadForSave(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = stripInvalidTemperaturePairs(body);
+  commitChemicalCompositionInMaterial(next);
+  return commitHardnessInMaterial(next);
+}
+
 export async function listMaterials(): Promise<MaterialSummary[]> {
   const { data } = await api.get<MaterialSummary[]>("/materials");
   return data;
@@ -116,7 +142,7 @@ export async function saveMaterial(
   body: Record<string, unknown>
 ): Promise<MaterialSaveResponse> {
   assertMaterialDraftForSave(body);
-  const payload = stripInvalidTemperaturePairs(body);
+  const payload = prepareMaterialPayloadForSave(body);
 
   const { data } = await api.put<MaterialSaveResponse>(`/materials/${id}`, payload);
   return data;
@@ -198,13 +224,20 @@ export function normalizeMaterialFilename(input: string): string {
 
 export async function saveNewMaterial(
   body: Record<string, unknown>,
-  filename: string
+  filename: string,
+  options?: { sourceMaterialId?: string | null },
 ): Promise<MaterialSaveResponse> {
   assertMaterialDraftForSave(body);
-  const payload = stripInvalidTemperaturePairs(body);
+  const payload = prepareMaterialPayloadForSave(body);
+
+  const params: Record<string, string> = { filename };
+  const sourceId = options?.sourceMaterialId?.trim();
+  if (sourceId) {
+    params.source_material_id = sourceId;
+  }
 
   const { data } = await api.post<MaterialSaveResponse>("/materials", payload, {
-    params: { filename },
+    params,
   });
   return data;
 }

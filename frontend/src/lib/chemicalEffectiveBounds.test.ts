@@ -48,15 +48,31 @@ describe("chemicalEffectiveBounds", () => {
     expect(upper).toBe(0.3);
   });
 
-  it("expands bounds with relative tolerance percent", () => {
+  it("expands bounds with relative tolerance delta", () => {
     const elem: ChemElementValueEntry = {
       ...baseElem,
-      min_value_tolerance_relative: 10,
-      max_value_tolerance_relative: 10,
+      min_value_tolerance_relative: 0.02,
+      max_value_tolerance_relative: 0.03,
     };
     const [lower, upper] = chemicalEffectiveBounds(elem, "relative");
     expect(lower).toBeCloseTo(0.18);
     expect(upper).toBeCloseTo(0.33);
+  });
+
+  it("falls back to nominal min/max when absolute tolerance is 0", () => {
+    const elem: ChemElementValueEntry = {
+      ...baseElem,
+      min_value_tolerance: 0,
+      max_value_tolerance: 0,
+    };
+    const [lower, upper, minTol, maxTol] = chemicalEffectiveBounds(
+      elem,
+      "absolute",
+    );
+    expect(lower).toBe(0.2);
+    expect(upper).toBe(0.3);
+    expect(minTol).toBe(0);
+    expect(maxTol).toBe(0);
   });
 
   it("uses infinities when bounds are completely open", () => {

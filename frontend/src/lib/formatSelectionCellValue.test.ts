@@ -3,7 +3,9 @@ import type { UnitResponse } from "../types/api";
 import {
   formatSelectionCellValue,
   formatSelectionFrozenValue,
+  getSelectionCellMode,
   syncHardnessColumnUnits,
+  unwrapSelectionCellValue,
 } from "./formatSelectionCellValue";
 
 const tempConfig: UnitResponse = {
@@ -14,7 +16,9 @@ const tempConfig: UnitResponse = {
 
 describe("formatSelectionFrozenValue", () => {
   it("formats null as dash", () => {
-    expect(formatSelectionFrozenValue(null)).toBe("-");
+    expect(formatSelectionFrozenValue(null)).toBe("—");
+    expect(formatSelectionFrozenValue("-")).toBe("—");
+    expect(formatSelectionFrozenValue("—")).toBe("—");
     expect(formatSelectionFrozenValue("Steel")).toBe("Steel");
   });
 });
@@ -38,6 +42,24 @@ describe("formatSelectionCellValue", () => {
         displayUnit: "МПа",
       }),
     ).toBe("360.46");
+  });
+
+  it("keeps full modulus of elasticity magnitude (no /100)", () => {
+    const modulusConfig: UnitResponse = {
+      unit_type: "Модуль упругости",
+      system_unit: "МПа",
+      units: ["МПа", "ГПа"],
+      factors: { МПа: 1, ГПа: 1000 },
+      display_labels: {},
+    };
+    expect(
+      formatSelectionCellValue(199500, {
+        columnKey: "modulus_elasticity",
+        baseUnit: "МПа",
+        displayUnit: "МПа",
+        unitConfig: modulusConfig,
+      }),
+    ).toBe("199500.00");
   });
 
   it("converts units when config provided", () => {
@@ -69,15 +91,94 @@ describe("formatSelectionCellValue", () => {
     ).toBe("1.05e-5");
   });
 
-  it("uses row hardness unit for min/max columns", () => {
+  it("converts hardness via table instead of NaN", () => {
+    const hardnessConfig: UnitResponse = {
+      unit_type: "Твердость",
+      system_unit: "HB",
+      units: ["HB", "HRC", "d10"],
+      factors: {
+        HB: 1,
+        HRA: "table",
+        HRC: "table",
+        d10: "table",
+      },
+      display_labels: {},
+    };
     expect(
-      formatSelectionCellValue(120, {
+      formatSelectionCellValue(653, {
         columnKey: "min_value",
         baseUnit: "HB",
-        displayUnit: "HB",
-        rowSourceUnit: "HRC",
+        displayUnit: "HRC",
+        unitConfig: hardnessConfig,
+        rowSourceUnit: "HB",
       }),
-    ).toBe("120.00");
+    ).toBe("62.90");
+  });
+
+  it("shows empty when hardness table conversion is out of range", () => {
+    const hardnessConfig: UnitResponse = {
+      unit_type: "Твердость",
+      system_unit: "HB",
+      units: ["HB", "HRC", "HSD"],
+      factors: { HB: 1, HRC: "table", HSD: "table" },
+      display_labels: {},
+    };
+    expect(
+      formatSelectionCellValue(74, {
+        columnKey: "min_value",
+        baseUnit: "HB",
+        displayUnit: "HRC",
+        unitConfig: hardnessConfig,
+        rowSourceUnit: "HB",
+      }),
+    ).toBe("—");
+    expect(
+      formatSelectionCellValue(135, {
+        columnKey: "min_value",
+        baseUnit: "HB",
+        displayUnit: "HSD",
+        unitConfig: hardnessConfig,
+        rowSourceUnit: "HB",
+      }),
+    ).toBe("—");
+  });
+  it("unwraps {value, mode} cells like calculation tab", () => {
+    expect(
+      formatSelectionCellValue(
+        { value: 360.456, mode: "interp" },
+        {
+          columnKey: "yield_strength",
+          baseUnit: "МПа",
+          displayUnit: "МПа",
+        },
+      ),
+    ).toBe("360.46");
+  });
+
+  it("shows a dash instead of a non-numeric string", () => {
+    expect(
+      formatSelectionCellValue("нет данных", {
+        columnKey: "yield_strength",
+        baseUnit: "МПа",
+        displayUnit: "МПа",
+      }),
+    ).toBe("—");
+    expect(
+      formatSelectionCellValue("12,5", {
+        columnKey: "yield_strength",
+        baseUnit: "МПа",
+        displayUnit: "МПа",
+      }),
+    ).toBe("12.50");
+  });
+});
+
+describe("unwrapSelectionCellValue / getSelectionCellMode", () => {
+  it("reads plain and calculation-shaped cells", () => {
+    expect(unwrapSelectionCellValue(12)).toBe(12);
+    expect(unwrapSelectionCellValue({ value: 12, mode: "exact" })).toBe(12);
+    expect(getSelectionCellMode(12)).toBeNull();
+    expect(getSelectionCellMode({ value: 12, mode: "interp" })).toBe("interp");
   });
 });
 

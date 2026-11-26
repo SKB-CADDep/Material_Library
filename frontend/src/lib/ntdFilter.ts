@@ -1,10 +1,11 @@
 import type { TemperatureSelectionRow } from "../types/api";
+import { EMPTY_CELL, isEmptyCellMarker } from "./emptyCell";
 
 export const ALL_NTD_FILTER = "";
 
 export function normalizeNtdLabel(source: string | null | undefined): string {
   const trimmed = String(source ?? "").trim();
-  return trimmed || "—";
+  return isEmptyCellMarker(trimmed) ? EMPTY_CELL : trimmed;
 }
 
 export function collectNtdFilterOptions(

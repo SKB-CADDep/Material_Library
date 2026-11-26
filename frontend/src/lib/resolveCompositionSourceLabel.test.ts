@@ -31,7 +31,10 @@ describe("resolveCompositionSourceLabel", () => {
     expect(
       resolveCompositionSourceLabel({ composition_source: "Manual" }, []),
     ).toBe("Manual");
-    expect(resolveCompositionSourceLabel({}, [])).toBe("-");
+    expect(resolveCompositionSourceLabel({}, [])).toBe("—");
+    expect(resolveCompositionSourceLabel({ composition_source: "-" }, [])).toBe(
+      "—",
+    );
   });
 
   it("appends subsource in parentheses", () => {

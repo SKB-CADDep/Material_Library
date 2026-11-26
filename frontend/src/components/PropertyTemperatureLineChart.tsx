@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -27,7 +27,7 @@ type PropertyTemperatureLineChartProps = {
   yLabel?: string;
 };
 
-export function PropertyTemperatureLineChart({
+export const PropertyTemperatureLineChart = memo(function PropertyTemperatureLineChart({
   data,
   yLabel = "Значение",
 }: PropertyTemperatureLineChartProps) {
@@ -90,4 +90,4 @@ export function PropertyTemperatureLineChart({
         </ResponsiveContainer>
     </div>
   );
-}
+});

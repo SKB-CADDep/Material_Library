@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { EMPTY_CELL } from "../lib/emptyCell";
 
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
 import type { ChemSourceColumn } from "../lib/chemComparisonPivot";
@@ -62,7 +63,7 @@ export function ChemComparisonSourcesTable({
                     className="chem-comparison-sources-col--comment"
                     title={column.comment || undefined}
                   >
-                    {column.comment.trim() ? column.comment : "—"}
+                    {column.comment.trim() ? column.comment : EMPTY_CELL}
                   </td>
                   <td className="chem-comparison-sources-col--base">
                     {column.baseElement}

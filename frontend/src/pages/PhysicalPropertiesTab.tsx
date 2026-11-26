@@ -1,12 +1,10 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { UnitSelect } from "./UnitSelect.tsx";
 import {
   PropertySourceSelect,
   isOrphanSource,
   resolvePropertySourceName,
 } from "./PropertySourceSelect.tsx";
-import { getUnits } from "../api/units";
 import type { SourceItem } from "../types/api";
 import { yLabelWithUnit } from "./chartLabels.ts";
 import { useUnitLabels } from "../hooks/useUnitLabels";
@@ -19,11 +17,11 @@ import {
   patchPhysicalProperty,
   type NamedProperty,
 } from "../lib/namedProperties";
-import { convertBetweenUnits } from "../lib/unitConversion";
 import { parseDecimalInput } from "../lib/formatDecimal";
 import { resolveLinearExpansionUnit } from "../lib/linearExpansionUnit";
 import { ScientificText } from "../lib/scientificNotation";
 import { TemperatureValueTable } from "../components/TemperatureValueTable";
+import { PropertyCommentField } from "../components/PropertyCommentField";
 
 const PHYSICAL_Y_LABELS = {
   modulus_elasticity: "E, МПа",
@@ -109,58 +107,62 @@ function toChartData(pairs: Array<[number, number]> | undefined): ChartPoint[] {
     .map(([temperature, value]) => ({ temperature, value }));
 }
 
-function PhysicalTemperatureGraph({
+const PhysicalTemperatureGraph = memo(function PhysicalTemperatureGraph({
   unitType,
   yLabel,
   valueUnit,
   pairs,
+  enabled,
 }: {
   unitType: string;
   yLabel: string;
   valueUnit?: string;
   pairs?: Array<[number, number]>;
+  enabled: boolean;
 }) {
   const { labels } = useUnitLabels(unitType);
+  const chartData = useMemo(() => toChartData(pairs), [pairs]);
+
+  if (!enabled) {
+    return <div className="property-chart-plot" aria-hidden="true" />;
+  }
 
   return (
     <PropertyTemperatureLineChart
-      data={toChartData(pairs)}
+      data={chartData}
       yLabel={yLabelWithUnit(yLabel, valueUnit, labels)}
     />
   );
-}
+});
 
 function PhysicalPropertySection({
   config,
   material,
   prop,
+  chartProp,
   sources,
   selectedRowIndex,
   onRowSelect,
   onDraftChange,
   unitType,
-  layoutActive: layoutActiveProp = true,
+  chartsEnabled,
 }: {
   config: PhysicalPropConfig;
   material: Record<string, unknown>;
   prop: NamedProperty | undefined;
+  chartProp: NamedProperty | undefined;
   sources: SourceItem[];
   selectedRowIndex: number | null;
   onRowSelect: (index: number | null) => void;
   onDraftChange: (next: Record<string, unknown>) => void;
   unitType: string;
-  layoutActive?: boolean;
+  chartsEnabled: boolean;
 }) {
-  const layoutActive = layoutActiveProp;
   const currentSource = resolvePropertySourceName(prop, sources);
   const sourceNames = sources.map((src) => src.name_source);
   const showOrphan = isOrphanSource(currentSource, sourceNames);
   const pairs = prop?.temperature_value_pairs;
-  const unitsQuery = useQuery({
-    queryKey: ["units", unitType],
-    queryFn: () => getUnits(unitType),
-    enabled: layoutActive && unitType.length > 0,
-  });
+  const chartPairs = chartProp?.temperature_value_pairs;
   const storedUnit = prop?.value_unit ?? "";
   const displayUnit =
     config.key === "coefficient_linear_expansion"
@@ -174,27 +176,9 @@ function PhysicalPropertySection({
     onDraftChange(patchPhysicalProperty(material, config.key, next));
   };
 
+  // Меняем только подпись ед.изм.; числа в БД не пересчитываем (пересчёт — только в расчётах).
   const handleUnitChange = (nextUnit: string) => {
-    const configUnits = unitsQuery.data;
-    if (
-      !configUnits ||
-      !nextUnit ||
-      displayUnit === nextUnit ||
-      !pairs ||
-      pairs.length === 0
-    ) {
-      patch({ value_unit: nextUnit });
-      return;
-    }
-    patch({
-      value_unit: nextUnit,
-      temperature_value_pairs: pairs.map(([temperature, value]) => [
-        temperature,
-        Number.isFinite(value)
-          ? convertBetweenUnits(value, displayUnit, nextUnit, configUnits)
-          : value,
-      ]),
-    });
+    patch({ value_unit: nextUnit });
   };
 
   return (
@@ -204,8 +188,8 @@ function PhysicalPropertySection({
       </legend>
       <div className="property-section-layout">
         <div className="property-section-fields">
-          <div className="form-row">
-            <label htmlFor={config.unitId}>Ед. изм:</label>
+          <div className="form-row form-row--unit">
+            <label htmlFor={config.unitId}>Ед.изм.</label>
             <UnitSelect
               id={config.unitId}
               unitType={unitType}
@@ -213,8 +197,8 @@ function PhysicalPropertySection({
               onChange={handleUnitChange}
             />
           </div>
-          <div className="form-row">
-            <label htmlFor={config.sourceId}>Источник свойств:</label>
+          <div className="form-row form-row--stack">
+            <label htmlFor={config.sourceId}>Источник:</label>
             <PropertySourceSelect
               id={config.sourceId}
               value={currentSource}
@@ -228,15 +212,13 @@ function PhysicalPropertySection({
               }}
             />
           </div>
-          <div className="form-row">
+          <div className="form-row form-row--stack">
             <label htmlFor={config.commentId}>Комментарий:</label>
-            <input
+            <PropertyCommentField
               id={config.commentId}
-              type="text"
               value={prop?.comment ?? ""}
-              className="input"
-              onChange={(event) => {
-                patch({ comment: event.target.value });
+              onChange={(text) => {
+                patch({ comment: text });
               }}
             />
           </div>
@@ -289,7 +271,8 @@ function PhysicalPropertySection({
             unitType={unitType}
             yLabel={PHYSICAL_Y_LABELS[config.key]}
             valueUnit={displayUnit}
-            pairs={pairs}
+            pairs={chartPairs}
+            enabled={chartsEnabled}
           />
         </div>
       </div>
@@ -297,12 +280,14 @@ function PhysicalPropertySection({
   );
 }
 
-export function PhysicalPropertiesTab({
+export const PhysicalPropertiesTab = memo(function PhysicalPropertiesTab({
   material,
   onDraftChange,
   readOnly = false,
 }: PhysicalPropertiesTabProps) {
   const paneActive = useKeepAlivePaneActive();
+  const chartsEnabled = useDeferredValue(paneActive);
+  const deferredMaterial = useDeferredValue(material);
   const result = useSourcesCatalog({ enabled: paneActive });
   const propertiesCatalog = usePropertiesCatalog({ enabled: paneActive });
   const physicalSources = result.data?.property_sources ?? [];
@@ -310,11 +295,23 @@ export function PhysicalPropertiesTab({
     Partial<Record<PhysicalPropKey, number | null>>
   >({});
 
+  const materialKey =
+    typeof material?.material_id === "string" && material.material_id.trim()
+      ? material.material_id
+      : null;
+
+  useEffect(() => {
+    setSelectedRows({});
+  }, [materialKey]);
+
   if (!material) {
     return <p className="tab-placeholder">Выберите материал в списке выше</p>;
   }
 
   const physical = material.physical_properties as
+    | Record<string, unknown>
+    | undefined;
+  const deferredPhysical = deferredMaterial?.physical_properties as
     | Record<string, unknown>
     | undefined;
 
@@ -331,6 +328,8 @@ export function PhysicalPropertiesTab({
               config={config}
               material={material}
               prop={findNamedProp(physical, config.key)}
+              chartProp={findNamedProp(deferredPhysical, config.key)}
+              chartsEnabled={chartsEnabled}
               sources={physicalSources}
               unitType={
                 propertiesCatalog.data?.physical[config.key]?.unit_type ??
@@ -341,11 +340,11 @@ export function PhysicalPropertiesTab({
                 setSelectedRows((prev) => ({ ...prev, [config.key]: index }));
               }}
               onDraftChange={onDraftChange}
-              layoutActive={paneActive}
             />
           ))}
         </div>
       </fieldset>
     </form>
   );
-}
+});
+

@@ -9,6 +9,7 @@ import {
   type ToleranceType,
 } from "./chemicalEffectiveBounds";
 import { materialMatchesApplicationAreas } from "./applicationAreaFilter";
+import { EMPTY_CELL } from "./emptyCell";
 import { resolveCompositionSourceLabel } from "./resolveCompositionSourceLabel";
 
 export type ChemCompositionEntryApi = {
@@ -85,7 +86,7 @@ export function buildChemCompositionCache(
       areas: entry.areas ?? [],
       composition,
       sourceLabel: resolveCompositionSourceLabel(composition, chemicalSources),
-      baseElement: String(composition.base_element ?? "").trim() || "-",
+      baseElement: String(composition.base_element ?? "").trim() || EMPTY_CELL,
       unit: elements[0]?.unit_value?.trim() || "%",
       elementsMap: buildElementsMap(elements),
     };
@@ -277,7 +278,7 @@ export function formatDetailNumber(
   prec = 4,
 ): string {
   if (value === null || value === undefined) {
-    return "-";
+    return EMPTY_CELL;
   }
   return value
     .toFixed(prec)
@@ -292,6 +293,25 @@ export const DETAIL_STATE_LABELS: Record<string, string> = {
   missing: "нет данных",
   "": "нет данных",
 };
+
+export function candidateSelectionKey(
+  candidate: Pick<
+    CandidateEvaluation,
+    "materialId" | "sourceLabel" | "baseElement"
+  > & {
+    composition?: Pick<CompositionEntry, "composition_source"> | null;
+  },
+): string {
+  const compositionSource = String(
+    candidate.composition?.composition_source ?? "",
+  ).trim();
+  return [
+    candidate.materialId,
+    candidate.sourceLabel,
+    candidate.baseElement,
+    compositionSource,
+  ].join("\u0000");
+}
 
 export function candidateRowClass(status: CandidateStatus): string {
   if (status === "Полное совпадение") {

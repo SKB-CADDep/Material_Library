@@ -9,3 +9,8 @@ __pycache__/
 *.py[cod]
 *.pyo
 .pytest_cache/
+logs/
+material_changelog.txt
+audit_fallback_*.jsonl
+.DS_Store
+АКТУАЛЬНАЯ БД ОТ ОР/

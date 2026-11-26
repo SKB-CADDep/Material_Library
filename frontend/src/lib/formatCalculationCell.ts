@@ -1,5 +1,8 @@
-import type { CalculationCell } from "../types/api";
+import type { CalculationCell, UnitResponse } from "../types/api";
+import { EMPTY_CELL } from "./emptyCell";
 import { formatDecimal } from "./formatDecimal";
+import { usesHardnessTableConversion } from "./hardnessConversion";
+import { convertBetweenUnits } from "./unitConversion";
 
 export const CALCULATION_CELL_TITLES = {
   exact: "Точное значение из базы данных",
@@ -15,10 +18,52 @@ function toDisplayNumber(value: CalculationCell["value"]): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+/** Число ячейки в единице колонки. Твёрдость вне таблицы — пусто, не исходное HB. */
+export function calculationCellInDisplayUnit(
+  cell: CalculationCell | undefined,
+  options: {
+    baseUnit: string;
+    displayUnit: string;
+    unitConfig?: UnitResponse;
+  },
+): CalculationCell | undefined {
+  const { baseUnit, displayUnit, unitConfig } = options;
+  if (
+    cell?.value == null ||
+    !unitConfig ||
+    !baseUnit ||
+    !displayUnit ||
+    baseUnit === displayUnit
+  ) {
+    return cell;
+  }
+
+  const numeric =
+    typeof cell.value === "number" ? cell.value : Number(cell.value);
+  if (!Number.isFinite(numeric)) {
+    return cell;
+  }
+
+  try {
+    const converted = convertBetweenUnits(
+      numeric,
+      baseUnit,
+      displayUnit,
+      unitConfig,
+    );
+    return { ...cell, value: converted };
+  } catch {
+    if (usesHardnessTableConversion(unitConfig.factors)) {
+      return { ...cell, value: null };
+    }
+    return cell;
+  }
+}
+
 export function formatCalculationCell(cell: CalculationCell | undefined): string {
   const numeric = toDisplayNumber(cell?.value ?? null);
   if (!cell || numeric === null) {
-    return "—";
+    return EMPTY_CELL;
   }
   return formatDecimal(numeric, 1);
 }

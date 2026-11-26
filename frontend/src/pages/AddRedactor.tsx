@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, memo } from "react";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useClassificationCatalog } from "../hooks/useClassificationCatalog";
 import { useKeepAlivePaneActive } from "../context/KeepAlivePaneContext";
@@ -11,7 +11,11 @@ type AddRedactorProps = {
   readOnly?: boolean;
 };
 
-export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRedactorProps) {
+export const AddRedactor = memo(function AddRedactor({
+  material,
+  onDraftChange,
+  readOnly = false,
+}: AddRedactorProps) {
   const paneActive = useKeepAlivePaneActive();
   const [newArea, setNewArea] = useState("");
   const [localAddedAreas, setLocalAddedAreas] = useState<string[]>([]);
@@ -273,4 +277,4 @@ export function AddRedactor({ material, onDraftChange, readOnly = false }: AddRe
       </fieldset>
     </form>
   );
-}
+});

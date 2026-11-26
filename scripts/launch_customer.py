@@ -1,11 +1,13 @@
 """Customer launcher without PowerShell (fileserver / corporate policy safe).
 
-Started by: Запуск Material Library.bat -> runtime\\python\\python.exe this file
+Started by:
+- Запуск Material Library.vbs -> pythonw.exe (no window; console only if startup fails)
+- Запуск Material Library.bat -> python.exe (console stays open)
 
-Runs uvicorn IN THIS SAME console window so:
-- errors are visible
-- bat pushd drive stays mapped while the app is running
-- no second PowerShell / python window that corporate policy kills
+The .vbs launcher waits hidden. This script writes
+%TEMP%\\material-library-launch.log and, after the site is ready,
+%TEMP%\\material-library-launch.ok. The launcher opens a console only when
+the process exits with an error before that mark exists.
 """
 
 from __future__ import annotations
@@ -23,7 +25,10 @@ from pathlib import Path
 
 APP_URL = "http://127.0.0.1:8000"
 HEALTH_URL = f"{APP_URL}/api/health"
-PID_FILE = Path(os.environ.get("TEMP", ".")) / "material-library-server.pid"
+_TEMP_DIR = Path(os.environ.get("TEMP", "."))
+PID_FILE = _TEMP_DIR / "material-library-server.pid"
+LAUNCH_LOG = _TEMP_DIR / "material-library-launch.log"
+LAUNCH_OK = _TEMP_DIR / "material-library-launch.ok"
 
 
 def project_root() -> Path:
@@ -77,6 +82,153 @@ def resolve_source_json(root: Path, materials_dir: Path) -> Path | None:
     if target.is_file():
         return Path(to_unc(target))
     return None
+
+
+def listening_pids(port: int) -> list[int]:
+    found: list[int] = []
+    try:
+        out = subprocess.check_output(
+            ["netstat", "-ano"],
+            text=True,
+            errors="ignore",
+        )
+    except Exception:
+        return found
+    needle = f":{port}"
+    for line in out.splitlines():
+        if "LISTENING" not in line.upper() or needle not in line:
+            continue
+        parts = line.split()
+        if not parts or not parts[-1].isdigit():
+            continue
+        pid = int(parts[-1])
+        if pid not in found and pid != os.getpid():
+            found.append(pid)
+    return found
+
+
+def release_port(port: int) -> bool:
+    """Останавливает прошлый запуск на этом порту. Закрытие окна должно делать то же самое."""
+    pids = listening_pids(port)
+    if not pids:
+        return True
+    print(f"Порт {port} ещё занят предыдущим запуском. Останавливаю его.")
+    for pid in pids:
+        subprocess.call(
+            ["taskkill", "/F", "/T", "/PID", str(pid)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    deadline = time.time() + 8
+    while time.time() < deadline:
+        if not port_in_use(port):
+            return True
+        time.sleep(0.3)
+    return not port_in_use(port)
+
+
+class _LaunchLog:
+    """Пишет журнал запуска. В консоли текст ещё и печатается."""
+
+    def __init__(self, log_path: Path) -> None:
+        self._streams = [stream for stream in (sys.stdout, sys.stderr) if stream is not None]
+        self._file = log_path.open("w", encoding="utf-8", errors="replace")
+
+    def write(self, data: str) -> None:
+        self._file.write(data)
+        self._file.flush()
+        for stream in self._streams:
+            try:
+                stream.write(data)
+                stream.flush()
+            except Exception:
+                pass
+
+    def flush(self) -> None:
+        self._file.flush()
+        for stream in self._streams:
+            try:
+                stream.flush()
+            except Exception:
+                pass
+
+    def isatty(self) -> bool:
+        for stream in self._streams:
+            check = getattr(stream, "isatty", None)
+            if not callable(check):
+                continue
+            try:
+                return bool(check())
+            except Exception:
+                return False
+        return False
+
+
+def attach_launch_log() -> None:
+    """Журнал нужен pythonw: у него нет окна, пока запуск не сорвался."""
+    log = _LaunchLog(LAUNCH_LOG)
+    sys.stdout = log  # type: ignore[assignment]
+    sys.stderr = log  # type: ignore[assignment]
+
+
+def clear_launch_ok() -> None:
+    try:
+        LAUNCH_OK.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def reopen_running_server(data_dir: Path) -> bool:
+    """Сервер уже работает: перечитать data и снова открыть сайт."""
+    if not port_in_use(8000) or not wait_http(HEALTH_URL, 3):
+        return False
+    print("Сервер уже запущен. Перечитываю базу.")
+    if data_dir.is_dir():
+        if open_workspace(data_dir):
+            print(f"База обновлена: {data_dir}")
+        else:
+            print("Не удалось перечитать папку data. Запускаю сервер заново.")
+            return False
+    else:
+        print(f"Папка с материалами не найдена: {data_dir}")
+    mark_launch_ok()
+    print("Открываю сайт.")
+    open_browser(APP_URL)
+    return True
+
+
+def mark_launch_ok() -> None:
+    try:
+        LAUNCH_OK.write_text("ok", encoding="ascii")
+    except OSError:
+        pass
+
+
+def install_console_close_stop() -> None:
+    """Закрытие окна консоли сразу завершает процесс и освобождает порт."""
+    if os.name != "nt":
+        return
+    stdout = sys.__stdout__
+    if stdout is None or not getattr(stdout, "isatty", lambda: False)():
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    ctrl_c = 0
+    ctrl_break = 1
+    ctrl_close = 2
+    ctrl_logoff = 5
+    ctrl_shutdown = 6
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+    def _on_console_ctrl(ctrl_type: int) -> bool:
+        if ctrl_type in (ctrl_c, ctrl_break, ctrl_close, ctrl_logoff, ctrl_shutdown):
+            os._exit(0)
+        return False
+
+    global _CONSOLE_CLOSE_HANDLER
+    _CONSOLE_CLOSE_HANDLER = _on_console_ctrl
+    ctypes.windll.kernel32.SetConsoleCtrlHandler(_CONSOLE_CLOSE_HANDLER, True)
 
 
 def port_in_use(port: int) -> bool:
@@ -135,7 +287,7 @@ def open_browser(url: str) -> None:
             return
     try:
         os.startfile(url)  # type: ignore[attr-defined]
-    except OSError:
+    except (AttributeError, OSError):
         print(f"Откройте браузер вручную: {url}")
 
 
@@ -153,7 +305,7 @@ def fail(title: str, steps: list) -> int:
 def after_server_ready(data_dir: Path) -> None:
     if not wait_http(HEALTH_URL, 90):
         print("Сервер не ответил вовремя — смотрите сообщения выше.")
-        return
+        os._exit(1)
     print("Сервер готов")
     if not wait_http(APP_URL, 30):
         print("Интерфейс ещё не готов — откройте http://127.0.0.1:8000 вручную.")
@@ -170,16 +322,19 @@ def after_server_ready(data_dir: Path) -> None:
 
     print()
     print("=" * 40)
-    print("  Готово — не закрывайте это окно")
+    print("  Готово")
     print(f"  {APP_URL}")
     print("=" * 40)
-    print("Остановка: «Остановить Material Library.bat» или Ctrl+C")
+    print("Остановка: закройте это окно или нажмите Ctrl+C.")
+    print("Закрытие вкладки в браузере программу не останавливает.")
     print()
+    mark_launch_ok()
     print("==> Открытие браузера")
     open_browser(APP_URL)
 
 
 def main() -> int:
+    attach_launch_log()
     root = project_root()
     # Portable python312._pth ignores PYTHONPATH — put project on sys.path explicitly.
     root_str = str(root)
@@ -207,13 +362,19 @@ def main() -> int:
             ["Дистрибутив неполный. Запросите полный архив у разработчиков."],
         )
 
-    if port_in_use(8000):
+    install_console_close_stop()
+
+    if reopen_running_server(data_dir):
+        return 0
+
+    clear_launch_ok()
+
+    if port_in_use(8000) and not release_port(8000):
         return fail(
-            "Порт 8000 занят (сервер)",
+            "Порт 8000 занят",
             [
-                "Возможно, программа уже запущена",
-                "Запустите файл: Остановить Material Library.bat",
-                "Затем запустите снова",
+                "Его занимает другая программа, остановить её не удалось",
+                "Закройте ту программу или запустите «Остановить Material Library.bat»",
             ],
         )
 
@@ -240,7 +401,8 @@ def main() -> int:
     ready.start()
 
     print()
-    print("==> Запуск сервера (это окно должно оставаться открытым)")
+    print("==> Запуск сервера")
+    print("Чтобы остановить программу, закройте это окно или нажмите Ctrl+C.")
     try:
         import uvicorn
     except ImportError:

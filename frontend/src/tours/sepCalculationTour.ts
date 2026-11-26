@@ -5,14 +5,14 @@ export const SEP_CALCULATION_TOUR_STEPS: TourStep[] = [
   {
     id: "area",
     title: "Область применения",
-    text: "Отфильтруйте материалы по области применения.",
+    text: "Отфильтруйте список материалов по области применения (например, «Все» — полный список материалов).",
     selector: "[data-tour='sep-calc-area']",
     placement: "right",
   },
   {
     id: "material",
     title: "Материал",
-    text: "Выберите материал — от этого зависят доступные категории прочности и данные расчёта.",
+    text: "Выберите материал — от этого зависят доступные категории прочности и данные БД.",
     selector: "[data-tour='sep-calc-material']",
     placement: "bottom",
   },
@@ -50,7 +50,7 @@ export const SEP_CALCULATION_TOUR_STEPS: TourStep[] = [
   {
     id: "table",
     title: "Таблица результатов",
-    text: "Здесь отображаются результаты расчёта по выбранной категории и добавленным температурам.",
+    text: "Здесь отображаются результаты расчёта по выбранной категории прочности и добавленным температурам.",
     selector: "[data-tour='sep-calc-table']",
     placement: "top",
     geometryDelay: 250,

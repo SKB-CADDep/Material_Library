@@ -25,48 +25,21 @@ from src.services.source_service import SourceService
 from src.services.material_repository import MaterialRepository
 from src.services.properties_catalog import PropertiesCatalog
 from src.services.unit_manager import UnitManager
+from src.services.material_changelog import (
+    LOG_FILENAME,
+    find_changes,
+    get_username,
+    log_changes,
+)
+from src.services.audit_events import (
+    AUDIT_EVENT_NAMES,
+    EDITOR_AUDIT_TAB_ORDER,
+    group_editor_changes_by_tab,
+)
 
 # ======================================================================================
 # БЛОК 1: КОНФИГУРАЦИЯ И КОНСТАНТЫ
 # ======================================================================================
-
-# Константа для логов
-LOG_FILENAME = "material_changelog.txt"
-
-# ======================================================================================
-# АУДИТ: единый словарь нормализованных event_name
-# ======================================================================================
-# Важно: аналитика использует event.name + event.category + event.action.
-# Поэтому event.name делаем стабильным, а старт/финиш/ошибки различаем через event.action/result/metrics.
-AUDIT_EVENT_NAMES = {
-    # Материалы
-    "MATERIAL_SELECTED": "Материал: выбран",
-    "MATERIAL_CREATE_DRAFT": "Материал: создан новый (черновик)",
-    "MATERIAL_SAVE": "Материал: сохранение",
-    "MATERIAL_SAVE_TAB": "Материал: изменения по вкладке",
-    "MATERIAL_SAVE_AS": "Материал: сохранить как",
-    "MATERIAL_RESET_CREATE": "Материал: создание сброшено",
-    "MATERIAL_CANCEL_CHANGES": "Материал: изменения отменены",
-
-    # Источники
-    "SOURCE_SELECTED": "Источник: выбран",
-    "SOURCE_CREATE": "Источник: создание",
-    "SOURCE_UPDATE": "Источник: изменение",
-    "SOURCE_DELETE": "Источник: удаление",
-    "SOURCE_OPEN_LINK": "Источник: открыть ссылку",
-
-    # Навигация
-    "NAV_TAB_SELECTED": "Навигация: вкладка выбрана",
-
-    # Импорт
-    "IMPORT_OPEN_DIR": "Импорт: открыть директорию",
-    "IMPORT_OPEN_DIR_ERROR": "Импорт: ошибка открытия директории",
-
-    # Справка
-    "HELP_ABOUT_OPEN": "Справка: о приложении открыто",
-    "HELP_INSTRUCTIONS_OPEN": "Справка: инструкция открыта",
-    "HELP_CHANGELOG_OPEN": "Справка: список изменений открыт",
-}
 
 PROPERTIES = PropertiesCatalog()
 PHYSICAL_MAP = {k: PROPERTIES.get_meta(k) for k in PROPERTIES.physical_keys()}
@@ -74,26 +47,10 @@ MECHANICAL_MAP = {k: PROPERTIES.get_meta(k) for k in PROPERTIES.mechanical_keys(
 ALL_PROPERTIES_MAP = {**PHYSICAL_MAP, **MECHANICAL_MAP}
 HARDNESS = HardnessTable()
 
-# Константа для сравнения списков (для логов)
-LIST_ITEM_KEYS = {
-    (Schema.PHYSICAL, Schema.PROPERTIES): Schema.PROP_NAME,
-    (Schema.MECHANICAL, Schema.STRENGTH_CAT): Schema.VAL_STR_CAT,
-    (Schema.MECHANICAL, Schema.STRENGTH_CAT, Schema.PROPERTIES): Schema.PROP_NAME,
-    (Schema.CHEMICAL, Schema.COMPOSITION): "composition_source",
-    (Schema.CHEMICAL, Schema.COMPOSITION, "other_elements"): "element"
-}
-
 
 # ======================================================================================
 # БЛОК 2: УТИЛИТЫ
 # ======================================================================================
-
-def get_username():
-    try:
-        return os.getlogin()
-    except Exception:
-        return os.environ.get("USERNAME", "unknown_user")
-
 
 def read_text_from_file(filename, *, plain: bool = False):
     try:
@@ -101,264 +58,6 @@ def read_text_from_file(filename, *, plain: bool = False):
     except FileNotFoundError:
         return f"ОШИБКА: Не удалось прочитать '{filename}'"
     return markdown_to_plain(text) if plain else text
-
-
-def find_changes(old_data, new_data):
-    """
-    Главная функция для поиска изменений. Подготавливает данные и вызывает рекурсивный хелпер.
-    Возвращает структурированный список изменений.
-    """
-
-    def list_item_key_for_path(path):
-        key = LIST_ITEM_KEYS.get(tuple(path))
-        if key:
-            return key
-        if path and str(path[-1]) == Schema.PROPERTIES:
-            return Schema.PROP_NAME
-        if path and str(path[-1]) == "other_elements":
-            return "element"
-        return None
-
-    def find_changes_recursive(d1, d2, path):
-        changes = []
-        if isinstance(d1, dict) and isinstance(d2, dict):
-            all_keys = sorted(list(set(d1.keys()) | set(d2.keys())))
-            for key in all_keys:
-                if key in ["material_id", "property_last_updated"]: continue
-                new_path = path + [key]
-                val1, val2 = d1.get(key), d2.get(key)
-                if val1 is None and val2 is not None:
-                    changes.append({'path': new_path, 'type': 'added', 'new': val2})
-                elif val1 is not None and val2 is None:
-                    changes.append({'path': new_path, 'type': 'removed', 'old': val1})
-                elif val1 != val2:
-                    changes.extend(find_changes_recursive(val1, val2, new_path))
-        elif isinstance(d1, list) and isinstance(d2, list):
-            unique_key_name = list_item_key_for_path(path)
-            is_list_of_dicts_with_key = (unique_key_name and
-                                         all(isinstance(item, dict) and unique_key_name in item for item in d1 + d2))
-            if is_list_of_dicts_with_key:
-                old_map = {item[unique_key_name]: item for item in d1}
-                new_map = {item[unique_key_name]: item for item in d2}
-                all_item_keys = sorted(list(set(old_map.keys()) | set(new_map.keys())))
-                for item_key in all_item_keys:
-                    old_item = old_map.get(item_key)
-                    new_item = new_map.get(item_key)
-                    item_path = path + [f"{path[-1]}[{item_key}]"]
-                    if old_item is None:
-                        changes.append({'path': item_path, 'type': 'added', 'new': new_item})
-                    elif new_item is None:
-                        changes.append({'path': item_path, 'type': 'removed', 'old': old_item})
-                    elif old_item != new_item:
-                        changes.extend(find_changes_recursive(old_item, new_item, item_path))
-            else:
-                if json.dumps(d1, sort_keys=True) != json.dumps(d2, sort_keys=True):
-                    changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
-        elif d1 != d2:
-            changes.append({'path': path, 'type': 'modified', 'old': d1, 'new': d2})
-        return changes
-
-    return find_changes_recursive(copy.deepcopy(old_data), copy.deepcopy(new_data), [])
-
-
-# Порядок вкладок редактора для аудита (отдельная строка JSON на каждую с изменениями)
-EDITOR_AUDIT_TAB_ORDER = (
-    "Общие данные",
-    "Физические свойства",
-    "Механические свойства",
-    "Химический состав",
-    "Прочее",
-)
-
-
-def _audit_editor_tab_for_path(path):
-    """Определяет вкладку редактора по пути diff (первый сегмент корня JSON)."""
-    if not path:
-        return None
-    root = str(path[0])
-    if root == Schema.METADATA:
-        return "Общие данные"
-    if root == Schema.PHYSICAL:
-        return "Физические свойства"
-    if root == Schema.MECHANICAL:
-        return "Механические свойства"
-    if root == Schema.CHEMICAL:
-        return "Химический состав"
-    return "Прочее"
-
-
-def _audit_metadata_human_label(segments):
-    """Человекочитаемая подпись поля для вкладки «Общие данные»."""
-    if not segments:
-        return "Общие данные (metadata)"
-    k0 = str(segments[0])
-    if k0 == Schema.NAME_STD:
-        return "Наименование (стандарт)"
-    if k0 == Schema.NAME_ALT:
-        return "Альтернативные названия"
-    if k0 == "comment":
-        return "Общий комментарий"
-    if k0 == Schema.APP_AREA:
-        return "Области применения"
-    if k0 == "classification" and len(segments) >= 2:
-        sub = str(segments[1])
-        sub_map = {
-            "classification_category": "Классификация: категория",
-            "classification_class": "Классификация: структурный класс",
-            "classification_subclass": "Классификация: подкласс",
-        }
-        return sub_map.get(sub, f"Классификация: {sub}")
-    if k0 == "classification":
-        return "Классификация"
-    if k0 == "temperature_application":
-        if len(segments) >= 2:
-            sub = str(segments[1])
-            if sub == "value":
-                return "Температура применения ДО (значение)"
-            if sub == "comment":
-                return "Комментарий к температуре применения"
-        return "Параметры применения (температура)"
-    return f"Общие данные: {k0}"
-
-
-def _audit_prop_name_from_segment(seg):
-    s = str(seg)
-    if s.startswith(f"{Schema.PROPERTIES}[") and s.endswith("]"):
-        return s[len(f"{Schema.PROPERTIES}["):-1]
-    return None
-
-
-def _audit_physical_human_label(segments):
-    for seg in segments:
-        sk = str(seg)
-        prop_id = _audit_prop_name_from_segment(sk) or sk
-        if PROPERTIES.is_physical(prop_id):
-            return PROPERTIES.get_meta(prop_id)["name"]
-    return "Физическое свойство"
-
-
-_MECH_CAT_FIELD_LABELS = {
-    "hardness_unit": "Единица твердости (КП)",
-    Schema.HARDNESS_UNIT: "Единица твердости (КП)",
-    Schema.VAL_STR_CAT: "Наименование категории прочности",
-    Schema.HARDNESS: "Твердость",
-}
-
-
-def _audit_mechanical_human_label(segments):
-    kp = None
-    for seg in segments:
-        s = str(seg)
-        if s.startswith(f"{Schema.STRENGTH_CAT}[") and s.endswith("]"):
-            kp = s[len(f"{Schema.STRENGTH_CAT}["):-1]
-    for seg in segments:
-        s = str(seg)
-        prop_id = _audit_prop_name_from_segment(s) or s
-        if prop_id == Schema.HARDNESS or PROPERTIES.is_mechanical(prop_id):
-            name = "Твердость" if prop_id == Schema.HARDNESS else PROPERTIES.get_meta(prop_id)["name"]
-            if kp is not None and str(kp).strip() not in ("", "-1", "-"):
-                return f"КП «{kp}»: {name}"
-            return name
-    for seg in segments:
-        s = str(seg)
-        if s in _MECH_CAT_FIELD_LABELS:
-            base = _MECH_CAT_FIELD_LABELS[s]
-            if kp is not None and str(kp).strip() not in ("", "-1", "-"):
-                return f"КП «{kp}»: {base}"
-            return base
-    return "Механическое свойство (КП)"
-
-
-def _audit_chemical_human_label(segments):
-    str_segs = [str(x) for x in segments]
-    elem = None
-    for x in str_segs:
-        if x.startswith("other_elements[") and x.endswith("]"):
-            elem = x[len("other_elements["):-1]
-    for seg in str_segs:
-        if seg.startswith(f"{Schema.COMPOSITION}[") and seg.endswith("]"):
-            src = seg[len(f"{Schema.COMPOSITION}["):-1]
-            if "other_elements" in str_segs:
-                if elem:
-                    return f"Состав ({src}): элемент {elem}"
-                return f"Состав ({src}): прочие элементы"
-            return f"Состав ({src})"
-    if Schema.COMPOSITION in str_segs:
-        return "Состав (структура)"
-    return "Химический состав"
-
-
-def _audit_human_field_label(path):
-    """Краткая подпись изменённого поля без значений."""
-    if not path:
-        return "неизвестно"
-    p0 = str(path[0])
-    if p0 == Schema.METADATA:
-        return _audit_metadata_human_label(path[1:])
-    if p0 == Schema.PHYSICAL:
-        return _audit_physical_human_label(path[1:])
-    if p0 == Schema.MECHANICAL:
-        return _audit_mechanical_human_label(path[1:])
-    if p0 == Schema.CHEMICAL:
-        return _audit_chemical_human_label(path[1:])
-    return str(path[-1])
-
-
-def group_editor_changes_by_tab(changes):
-    """
-    Группирует find_changes() по вкладкам редактора.
-    Возвращает dict: вкладка -> отсортированный список уникальных подписей полей.
-    """
-    buckets = {tab: set() for tab in EDITOR_AUDIT_TAB_ORDER}
-    if not changes:
-        return {}
-    for ch in changes:
-        if not isinstance(ch, dict):
-            continue
-        path = ch.get("path")
-        if not isinstance(path, list) or not path:
-            continue
-        tab = _audit_editor_tab_for_path(path)
-        if tab not in buckets:
-            tab = "Прочее"
-        label = _audit_human_field_label(path)
-        buckets[tab].add(label)
-    return {tab: sorted(buckets[tab]) for tab in EDITOR_AUDIT_TAB_ORDER if buckets[tab]}
-
-
-def log_changes(material_name, changes_list):
-    """Записывает изменения в лог-файл в иерархическом виде."""
-    if not changes_list: return
-    log_path = os.path.join(get_app_directory(), LOG_FILENAME)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    username = get_username()
-    try:
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write("=" * 80 + "\n")
-            f.write(f"Время: {timestamp}\n")
-            f.write(f"Пользователь: {username}\n")
-            f.write(f"Материал: {material_name}\n")
-            f.write("Изменения:\n")
-            printed_headers = set()
-            for change in changes_list:
-                path = change['path']
-                for i in range(len(path) - 1):
-                    header_path_tuple = tuple(path[:i + 1])
-                    if header_path_tuple not in printed_headers:
-                        indent = "  " * (i + 1)
-                        header_name = path[i]
-                        if isinstance(header_name, int): f.write(f"{indent}Изменения в элементе с индексом [{header_name}]:\n")
-                        else: f.write(f"{indent}Изменения в '{header_name}':\n")
-                        printed_headers.add(header_path_tuple)
-                leaf_key = path[-1]
-                indent = "  " * len(path)
-                ct = change['type']
-                if ct == 'modified': f.write(f"{indent}- '{leaf_key}': [БЫЛО] '{change['old']}' -> [СТАЛО] '{change['new']}'\n")
-                elif ct == 'added': f.write(f"{indent}- '{leaf_key}': [ДОБАВЛЕНО] -> '{change['new']}'\n")
-                elif ct == 'removed': f.write(f"{indent}- '{leaf_key}': [УДАЛЕНО] (было '{change['old']}')\n")
-            f.write("\n")
-    except Exception as e:
-        print(f"Ошибка записи в лог-файл: {e}")
 
 
 def safe_float(value, default=None):
@@ -377,6 +76,7 @@ def safe_float(value, default=None):
 def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
     """
     Возвращает (lower, upper, min_tol_display, max_tol_display).
+    REL — дельта в тех же единицах.
     """
     min_v = safe_float(elem_info.get("min_value"))
     max_v = safe_float(elem_info.get("max_value"))
@@ -384,16 +84,18 @@ def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
     if tolerance_type == "relative":
         min_rel = safe_float(elem_info.get("min_value_tolerance_relative"))
         max_rel = safe_float(elem_info.get("max_value_tolerance_relative"))
+        has_min_rel = min_rel is not None and min_rel != 0
+        has_max_rel = max_rel is not None and max_rel != 0
 
-        if min_v is not None and min_rel is not None:
-            lower = min_v * (1 - min_rel / 100.0)
+        if min_v is not None and has_min_rel:
+            lower = min_v - min_rel
         elif min_v is not None:
             lower = min_v
         else:
             lower = float("-inf")
 
-        if max_v is not None and max_rel is not None:
-            upper = max_v * (1 + max_rel / 100.0)
+        if max_v is not None and has_max_rel:
+            upper = max_v + max_rel
         elif max_v is not None:
             upper = max_v
         else:
@@ -403,26 +105,65 @@ def chemical_effective_bounds(elem_info, tolerance_type="absolute"):
 
     min_tol = safe_float(elem_info.get("min_value_tolerance"))
     max_tol = safe_float(elem_info.get("max_value_tolerance"))
+    # 0.0 хранится явно, но не подменяет номинальные min/max
+    has_min_tol = min_tol is not None and min_tol != 0
+    has_max_tol = max_tol is not None and max_tol != 0
 
-    if min_v is not None and min_tol is not None:
+    if min_v is not None and has_min_tol:
         lower = min_tol
     elif min_v is not None:
         lower = min_v
-    elif min_tol is not None:
+    elif has_min_tol:
         lower = min_tol
     else:
         lower = float("-inf")
 
-    if max_v is not None and max_tol is not None:
+    if max_v is not None and has_max_tol:
         upper = max_tol
     elif max_v is not None:
         upper = max_v
-    elif max_tol is not None:
+    elif has_max_tol:
         upper = max_tol
     else:
         upper = float("inf")
 
     return lower, upper, min_tol, max_tol
+
+
+def coerce_chem_number(value):
+    """Пустое / None → 0.0; иначе число. None как отсутствие значения не используем."""
+    parsed = safe_float(value)
+    return 0.0 if parsed is None else float(parsed)
+
+
+def format_chem_tol_number(n):
+    if n is None or not isinstance(n, (int, float)) or n != n:
+        return 0.0
+    if n == 0:
+        return 0.0
+    return float(f"{n:.12g}")
+
+
+def sync_chem_abs_from_rel(min_v, max_v, rel_min, rel_max):
+    """ABS min = min − REL min; ABS max = max + REL max.
+    REL = 0 → ABS = 0 (нет допуска, не подставляем min/max)."""
+    abs_min = 0.0 if rel_min == 0 else (min_v - rel_min)
+    abs_max = 0.0 if rel_max == 0 else (max_v + rel_max)
+    return (
+        format_chem_tol_number(abs_min),
+        format_chem_tol_number(abs_max),
+    )
+
+
+def sync_chem_rel_from_abs(min_v, max_v, abs_min, abs_max):
+    """REL min = min − ABS min; REL max = ABS max − max.
+    ABS = 0 → REL = 0 (нет допуска, не получаем min − 0 = min)."""
+    rel_min = 0.0 if abs_min == 0 else (min_v - abs_min)
+    rel_max = 0.0 if abs_max == 0 else (abs_max - max_v)
+    return (
+        format_chem_tol_number(rel_min),
+        format_chem_tol_number(rel_max),
+    )
 
 
 class ScrollableMixin:
@@ -527,7 +268,11 @@ def create_editable_treeview(parent_frame, on_update_callback=None):
         def on_focus_out(event):
             tree.set(item_id, column, entry_var.get())
             entry.destroy()
-            if on_update_callback: on_update_callback()
+            if on_update_callback:
+                try:
+                    on_update_callback(item_id, column)
+                except TypeError:
+                    on_update_callback()
         entry.bind("<FocusOut>", on_focus_out)
         entry.bind("<Return>", lambda e: on_focus_out(e))
     tree.bind("<Double-1>", on_tree_double_click)
@@ -890,7 +635,12 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
             prop_map = self.HARDNESS_COLUMNS
 
         for row in self.treeview_data:
-            frozen_values = [str(row.get(c, "-") if row.get(c) is not None else "-") for c in frozen_cols]
+            frozen_values = [
+                "—"
+                if row.get(c) is None or str(row.get(c)).strip() in ("", "-", "—")
+                else str(row.get(c))
+                for c in frozen_cols
+            ]
             scrollable_values = []
             for col_key in scrollable_cols:
                 raw_val = row.get(col_key)
@@ -901,10 +651,14 @@ class TempSelectionTab(ttk.Frame, ScrollableMixin):
                         unit = self.column_units.get(col_key) or UnitManager.get_system_unit("Твердость")
                         scrollable_values.append(unit)
                     else:
-                        scrollable_values.append(str(raw_val) if raw_val else "-")
+                        scrollable_values.append(
+                            "—"
+                            if not raw_val or str(raw_val).strip() in ("-", "—")
+                            else str(raw_val)
+                        )
                     continue
                 if raw_val is None:
-                    scrollable_values.append("-")
+                    scrollable_values.append("—")
                     continue
 
                 prop_info = prop_map.get(col_key)
@@ -1401,7 +1155,7 @@ class SingleCalculationTab(ttk.Frame, ScrollableMixin):
                     mode = None
 
                 if raw_val is None:
-                    values.append("-")
+                    values.append("—")
                     continue
 
                 info = PROPERTIES.get_meta(prop_key)
@@ -2148,32 +1902,39 @@ class ChemComparisonTab(ttk.Frame, ScrollableMixin):
     def _format_chem_value(self, elem_data):
         """
         Форматирование значения хим. элемента в диапазон/неравенство.
-        Повторяет старую логику.
+        0.0 — валидная граница; допуск 0.0 в компактной строке не показываем.
         """
         if not elem_data:
             return "-"
 
-        min_v, max_v = elem_data.get("min_value"), elem_data.get("max_value")
+        min_v = safe_float(elem_data.get("min_value"))
+        max_v = safe_float(elem_data.get("max_value"))
         min_tol = elem_data.get("min_value_tolerance")
         max_tol = elem_data.get("max_value_tolerance")
+        min_tol_n = safe_float(min_tol)
+        max_tol_n = safe_float(max_tol)
 
-        if min_v == 0:
-            min_v = None
-        if max_v == 0:
-            max_v = None
+        if min_v is None and max_v is None:
+            return "-"
+
+        def _tol_prefix(tol, tol_n):
+            if tol_n is None or tol_n == 0:
+                return ""
+            return f"({tol}) "
+
+        def _tol_suffix(tol, tol_n):
+            if tol_n is None or tol_n == 0:
+                return ""
+            return f" ({tol})"
 
         if min_v is not None and max_v is not None:
-            min_tol_str = f"({min_tol}) " if min_tol not in (None, '') else ""
-            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            return f"{min_tol_str}{min_v} - {max_v}{max_tol_str}"
-        elif max_v is not None:
-            max_tol_str = f" ({max_tol})" if max_tol not in (None, '') else ""
-            return f"≤ {max_v}{max_tol_str}"
-        elif min_v is not None:
-            min_tol_str = f" ({min_tol})" if min_tol not in (None, '') else ""
-            return f"≥ {min_v}{min_tol_str}"
-        else:
-            return "-"
+            return (
+                f"{_tol_prefix(min_tol, min_tol_n)}{min_v} - {max_v}"
+                f"{_tol_suffix(max_tol, max_tol_n)}"
+            )
+        if max_v is not None:
+            return f"≤ {max_v}{_tol_suffix(max_tol, max_tol_n)}"
+        return f"≥ {min_v}{_tol_suffix(min_tol, min_tol_n)}"
 
     def _s1_refresh_pivot_table(self):
         """Перестраивает pivot-таблицу по элементам (строки) и источникам (столбцы)."""
@@ -4369,7 +4130,7 @@ class ChemicalCompositionTab(ttk.Frame):
         table_frame.pack(fill="both", expand=True)
         table_frame.columnconfigure(0, weight=1)
 
-        tree = create_editable_treeview(table_frame, on_update_callback=self._update_chart)
+        tree = create_editable_treeview(table_frame, on_update_callback=self._on_chem_elements_edited)
         tree.configure(show="headings")
         tree["columns"] = ("name", "elem", "min", "max", "min_tol", "max_tol", "min_tol_rel", "max_tol_rel")
 
@@ -4385,9 +4146,9 @@ class ChemicalCompositionTab(ttk.Frame):
         tree.column("min_tol", width=90, anchor="center")
         tree.heading("max_tol", text="Допуск Max (абс.)")
         tree.column("max_tol", width=90, anchor="center")
-        tree.heading("min_tol_rel", text="Допуск Min (отн., %)")
+        tree.heading("min_tol_rel", text="Допуск Min (отн.)")
         tree.column("min_tol_rel", width=110, anchor="center")
-        tree.heading("max_tol_rel", text="Допуск Max (отн., %)")
+        tree.heading("max_tol_rel", text="Допуск Max (отн.)")
         tree.column("max_tol_rel", width=110, anchor="center")
 
         tree.pack(side="left", fill="both", expand=True)
@@ -4396,7 +4157,7 @@ class ChemicalCompositionTab(ttk.Frame):
         btn_frame.pack(side="left", fill="y", padx=5)
 
         def add_row():
-            tree.insert("", "end", values=["", "", "", "", "", "", "", ""])
+            tree.insert("", "end", values=["", "", "0.0", "0.0", "0.0", "0.0", "0.0", "0.0"])
             self._update_chart()
 
         def del_row():
@@ -4410,6 +4171,51 @@ class ChemicalCompositionTab(ttk.Frame):
 
         tree.bind("<Button-3>", self._on_tree_right_click)
         return tree
+
+    def _on_chem_elements_edited(self, item_id=None, column=None):
+        if item_id is not None and column is not None:
+            self._sync_chem_row_tolerances(item_id, column)
+        self._update_chart()
+
+    def _sync_chem_row_tolerances(self, item_id, column):
+        """П.39: ABS ↔ REL. column — '#n' из Treeview."""
+        cols = self.elements_tree["columns"]
+        try:
+            col_index = int(str(column).replace("#", "")) - 1
+            col_name = cols[col_index]
+        except (ValueError, IndexError, TypeError):
+            return
+
+        values = self.elements_tree.set(item_id)
+        min_v = coerce_chem_number(values.get("min"))
+        max_v = coerce_chem_number(values.get("max"))
+        abs_min = coerce_chem_number(values.get("min_tol"))
+        abs_max = coerce_chem_number(values.get("max_tol"))
+        rel_min = coerce_chem_number(values.get("min_tol_rel"))
+        rel_max = coerce_chem_number(values.get("max_tol_rel"))
+
+        if col_name in ("min_tol_rel", "max_tol_rel"):
+            abs_min, abs_max = sync_chem_abs_from_rel(min_v, max_v, rel_min, rel_max)
+            self.elements_tree.set(item_id, "min_tol", abs_min)
+            self.elements_tree.set(item_id, "max_tol", abs_max)
+        elif col_name in ("min_tol", "max_tol"):
+            rel_min, rel_max = sync_chem_rel_from_abs(min_v, max_v, abs_min, abs_max)
+            self.elements_tree.set(item_id, "min_tol_rel", rel_min)
+            self.elements_tree.set(item_id, "max_tol_rel", rel_max)
+        elif col_name in ("min", "max"):
+            # Старые строки часто только с ABS: при смене min/max пересчитываем REL.
+            if rel_min != 0 or rel_max != 0:
+                abs_min, abs_max = sync_chem_abs_from_rel(
+                    min_v, max_v, rel_min, rel_max
+                )
+                self.elements_tree.set(item_id, "min_tol", abs_min)
+                self.elements_tree.set(item_id, "max_tol", abs_max)
+            elif abs_min != 0 or abs_max != 0:
+                rel_min, rel_max = sync_chem_rel_from_abs(
+                    min_v, max_v, abs_min, abs_max
+                )
+                self.elements_tree.set(item_id, "min_tol_rel", rel_min)
+                self.elements_tree.set(item_id, "max_tol_rel", rel_max)
 
     def _create_chart_panel(self, parent):
         parent.columnconfigure(0, weight=1)
@@ -4696,17 +4502,35 @@ class ChemicalCompositionTab(ttk.Frame):
             symbol = elem.get("element", "")
             name = self.ELEMENTS_MAP.get(symbol, {}).get("name", "")
 
+            min_v = coerce_chem_number(elem.get("min_value"))
+            max_v = coerce_chem_number(elem.get("max_value"))
+            abs_min = coerce_chem_number(elem.get("min_value_tolerance"))
+            abs_max = coerce_chem_number(elem.get("max_value_tolerance"))
+            rel_min = coerce_chem_number(elem.get("min_value_tolerance_relative"))
+            rel_max = coerce_chem_number(elem.get("max_value_tolerance_relative"))
+            # Старые строки без REL: дополняем из ABS (и наоборот).
+            has_abs = abs_min != 0 or abs_max != 0
+            has_rel = rel_min != 0 or rel_max != 0
+            if has_abs and not has_rel:
+                rel_min, rel_max = sync_chem_rel_from_abs(
+                    min_v, max_v, abs_min, abs_max
+                )
+            elif has_rel and not has_abs:
+                abs_min, abs_max = sync_chem_abs_from_rel(
+                    min_v, max_v, rel_min, rel_max
+                )
+
             self.elements_tree.insert(
                 "", "end",
                 values=[
                     name,
                     symbol,
-                    elem.get("min_value", ""),
-                    elem.get("max_value", ""),
-                    elem.get("min_value_tolerance", ""),
-                    elem.get("max_value_tolerance", ""),
-                    elem.get("min_value_tolerance_relative", ""),
-                    elem.get("max_value_tolerance_relative", ""),
+                    min_v,
+                    max_v,
+                    abs_min,
+                    abs_max,
+                    rel_min,
+                    rel_max,
                 ]
             )
 
@@ -4738,7 +4562,7 @@ class ChemicalCompositionTab(ttk.Frame):
         except IndexError:
             return
 
-        # Обновляем кэш источников (на случай изменений во вкладке 'Работа с источниками')
+        # Обновляем кэш источников (на случай изменений во вкладке «Список литературы»)
         self._refresh_source_list()
 
         source_name = (self.source_entry.get() or "").strip()
@@ -4781,20 +4605,18 @@ class ChemicalCompositionTab(ttk.Frame):
 
             elem_data = {
                 "element": values["elem"],
-                "unit_value": common_unit
+                "unit_value": common_unit,
+                "min_value": coerce_chem_number(values.get("min")),
+                "max_value": coerce_chem_number(values.get("max")),
+                "min_value_tolerance": coerce_chem_number(values.get("min_tol")),
+                "max_value_tolerance": coerce_chem_number(values.get("max_tol")),
+                "min_value_tolerance_relative": coerce_chem_number(
+                    values.get("min_tol_rel")
+                ),
+                "max_value_tolerance_relative": coerce_chem_number(
+                    values.get("max_tol_rel")
+                ),
             }
-
-            elem_data["min_value"] = safe_float(values["min"])
-            elem_data["max_value"] = safe_float(values["max"])
-
-            if values["min_tol"]:
-                elem_data["min_value_tolerance"] = values["min_tol"]
-            if values["max_tol"]:
-                elem_data["max_value_tolerance"] = values["max_tol"]
-            if values.get("min_tol_rel"):
-                elem_data["min_value_tolerance_relative"] = values["min_tol_rel"]
-            if values.get("max_tol_rel"):
-                elem_data["max_value_tolerance_relative"] = values["max_tol_rel"]
 
             elements_list.append(elem_data)
 
@@ -5969,7 +5791,7 @@ class MainApplication(tk.Tk):
     def _init_audit_logger(self):
         """Инициализирует AuditLogger. Ошибки не показываем пользователю."""
         try:
-            from audit_logger import AuditLogger
+            from src.services.audit_logger import AuditLogger
             import atexit
             import time
         except Exception:
@@ -5977,7 +5799,11 @@ class MainApplication(tk.Tk):
 
         try:
             # app_id/app_version должны быть стабильными для дашборда
-            self.audit_logger = AuditLogger(app_id="material_lib", app_version=self.APP_VERSION)
+            self.audit_logger = AuditLogger(
+                app_id="material_lib",
+                app_version=self.APP_VERSION,
+                base_dir=get_app_directory(),
+            )
             self._audit_session_t0 = time.monotonic()
             self.audit_logger.log_session_start()
         except Exception:
@@ -6158,7 +5984,7 @@ class MainApplication(tk.Tk):
 
         self.main_notebook.add(self.viewer_frame, text="Подбор материала")
         self.main_notebook.add(self.editor_frame, text="Добавление / Редактирование материала")
-        self.main_notebook.add(self.sources_frame, text="Работа с источниками")
+        self.main_notebook.add(self.sources_frame, text="Список литературы")
 
     def open_directory(self, directory=None, show_success_message=True):
         # AUDIT: операция импорта (без путей)

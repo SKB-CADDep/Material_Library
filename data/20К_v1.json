@@ -8,7 +8,7 @@
     ],
     "comment": "",
     "classification": {
-      "classification_category": "Конструкционная углеродистая качественная",
+      "classification_category": "Конструкционная, углеродистая, качественная",
       "classification_class": "",
       "classification_subclass": ""
     }
@@ -169,8 +169,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -356,7 +355,9 @@
                   ]
                 ],
                 "value_unit": "Дж/см2",
-                "comment": ""
+                "comment": "",
+                "source_ref_id": "015011a5-ab25-4aab-9bce-b69d10e7f54b",
+                "property_subsource": "Драгунов Ю.Г., Зубченко А.С., Каширский Ю.В. И др. Марочник сталей и сплавов. 6-е изд., стереотипное - М.: Инновационное машиностроение, 2019. 1216 с.: ил."
               }
             }
           ]
@@ -376,67 +377,100 @@
                 "unit_value": "%",
                 "min_value": 0.16,
                 "max_value": 0.24,
-                "min_value_tolerance": "0.14"
+                "min_value_tolerance": 0.14,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Si",
                 "unit_value": "%",
                 "min_value": 0.15,
                 "max_value": 0.3,
-                "min_value_tolerance": "0.13",
-                "max_value_tolerance": "0.33"
+                "min_value_tolerance": 0.13,
+                "max_value_tolerance": 0.33,
+                "min_value_tolerance_relative": 0.02,
+                "max_value_tolerance_relative": 0.03
               },
               {
                 "element": "Mn",
                 "unit_value": "%",
                 "min_value": 0.35,
                 "max_value": 0.65,
-                "min_value_tolerance": "0.32",
-                "max_value_tolerance": "0.70"
+                "min_value_tolerance": 0.32,
+                "max_value_tolerance": 0.7,
+                "min_value_tolerance_relative": 0.03,
+                "max_value_tolerance_relative": 0.05
               },
               {
                 "element": "S",
                 "unit_value": "%",
-                "min_value": null,
+                "min_value": 0.0,
                 "max_value": 0.025,
-                "max_value_tolerance": "0.03"
+                "max_value_tolerance": 0.03,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "P",
                 "unit_value": "%",
-                "min_value": null,
+                "min_value": 0.0,
                 "max_value": 0.035,
-                "max_value_tolerance": "0.04"
+                "max_value_tolerance": 0.04,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
               },
               {
                 "element": "Cr",
                 "unit_value": "%",
-                "min_value": null,
-                "max_value": 0.3
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Ni",
                 "unit_value": "%",
-                "min_value": null,
-                "max_value": 0.3
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Cu",
                 "unit_value": "%",
-                "min_value": null,
-                "max_value": 0.3
+                "min_value": 0.0,
+                "max_value": 0.3,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "Mo",
                 "unit_value": "%",
-                "min_value": null,
-                "max_value": 0.08
+                "min_value": 0.0,
+                "max_value": 0.08,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               },
               {
                 "element": "V",
                 "unit_value": "%",
-                "min_value": null,
-                "max_value": 0.05
+                "min_value": 0.0,
+                "max_value": 0.05,
+                "min_value_tolerance": 0.0,
+                "max_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.0
               }
             ],
             "composition_subsource": "",

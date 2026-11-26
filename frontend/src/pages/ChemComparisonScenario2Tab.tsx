@@ -5,6 +5,7 @@ import { ApplicationAreaFilter } from "../components/ApplicationAreaFilter";
 import { TabErrorBoundary } from "../components/TabErrorBoundary";
 import { useWorkspace } from "../context/WorkSpaceContext";
 import { useSourcesCatalog } from "../hooks/useSourcesCatalog";
+import { useElementsCatalog } from "../hooks/useElementsCatalog";
 import { PanelResizeHandle } from "../components/PanelResizeHandle";
 import { useDragResize } from "../hooks/useDragResize";
 import { useResizableTableHeaders } from "../hooks/useResizableTableHeaders";
@@ -13,6 +14,7 @@ import type { CompositionEntry } from "../lib/chemComparisonPivot";
 import {
   buildChemCompositionCache,
   candidateRowClass,
+  candidateSelectionKey,
   collectTargets,
   DETAIL_STATE_LABELS,
   detailRowClass,
@@ -21,7 +23,7 @@ import {
   type CandidateEvaluation,
 } from "../lib/chemTargetSelection";
 import {
-  ELEMENTS_SORTED,
+  getElementsSorted,
   elementDisplayName,
   parseElementInfluence,
 } from "../lib/elementsCatalog";
@@ -66,7 +68,7 @@ function ChemTargetElementSelect({ value, onChange }: ElementSelectProps) {
   const listboxId = useId();
 
   const options = useMemo(() => {
-    const symbols = ELEMENTS_SORTED.map((item) => item.symbol);
+    const symbols = getElementsSorted().map((item) => item.symbol);
     if (value && value !== "-" && !symbols.includes(value)) {
       return [value, ...symbols];
     }
@@ -218,7 +220,9 @@ export function ChemComparisonScenario2Tab() {
   const [selectedTargetRowId, setSelectedTargetRowId] = useState<string | null>(
     null,
   );
-  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState(0);
+  const [selectedCandidateKey, setSelectedCandidateKey] = useState<string | null>(
+    null,
+  );
   const targetTableRef = useRef<HTMLTableElement>(null);
   const resultsTableRef = useRef<HTMLTableElement>(null);
   const detailsTableRef = useRef<HTMLTableElement>(null);
@@ -234,6 +238,7 @@ export function ChemComparisonScenario2Tab() {
     enabled: Boolean(workspace),
   });
   const sourcesQuery = useSourcesCatalog();
+  useElementsCatalog();
   const chemicalSources = sourcesQuery.data?.chemical_sources ?? [];
 
   const compositionCache = useMemo(() => {
@@ -261,16 +266,20 @@ export function ChemComparisonScenario2Tab() {
 
   useEffect(() => {
     if (candidates.length === 0) {
-      setSelectedCandidateIndex(0);
+      setSelectedCandidateKey(null);
       return;
     }
-    setSelectedCandidateIndex((prev) =>
-      prev < candidates.length ? prev : 0,
-    );
-  }, [candidates.length]);
+    setSelectedCandidateKey((prev) => {
+      if (prev && candidates.some((c) => candidateSelectionKey(c) === prev)) {
+        return prev;
+      }
+      return candidateSelectionKey(candidates[0]!);
+    });
+  }, [candidates]);
 
   const selectedCandidate: CandidateEvaluation | null =
-    candidates[selectedCandidateIndex] ?? null;
+    candidates.find((c) => candidateSelectionKey(c) === selectedCandidateKey) ??
+    null;
 
   const sidebarResize = useDragResize({
     axis: "x",
@@ -485,15 +494,15 @@ export function ChemComparisonScenario2Tab() {
                             </td>
                           </tr>
                         )}
-                      {candidates.map((candidate, index) => (
+                      {candidates.map((candidate) => {
+                        const key = candidateSelectionKey(candidate);
+                        return (
                         <tr
-                          key={`${candidate.materialId}-${candidate.sourceLabel}-${index}`}
+                          key={key}
                           className={`${candidateRowClass(candidate.status)}${
-                            index === selectedCandidateIndex
-                              ? " is-selected"
-                              : ""
+                            key === selectedCandidateKey ? " is-selected" : ""
                           }`}
-                          onClick={() => setSelectedCandidateIndex(index)}
+                          onClick={() => setSelectedCandidateKey(key)}
                         >
                           <td>{candidate.materialName}</td>
                           <td>{candidate.sourceLabel}</td>
@@ -502,7 +511,8 @@ export function ChemComparisonScenario2Tab() {
                           <td>{candidate.totalTargets}</td>
                           <td>{candidate.status}</td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

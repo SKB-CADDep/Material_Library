@@ -1,4 +1,4 @@
-export type MainPageKey = "selection" | "editor" | "sources";
+export type MainPageKey = "selection" | "editor" | "sources" | "elements";
 
 export type SelectionTabKey =
   | "temperature"
@@ -40,6 +40,9 @@ export function mainPageKeyFromPath(pathname: string): MainPageKey {
   }
   if (pathname.startsWith("/sources")) {
     return "sources";
+  }
+  if (pathname.startsWith("/elements")) {
+    return "elements";
   }
   return "selection";
 }

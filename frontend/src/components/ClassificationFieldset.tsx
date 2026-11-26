@@ -6,11 +6,25 @@ export type MaterialClassification = {
   classification_subclass?: string;
 };
 
+/** Сравнение без запятых: «Конструкционная легированная» и «Конструкционная, легированная». */
+export function classificationTextKey(value: string): string {
+  return value.replace(/,/g, "").replace(/\s+/g, " ").trim();
+}
+
+export function matchClassificationOption(
+  value: string,
+  options: string[],
+): string | undefined {
+  const key = classificationTextKey(value);
+  if (!key) return undefined;
+  return options.find((option) => classificationTextKey(option) === key);
+}
+
 export function isOrphanClassificationValue(
   current: string,
   options: string[],
 ): boolean {
-  return current !== "" && !options.includes(current);
+  return current !== "" && matchClassificationOption(current, options) === undefined;
 }
 
 export function classificationClassOptions(
@@ -18,7 +32,9 @@ export function classificationClassOptions(
   category: string,
 ): string[] {
   if (!catalog || !category) return [];
-  const match = catalog.categories.find((item) => item.name === category);
+  const names = catalog.categories.map((item) => item.name);
+  const matchedName = matchClassificationOption(category, names);
+  const match = catalog.categories.find((item) => item.name === matchedName);
   return match?.classes.map((item) => item.name) ?? [];
 }
 
@@ -28,8 +44,12 @@ export function classificationSubclassOptions(
   className: string,
 ): string[] {
   if (!catalog || !category || !className) return [];
-  const categoryItem = catalog.categories.find((item) => item.name === category);
-  const classItem = categoryItem?.classes.find((item) => item.name === className);
+  const names = catalog.categories.map((item) => item.name);
+  const matchedName = matchClassificationOption(category, names);
+  const categoryItem = catalog.categories.find((item) => item.name === matchedName);
+  const classNames = categoryItem?.classes.map((item) => item.name) ?? [];
+  const matchedClass = matchClassificationOption(className, classNames);
+  const classItem = categoryItem?.classes.find((item) => item.name === matchedClass);
   return classItem?.subclasses ?? [];
 }
 
@@ -49,7 +69,7 @@ export function normalizeClassificationSelection(
 
   if (patch.classification_category !== undefined) {
     const classes = classificationClassOptions(catalog, next.classification_category ?? "");
-    if (!classes.includes(next.classification_class ?? "")) {
+    if (matchClassificationOption(next.classification_class ?? "", classes) === undefined) {
       next.classification_class = "";
       next.classification_subclass = "";
     }
@@ -64,7 +84,7 @@ export function normalizeClassificationSelection(
       next.classification_category ?? "",
       next.classification_class ?? "",
     );
-    if (!subclasses.includes(next.classification_subclass ?? "")) {
+    if (matchClassificationOption(next.classification_subclass ?? "", subclasses) === undefined) {
       next.classification_subclass = "";
     }
   }
@@ -89,7 +109,9 @@ function ClassificationSelect({
   disabled = false,
   onChange,
 }: ClassificationSelectProps) {
+  const matched = matchClassificationOption(value, options);
   const showOrphan = isOrphanClassificationValue(value, options);
+  const selected = matched ?? value;
 
   return (
     <div className="form-row">
@@ -97,7 +119,7 @@ function ClassificationSelect({
       <select
         id={id}
         className="input property-field-wrap"
-        value={value}
+        value={selected}
         disabled={disabled}
         title={value || undefined}
         onChange={(event) => onChange(event.target.value)}

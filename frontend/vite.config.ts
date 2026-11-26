@@ -9,6 +9,7 @@ export default defineConfig({
   },
   server: {
     fs: {
+      // Нужен доступ к корневому config/ для import ../../../config/*.json
       allow: [path.resolve(__dirname, "..")],
     },
     proxy: {

@@ -207,8 +207,7 @@
               "property_name": "hardness",
               "data": {
                 "hardness_values": [],
-                "hardness_unit": "HB",
-                "comment": ""
+                "hardness_unit": "HB"
               }
             },
             {
@@ -557,7 +556,109 @@
     },
     {
       "property_type": "chemical",
-      "properties": []
+      "properties": [
+        {
+          "property_name": "composition",
+          "data": {
+            "composition_source": "ГОСТ 5632-2014",
+            "other_elements": [
+              {
+                "element": "C",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.12,
+                "max_value_tolerance": 0.13,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.01
+              },
+              {
+                "element": "Si",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.6,
+                "max_value_tolerance": 0.62,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.02
+              },
+              {
+                "element": "Mn",
+                "unit_value": "%",
+                "min_value": 1.0,
+                "max_value": 2.0,
+                "min_value_tolerance": 0.95,
+                "max_value_tolerance": 2.05,
+                "min_value_tolerance_relative": 0.05,
+                "max_value_tolerance_relative": 0.05
+              },
+              {
+                "element": "Cr",
+                "unit_value": "%",
+                "min_value": 14.0,
+                "max_value": 16.0,
+                "min_value_tolerance": 13.85,
+                "max_value_tolerance": 16.2,
+                "min_value_tolerance_relative": 0.15,
+                "max_value_tolerance_relative": 0.2
+              },
+              {
+                "element": "Ni",
+                "unit_value": "%",
+                "min_value": 34.0,
+                "max_value": 38.0,
+                "min_value_tolerance": 33.65,
+                "max_value_tolerance": 38.35,
+                "min_value_tolerance_relative": 0.35,
+                "max_value_tolerance_relative": 0.35
+              },
+              {
+                "element": "Ti",
+                "unit_value": "%",
+                "min_value": 1.1,
+                "max_value": 1.5,
+                "min_value_tolerance": 1.0,
+                "max_value_tolerance": 1.6,
+                "min_value_tolerance_relative": 0.1,
+                "max_value_tolerance_relative": 0.1
+              },
+              {
+                "element": "Al",
+                "unit_value": "%",
+                "min_value": 2.8,
+                "max_value": 3.5,
+                "min_value_tolerance": 2.7,
+                "max_value_tolerance": 3.6,
+                "min_value_tolerance_relative": 0.1,
+                "max_value_tolerance_relative": 0.1
+              },
+              {
+                "element": "S",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.02,
+                "max_value_tolerance": 0.025,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
+              },
+              {
+                "element": "P",
+                "unit_value": "%",
+                "min_value": 0.0,
+                "max_value": 0.03,
+                "max_value_tolerance": 0.035,
+                "min_value_tolerance": 0.0,
+                "min_value_tolerance_relative": 0.0,
+                "max_value_tolerance_relative": 0.005
+              }
+            ],
+            "comment": "",
+            "base_element": "Fe",
+            "source_ref_id": "471f3c87-b2e7-4f38-95ee-39a5cc50270e"
+          }
+        }
+      ]
     }
   ]
 }

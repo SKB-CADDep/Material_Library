@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildChemCompositionCache,
+  candidateSelectionKey,
   collectTargets,
   evaluateAllCandidates,
   evaluateCandidate,
@@ -129,8 +130,8 @@ describe("evaluateCandidate", () => {
             unit_value: "%",
             min_value: 0.20,
             max_value: 0.30,
-            min_value_tolerance_relative: 10,
-            max_value_tolerance_relative: 10,
+            min_value_tolerance_relative: 0.02,
+            max_value_tolerance_relative: 0.03,
           },
         ],
       },
@@ -210,5 +211,46 @@ describe("evaluateAllCandidates", () => {
       cacheEntry({ materialId: "m1", materialName: "A" }),
     ];
     expect(evaluateAllCandidates(cache, {}, [])).toEqual([]);
+  });
+});
+
+describe("candidateSelectionKey", () => {
+  it("is stable for material+source and differs across materials", () => {
+    const a = candidateSelectionKey({
+      materialId: "m1",
+      sourceLabel: "ГОСТ",
+      baseElement: "Fe",
+      composition: { composition_source: "ГОСТ" },
+    });
+    const same = candidateSelectionKey({
+      materialId: "m1",
+      sourceLabel: "ГОСТ",
+      baseElement: "Fe",
+      composition: { composition_source: "ГОСТ" },
+    });
+    const other = candidateSelectionKey({
+      materialId: "m2",
+      sourceLabel: "ГОСТ",
+      baseElement: "Fe",
+      composition: { composition_source: "ГОСТ" },
+    });
+    expect(a).toBe(same);
+    expect(a).not.toBe(other);
+  });
+
+  it("distinguishes two compositions of one material with empty source labels", () => {
+    const first = candidateSelectionKey({
+      materialId: "m1",
+      sourceLabel: "-",
+      baseElement: "Fe",
+      composition: { composition_source: "" },
+    });
+    const second = candidateSelectionKey({
+      materialId: "m1",
+      sourceLabel: "-",
+      baseElement: "Ni",
+      composition: { composition_source: "" },
+    });
+    expect(first).not.toBe(second);
   });
 });

@@ -135,6 +135,43 @@ class UnitResponse(BaseModel):
     display_labels: dict[str, str] = {}
     factors: dict[str, float | str] = {}
 
+
+class ElementItem(BaseModel):
+    symbol: str
+    display_symbol: str
+    name: str
+    color: str | None = None
+    influence: str | None = None
+    min: float | None = None
+
+
+class ElementsCatalogResponse(BaseModel):
+    schema_version: str
+    elements: list[ElementItem]
+
+
+class ElementCreateRequest(BaseModel):
+    symbol: str
+    name: str
+    display_symbol: str | None = None
+    color: str | None = None
+    influence: str | None = None
+    min: float | None = None
+
+
+class ElementUpdateRequest(BaseModel):
+    symbol: str | None = None
+    name: str | None = None
+    display_symbol: str | None = None
+    color: str | None = None
+    influence: str | None = None
+    min: float | None = None
+
+class CalculationCell(BaseModel):
+    value: float | None = None
+    mode: Literal["exact", "interp", "approx", "scalar"] | None = None
+
+
 class TemperatureSelectionColumn(BaseModel):
     key: str
     label: str
@@ -151,7 +188,8 @@ class TemperatureSelectionRow(BaseModel):
     temperature_comment: str | None = None
     category_index: int | None = None
     source_ref_id: str | None = None
-    values: dict[str, float | str | None]
+    # Число/строка (твёрдость) или {value, mode} как в «Расчёт отдельно».
+    values: dict[str, float | str | None | CalculationCell]
 
 class TemperatureSelectionRequest(BaseModel):
     prop_type: Literal["physical", "mechanical", "hardness"]
@@ -166,10 +204,6 @@ class TemperatureSelectionResponse(BaseModel):
     columns: list[TemperatureSelectionColumn]
     rows: list[TemperatureSelectionRow]
 
-
-class CalculationCell(BaseModel):
-    value: float | None = None
-    mode: Literal["exact", "interp", "approx", "scalar"] | None = None
 
 class SingleCalculationColumn(BaseModel):
     key: str

@@ -246,7 +246,7 @@ def test_api_composition_entries_relative_tolerance_preserved(
     open_workspace,
     client,
 ) -> None:
-    """S2: tolerance_type и relative-поля должны доходить до клиента без потерь."""
+
     material_id = FIXTURE_FULL_ID
     detail = client.get(f"/api/materials/{material_id}").json()
     compositions = (detail.get("chemical_properties") or {}).get("composition") or []
@@ -262,8 +262,8 @@ def test_api_composition_entries_relative_tolerance_preserved(
             "unit_value": "%",
             "min_value": 0.20,
             "max_value": 0.30,
-            "min_value_tolerance_relative": 10,
-            "max_value_tolerance_relative": 5,
+            "min_value_tolerance_relative": 0.05,
+            "max_value_tolerance_relative": 0.02,
         }
     ]
     chem["composition"] = [comp]
@@ -278,5 +278,5 @@ def test_api_composition_entries_relative_tolerance_preserved(
 
     assert saved_comp["tolerance_type"] == "relative"
     c_elem = saved_comp["other_elements"][0]
-    assert c_elem["min_value_tolerance_relative"] == 10
-    assert c_elem["max_value_tolerance_relative"] == 5
+    assert c_elem["min_value_tolerance_relative"] == 0.05
+    assert c_elem["max_value_tolerance_relative"] == 0.02

@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from src.infrastructure.atomic_io import atomic_write_json
+
 SOURCE_JSON_NAME = "source.json"
 
 
@@ -34,10 +36,7 @@ class LocalDirectoryStorage:
         return data
 
     def write_json(self, path: Path, data: dict) -> None:
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        atomic_write_json(path, data)
 
     def exists(self, path: Path) -> bool:
         return Path(path).is_file()
